@@ -1,0 +1,2734 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista de Compras</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      padding-bottom: 80px; /* Espaço para o rodapé */
+      background-color: #b0bec5;
+      display: flex;
+      min-height: 100vh;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    
+    /* Botão de menu flutuante */
+    .menu-toggle {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 20px;
+      box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+      z-index: 1001;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .menu-toggle:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(0,123,255,0.4);
+    }
+    
+    .menu-toggle.active {
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    }
+    
+    /* Menu lateral */
+    .sidebar {
+      width: 250px;
+      background: linear-gradient(135deg, #343a40 0%, #495057 100%);
+      color: white;
+      padding: 80px 20px 20px;
+      position: fixed;
+      height: 100%;
+      overflow-y: auto;
+      transition: transform 0.3s ease;
+      left: 0;
+      top: 0;
+      z-index: 1000;
+      transform: translateX(-100%);
+      box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+    }
+    
+    .sidebar.open {
+      transform: translateX(0);
+    }
+    
+    .sidebar h2 {
+      font-size: 24px;
+      margin: 0 0 30px;
+      text-align: center;
+      color: #fff;
+      font-weight: 300;
+    }
+    
+    .sidebar button {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: 15px 20px;
+      margin-bottom: 10px;
+      background-color: rgba(255,255,255,0.1);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      text-align: left;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    .sidebar button::before {
+      content: "";
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      margin-right: 15px;
+      background-size: contain;
+      background-repeat: no-repeat;
+    }
+    
+    .sidebar button.home-button::before { content: "🏠"; }
+    .sidebar button.balance-button::before { content: "💰"; }
+    .sidebar button.shopping-button::before { content: "🛒"; }
+    .sidebar button.history-button::before { content: "📜"; }
+    .sidebar button.divide-button::before { content: "➗"; }
+    .sidebar button.share-button::before { content: "📤"; }
+    .sidebar button.ads-button::before { content: "📢"; }
+    
+    .sidebar button:hover {
+      background-color: rgba(255,255,255,0.2);
+      transform: translateX(5px);
+    }
+    
+    .sidebar button.active {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+    }
+    
+    /* Overlay para fechar menu */
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      z-index: 999;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .container {
+      max-width: 700px;
+      background: #f8f9fa;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin: 20px auto;
+      width: 100%;
+    }
+    
+    .section {
+      display: none;
+    }
+    
+    .section.active {
+      display: block;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 25px;
+      font-size: 28px;
+      font-weight: 300;
+    }
+    
+    /* Estilos específicos para o dashboard */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .dashboard-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      border: 1px solid #e9ecef;
+    }
+    
+    .dashboard-card h3 {
+      margin: 0 0 15px 0;
+      color: #333;
+      font-size: 18px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin-top: 15px;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-item {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-item.clickable-stat {
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    
+    .stat-item.clickable-stat:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(0,123,255,0.4);
+      background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+    }
+    
+    .stat-hint {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-top: 5px;
+      font-style: italic;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .stat-label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    /* Estilos para anúncios */
+    .ads-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .ad-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      border: 1px solid #e9ecef;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .ad-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .ad-image {
+      width: 100%;
+      height: 150px;
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 48px;
+    }
+    
+    .ad-content {
+      padding: 20px;
+    }
+    
+    .ad-title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    
+    .ad-description {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 15px;
+      line-height: 1.4;
+    }
+    
+    .ad-price {
+      font-size: 20px;
+      font-weight: bold;
+      color: #28a745;
+      margin-bottom: 15px;
+    }
+    
+    .ad-button {
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    
+    .ad-button:hover {
+      background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+      transform: translateY(-1px);
+    }
+    
+    input, button, select {
+      padding: 12px;
+      margin: 8px;
+      font-size: 16px;
+      border-radius: 6px;
+    }
+    
+    input[type="text"], input[type="number"] {
+      width: calc(33% - 20px);
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    
+    input#balanceInput, input#dividePeople {
+      width: calc(50% - 20px);
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    
+    button {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    button:hover {
+      background-color: #218838;
+      transform: translateY(-1px);
+    }
+    
+    button.edit {
+      background-color: #007bff;
+    }
+    
+    button.edit:hover {
+      background-color: #0056b3;
+    }
+    
+    /* Grupo de botões organizados */
+    .button-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 20px 0;
+    }
+    
+    .button-group.primary {
+      background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #dee2e6;
+    }
+    
+    .button-group.secondary {
+      background: rgba(108, 117, 125, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(108, 117, 125, 0.2);
+    }
+    
+    button.clear-history, button.delete-selected, button.compare, button.clear-comparison, button.list-action, button.select-all {
+      background-color: #dc3545;
+      padding: 8px 12px;
+      font-size: 14px;
+      margin: 4px;
+    }
+    
+    button.clear-history:hover, button.delete-selected:hover, button.compare:hover, button.clear-comparison:hover, button.list-action:hover, button.select-all:hover {
+      background-color: #c82333;
+    }
+    
+    button.create-list, button.divide, button.select-list, button.copy-link {
+      background-color: #17a2b8;
+      padding: 8px 12px;
+      font-size: 14px;
+      margin: 4px;
+    }
+    
+    button.create-list:hover, button.divide:hover, button.select-list:hover, button.copy-link:hover {
+      background-color: #138496;
+    }
+    
+    button.list {
+      background-color: #6c757d;
+      margin: 6px;
+      padding: 10px 15px;
+      color: #e9ecef;
+      border-radius: 8px;
+    }
+    
+    button.list:hover {
+      background-color: #5a6268;
+    }
+    
+    button.list.active {
+      background-color: #007bff;
+      color: white;
+      font-weight: bold;
+    }
+    
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #eee;
+      flex-wrap: wrap;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    li.editing {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    li.editing input[type="text"], li.editing input[type="number"] {
+      width: 100px;
+      margin: 0;
+      padding: 8px;
+    }
+    
+    li.editing button {
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+    
+    /* OTIMIZAÇÃO: Layout horizontal para botões e checkbox dos itens da lista */
+    li .item-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      min-width: fit-content;
+    }
+    
+    li .item-controls .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 20px;
+    }
+    
+    li .item-controls .checkbox-container input[type="checkbox"] {
+      margin: 0;
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    
+    li .item-controls .action-buttons {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    
+    li .item-controls .action-buttons button {
+      padding: 6px 10px;
+      font-size: 12px;
+      margin: 0;
+      min-width: 60px;
+      white-space: nowrap;
+    }
+    
+    li .item-info {
+      flex: 1;
+      min-width: 200px;
+      margin-right: 15px;
+    }
+    
+    li .checked {
+      font-style: italic;
+      text-decoration: line-through;
+    }
+    
+    .total, .balance, .division-result {
+      font-weight: bold;
+      text-align: right;
+      margin-top: 15px;
+      padding: 15px;
+      background: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
+      border-radius: 8px;
+      border-left: 4px solid #007bff;
+    }
+    
+    .balance.negative, .footer .negative {
+      color: #dc3545;
+      border-left-color: #dc3545;
+    }
+    
+    .alert {
+      display: none;
+      background-color: #dc3545;
+      color: white;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 15px 0;
+      text-align: center;
+    }
+    
+    .alert.active {
+      display: block;
+    }
+    
+    /* Melhorias na aba de histórico */
+    .history-section {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    .history-title {
+      font-size: 20px;
+      font-weight: 500;
+      color: #333;
+      margin: 0;
+    }
+    
+    .history-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    .month-selector {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+      margin-bottom: 20px;
+    }
+    
+    .month-selector select {
+      margin: 0;
+      min-width: 200px;
+    }
+    
+    .history-item, .comparison-item {
+      font-size: 14px;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+      padding: 12px;
+      background: white;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      border: 1px solid #e9ecef;
+    }
+    
+    .comparison-section {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      border: 1px solid #ffeaa7;
+    }
+    
+    #listActions {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    #listButtons {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    
+    .dialog {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1002;
+    }
+    
+    .dialog-content {
+      background: #f8f9fa;
+      padding: 25px;
+      border-radius: 12px;
+      max-width: 450px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    
+    .dialog-content ul {
+      list-style: none;
+      padding: 0;
+    }
+    
+    .dialog-content li {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .dialog-content button {
+      margin: 8px;
+    }
+    
+    #selectedDivideList, #selectedBalanceList {
+      margin-left: 10px;
+      font-size: 14px;
+      color: #333;
+      font-weight: 500;
+    }
+    
+    #shareLink {
+      width: calc(100% - 20px);
+      padding: 12px;
+      margin: 15px 0;
+      font-size: 14px;
+    }
+    
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: linear-gradient(135deg, #343a40 0%, #495057 100%);
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+      border-top: 3px solid #007bff;
+      font-size: 16px;
+      font-weight: 500;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      z-index: 998;
+    }
+    
+    .footer .info-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    .footer .list-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .footer .balance-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .footer .balance-value {
+      font-weight: bold;
+      font-size: 18px;
+    }
+    
+    .footer .balance-value.negative {
+      color: #ff6b6b;
+    }
+    
+    .footer .balance-value.positive {
+      color: #51cf66;
+    }
+    
+    .footer .list-name {
+      background-color: #007bff;
+      padding: 4px 12px;
+      border-radius: 15px;
+      font-size: 14px;
+    }
+    
+    /* Responsividade */
+    @media (max-width: 768px) {
+      .container {
+        margin: 10px;
+        padding: 15px;
+      }
+      
+      input[type="text"], input[type="number"] {
+        width: calc(100% - 20px);
+        margin: 5px 0;
+      }
+      
+      .footer .info-section {
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .footer {
+        padding: 12px 15px;
+        font-size: 14px;
+      }
+      
+      .button-group {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .button-group button {
+        width: 100%;
+        max-width: 200px;
+      }
+      
+      .history-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .history-controls {
+        justify-content: center;
+      }
+      
+      .month-selector {
+        flex-direction: column;
+        gap: 10px;
+      }
+      
+      .month-selector select {
+        min-width: auto;
+        width: 100%;
+      }
+      
+      /* Responsividade para controles dos itens em mobile */
+      li .item-controls {
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      
+      li .item-controls .action-buttons {
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      
+      li .item-controls .action-buttons button {
+        font-size: 11px;
+        padding: 5px 8px;
+        min-width: 50px;
+      }
+      
+      li .item-info {
+        min-width: 150px;
+        margin-right: 10px;
+      }
+      
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .ads-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Botão de menu flutuante -->
+  <button class="menu-toggle" id="menuToggle" onclick="toggleMenu()">☰</button>
+  
+  <!-- Overlay para fechar menu -->
+  <div class="overlay" id="overlay" onclick="closeMenu()"></div>
+  
+  <!-- Menu lateral -->
+  <div class="sidebar" id="sidebar">
+    <h2>Menu</h2>
+    <button onclick="showSection('homeSection')" class="home-button active"><span>Início</span></button>
+    <button onclick="showSection('balanceSection')" class="balance-button"><span>Saldo</span></button>
+    <button onclick="showSection('shoppingSection')" class="shopping-button"><span>Lista de Compras</span></button>
+    <button onclick="showSection('historySection')" class="history-button"><span>Histórico</span></button>
+    <button onclick="showSection('divideSection')" class="divide-button"><span>Divisão</span></button>
+    <button onclick="showSection('adsSection')" class="ads-button"><span>Anúncios</span></button>
+    <button onclick="showShareDialog()" class="share-button"><span>Compartilhar Lista</span></button>
+  </div>
+  
+  <div class="container" id="mainContainer">
+    <h1 id="mainTitle">Início</h1>
+    
+    <!-- Seção: Início (Dashboard) -->
+    <div id="homeSection" class="section active">
+      <div class="stats-grid">
+        <div class="stat-item clickable-stat" onclick="openListNavigationDialog()">
+          <div class="stat-value" id="totalLists">0</div>
+          <div class="stat-label">Listas Criadas</div>
+          <div class="stat-hint">Clique para navegar</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="totalItems">0</div>
+          <div class="stat-label">Itens Cadastrados</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="totalSpent">R$ 0,00</div>
+          <div class="stat-label">Total Gasto</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="avgMonthly">R$ 0,00</div>
+          <div class="stat-label">Média Mensal</div>
+        </div>
+      </div>
+      
+      <div class="dashboard-grid">
+        <div class="dashboard-card">
+          <h3>📊 Gastos por Mês</h3>
+          <div class="chart-container">
+            <canvas id="monthlyChart"></canvas>
+          </div>
+        </div>
+        
+        <div class="dashboard-card">
+          <h3>🛒 Itens Mais Comprados</h3>
+          <div class="chart-container">
+            <canvas id="itemsChart"></canvas>
+          </div>
+        </div>
+        
+        <div class="dashboard-card">
+          <h3>💰 Distribuição de Gastos</h3>
+          <div class="chart-container">
+            <canvas id="expenseChart"></canvas>
+          </div>
+        </div>
+        
+        <div class="dashboard-card">
+          <h3>📈 Tendência de Consumo</h3>
+          <div class="chart-container">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="balanceSection" class="section">
+      <div class="button-group primary">
+        <button class="select-list" onclick="openBalanceListDialog()">Escolher Lista</button>
+        <span id="selectedBalanceList">Nenhuma lista selecionada</span>
+      </div>
+      <div class="button-group">
+        <input type="text" id="balanceInput" placeholder="Saldo inicial (R$)" oninput="formatPrice(this)">
+        <button onclick="setBalance()">Definir Saldo</button>
+      </div>
+      <div class="balance">Saldo Restante: R$ <span id="balance">0,00</span></div>
+      <div class="alert" id="lowBalanceAlert">Atenção: Seu saldo está baixo! Restam menos de 10% do valor inicial.</div>
+    </div>
+    
+    <div id="shoppingSection" class="section">
+      <div class="button-group primary">
+        <button class="create-list" onclick="createNewListDialog()">Criar Nova Lista</button>
+        <button class="list-action" onclick="deleteListDialog()">Excluir Lista</button>
+        <button class="list-action" onclick="editListNamesDialog()">Editar Nomes</button>
+        <button class="list-action" onclick="selectListDialog()">Escolher Lista</button>
+      </div>
+      
+      <div id="listButtons"></div>
+      
+      <div class="button-group">
+        <input type="text" id="itemName" placeholder="Nome do item">
+        <input type="text" id="itemPrice" placeholder="Preço unitário (R$)" oninput="formatPrice(this)">
+        <input type="number" id="itemQuantity" placeholder="Quantidade" min="1" value="1">
+        <button onclick="addItem()">Adicionar</button>
+      </div>
+      
+      <div class="button-group secondary">
+        <h3 style="margin: 0; flex: 1;">Lista de Compras</h3>
+        <button class="select-all" onclick="toggleSelectAll()">Selecionar Todos</button>
+        <button class="delete-selected" onclick="deleteSelectedListItems()">Excluir Selecionados</button>
+      </div>
+      
+      <ul id="shoppingList"></ul>
+      <div class="total">Total: R$ <span id="total">0,00</span></div>
+    </div>
+    
+    <div id="historySection" class="section">
+      <div class="history-section">
+        <div class="history-header">
+          <div class="history-controls">
+            <button class="compare" onclick="compareWithPreviousMonth()">Comparar Meses</button>
+            <button class="clear-comparison" onclick="clearComparison()">Limpar Comparação</button>
+            <button class="clear-history" onclick="clearHistory()">Limpar Histórico</button>
+            <button class="delete-selected" onclick="deleteSelectedHistoryItems()">Excluir Selecionados</button>
+          </div>
+        </div>
+        
+        <div class="month-selector">
+          <label for="monthSelect">Carregar lista do mês:</label>
+          <select id="monthSelect">
+            <option value="">Selecione um mês</option>
+          </select>
+          <label for="targetListSelect">Para a lista:</label>
+          <select id="targetListSelect">
+            <option value="">Selecione uma lista</option>
+          </select>
+          <button onclick="loadMonthHistory()">Carregar</button>
+        </div>
+        
+        <ul id="historyList"></ul>
+      </div>
+      
+      <div id="comparisonView" class="comparison-section" style="display: none;">
+        <h4>Comparação de Gastos</h4>
+        <div id="comparisonResult"></div>
+      </div>
+    </div>
+    
+    <div id="divideSection" class="section">
+      <div class="button-group primary">
+        <button class="select-list" onclick="openDivideListDialog()">Escolher Lista</button>
+        <span id="selectedDivideList">Nenhuma lista selecionada</span>
+      </div>
+      <div class="button-group">
+        <input type="number" id="dividePeople" placeholder="Número de pessoas" min="1">
+        <button class="divide" onclick="calculateDivision()">Calcular</button>
+      </div>
+      <div class="division-result" id="divisionResult"></div>
+    </div>
+
+    <!-- Seção: Anúncios -->
+    <div id="adsSection" class="section">
+      <h2>Ofertas e Promoções</h2>
+      <div class="ads-grid">
+        <div class="ad-card">
+          <div class="ad-image">🛒</div>
+          <div class="ad-content">
+            <div class="ad-title">Supermercado Central</div>
+            <div class="ad-description">Promoção especial em produtos de limpeza! Desconto de até 30% em toda linha.</div>
+            <div class="ad-price">Até 30% OFF</div>
+            <button class="ad-button">Ver Ofertas</button>
+          </div>
+        </div>
+        
+        <div class="ad-card">
+          <div class="ad-image">🥖</div>
+          <div class="ad-content">
+            <div class="ad-title">Padaria do Bairro</div>
+            <div class="ad-description">Pães frescos todos os dias! Compre 2 e leve 3 em pães doces selecionados.</div>
+            <div class="ad-price">Leve 3 Pague 2</div>
+            <button class="ad-button">Aproveitar</button>
+          </div>
+        </div>
+        
+        <div class="ad-card">
+          <div class="ad-image">🥩</div>
+          <div class="ad-content">
+            <div class="ad-title">Açougue Premium</div>
+            <div class="ad-description">Carnes nobres com qualidade garantida. Promoção especial de fim de semana.</div>
+            <div class="ad-price">R$ 25,90/kg</div>
+            <button class="ad-button">Conferir</button>
+          </div>
+        </div>
+        
+        <div class="ad-card">
+          <div class="ad-image">🍎</div>
+          <div class="ad-content">
+            <div class="ad-title">Hortifruti Orgânico</div>
+            <div class="ad-description">Frutas e verduras orgânicas fresquinhas. Entrega grátis acima de R$ 50.</div>
+            <div class="ad-price">Frete Grátis</div>
+            <button class="ad-button">Pedir Agora</button>
+          </div>
+        </div>
+        
+        <div class="ad-card">
+          <div class="ad-image">🧴</div>
+          <div class="ad-content">
+            <div class="ad-title">Farmácia Popular</div>
+            <div class="ad-description">Produtos de higiene e beleza com os melhores preços da região.</div>
+            <div class="ad-price">Até 50% OFF</div>
+            <button class="ad-button">Ver Catálogo</button>
+          </div>
+        </div>
+        
+        <div class="ad-card">
+          <div class="ad-image">🍕</div>
+          <div class="ad-content">
+            <div class="ad-title">Delivery Express</div>
+            <div class="ad-description">Comida pronta para sua casa! Desconto especial no primeiro pedido.</div>
+            <div class="ad-price">20% OFF</div>
+            <button class="ad-button">Pedir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  
+  <!-- Diálogos -->
+  <div id="createListDialog" class="dialog">
+    <div class="dialog-content">
+      <h3>Criar Nova Lista</h3>
+      <input type="text" id="newListName" placeholder="Nome da nova lista">
+      <button onclick="createNewList()">Criar</button>
+      <button onclick="closeDialog('createListDialog')">Cancelar</button>
+    </div>
+  </div>
+  <div id="deleteListDialog" class="dialog">
+    <div class="dialog-content">
+      <h3>Excluir Lista</h3>
+      <ul id="deleteListOptions"></ul>
+      <button onclick="deleteSelectedLists()">Confirmar</button>
+      <button onclick="closeDialog('deleteListDialog')">Cancelar</button>
+    </div>
+  </div>
+  <div id="editListDialog" class="dialog">
+    <div class="dialog-content">
+      <h3>Editar Nomes das Listas</h3>
+      <ul id="editListOptions"></ul>
+      <button onclick="saveListNames()">Salvar</button>
+      <button onclick="closeDialog('editListDialog')">Cancelar</button>
+    </div>
+  </div>
+  <div id="selectListDialog" class="dialog">
+    <div class="dialog-content">
+      <h3>Escolher Lista</h3>
+      <ul id="selectListOptions"></ul>
+      <button onclick="selectChosenLists()">Confirmar</button>
+      <button onclick="closeDialog('selectListDialog')">Cancelar</button>
+    </div>
+  </div>
+  <div id="divideListDialog" class="dialog">
+    <div class="dialog-content">
+      <h3>Escolher Lista para Divisão</h3>
+      <ul id="divideListOptions"></ul>
+      <button onclick="selectDivideList()">Confirmar</button>
+      <button onclick="closeDialog('divideListDialog')">Cancelar</button>
+    </div>
+  </div>
+  <div id="shareListDialog" class="dialog">
+    <div class="dialog-content">
+      <h3>Compartilhar Lista</h3>
+      <p>Link para compartilhar a lista "<span id="shareListName"></span>":</p>
+      <input type="text" id="shareLink" readonly>
+      <button class="copy-link" onclick="copyShareLink()">Copiar Link</button>
+      <button onclick="closeDialog('shareListDialog')">Fechar</button>
+    </div>
+  </div>
+  
+  <div id="listNavigationDialog" class="dialog">
+    <div class="dialog-content">
+      <h3>Navegar para Lista</h3>
+      <p>Selecione uma lista para navegar:</p>
+      <ul id="listNavigationOptions"></ul>
+      <button onclick="navigateToSelectedList()">Ir para Lista</button>
+      <button onclick="closeDialog('listNavigationDialog')">Cancelar</button>
+    </div>
+  </div>
+  
+  <!-- Rodapé melhorado -->
+  <div class="footer" id="footer">
+    <div class="info-section">
+      <div class="list-info">
+        <span>📋</span>
+        <span class="list-name" id="footerListName">Lista 1</span>
+        <span id="footerItemCount">0 itens</span>
+      </div>
+      <div class="balance-info">
+        <span>💰</span>
+        <span>Saldo:</span>
+        <span class="balance-value" id="footerBalance">R$ 0,00</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let lists = {};
+    let currentListName = "Lista 1";
+    let selectedDivideListName = "";
+    let selectedBalanceListName = "";
+    let shoppingList = [];
+    let listHistory = [];
+    let editingIndex = null;
+    let hasShownLowBalanceAlert = false;
+    let allSelected = false;
+    let isMenuOpen = false;
+    let charts = {};
+
+    function initializeLists() {
+      const defaultLists = {
+        "Lista 1": { items: [], history: [], balance: 0, initialBalance: 0 }
+      };
+
+      // Tenta carregar listas do localStorage
+      let storedLists = null;
+      try {
+        const storedData = localStorage.getItem('lists');
+        if (storedData) {
+          storedLists = JSON.parse(storedData);
+          console.log("Dados carregados do localStorage:", storedLists);
+        }
+      } catch (e) {
+        console.error("Erro ao parsear localStorage 'lists':", e);
+      }
+
+      // Verifica se há uma lista importada na URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const importList = urlParams.get('importList');
+      let importedListName = null;
+      if (importList) {
+        try {
+          const decodedData = JSON.parse(atob(importList));
+          if (decodedData && decodedData.name && decodedData.data) {
+            lists[decodedData.name] = {
+              items: decodedData.data.items || [],
+              history: decodedData.data.history || [],
+              balance: decodedData.data.balance || 0,
+              initialBalance: decodedData.data.initialBalance || 0
+            };
+            importedListName = decodedData.name;
+            console.log(`Lista importada: ${decodedData.name}`);
+          } else {
+            console.error("Dados de importação inválidos");
+          }
+        } catch (e) {
+          console.error("Erro ao decodificar dados de importação:", e);
+        }
+      }
+
+      // Inicializa listas com base no localStorage ou importação
+      if (!storedLists || typeof storedLists !== 'object' || Object.keys(storedLists).length === 0) {
+        console.warn("localStorage vazio, corrompido ou inválido. Usando listas padrão ou importada.");
+        lists = importedListName ? lists : defaultLists;
+      } else {
+        lists = { ...storedLists };
+        Object.keys(lists).forEach(listName => {
+          lists[listName] = {
+            items: lists[listName].items.map(item => ({
+              ...item,
+              checked: item.checked || false
+            })) || [],
+            history: lists[listName].history || [],
+            balance: lists[listName].balance || 0,
+            initialBalance: lists[listName].initialBalance || 0
+          };
+        });
+        if (importedListName) {
+          lists[importedListName] = lists[importedListName] || defaultLists["Lista 1"];
+        }
+      }
+
+      // Define a lista atual
+      currentListName = importedListName || Object.keys(lists)[0] || "Lista 1";
+      if (!lists[currentListName]) {
+        console.warn(`Lista "${currentListName}" não encontrada. Criando lista padrão.`);
+        lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
+      }
+
+      shoppingList = lists[currentListName].items;
+      listHistory = lists[currentListName].history;
+      selectedBalanceListName = currentListName;
+
+      // Salva listas no localStorage
+      try {
+        localStorage.setItem('lists', JSON.stringify(lists));
+        console.log("Estrutura inicial salva no localStorage:", lists);
+      } catch (e) {
+        console.error("Erro ao salvar listas no localStorage:", e);
+      }
+
+      updateFooter();
+      updateDashboard();
+      updateTargetListSelect();
+
+      // Limpa parâmetro de importação da URL
+      if (importList) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
+    function updateDashboard() {
+      updateStats();
+      updateCharts();
+    }
+
+    function updateStats() {
+      const totalLists = Object.keys(lists).length;
+      const totalItems = Object.values(lists).reduce((sum, list) => sum + list.history.length, 0);
+      const totalSpent = Object.values(lists).reduce((sum, list) => 
+        sum + list.history.reduce((listSum, item) => listSum + item.total, 0), 0);
+      
+      // Calcular média mensal
+      const allHistory = Object.values(lists).flatMap(list => list.history);
+      const monthlyTotals = {};
+      allHistory.forEach(item => {
+        const date = new Date(item.date.split('/').reverse().join('-'));
+        const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+        monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + item.total;
+      });
+      const avgMonthly = Object.keys(monthlyTotals).length > 0 ? 
+        Object.values(monthlyTotals).reduce((sum, val) => sum + val, 0) / Object.keys(monthlyTotals).length : 0;
+
+      document.getElementById('totalLists').textContent = totalLists;
+      document.getElementById('totalItems').textContent = totalItems;
+      document.getElementById('totalSpent').textContent = `R$ ${totalSpent.toFixed(2).replace('.', ',')}`;
+      document.getElementById('avgMonthly').textContent = `R$ ${avgMonthly.toFixed(2).replace('.', ',')}`;
+    }
+
+    function updateCharts() {
+      updateMonthlyChart();
+      updateItemsChart();
+      updateExpenseChart();
+      updateTrendChart();
+    }
+
+    function updateMonthlyChart() {
+      const ctx = document.getElementById('monthlyChart').getContext('2d');
+      
+      if (charts.monthly) {
+        charts.monthly.destroy();
+      }
+
+      const allHistory = Object.values(lists).flatMap(list => list.history);
+      const monthlyData = {};
+      
+      allHistory.forEach(item => {
+        const date = new Date(item.date.split('/').reverse().join('-'));
+        const monthKey = date.toLocaleString('pt-BR', { month: 'short', year: 'numeric' });
+        monthlyData[monthKey] = (monthlyData[monthKey] || 0) + item.total;
+      });
+
+      const sortedMonths = Object.keys(monthlyData).sort((a, b) => {
+        const dateA = new Date(a.split(' ')[1], getMonthNumber(a.split(' ')[0]));
+        const dateB = new Date(b.split(' ')[1], getMonthNumber(b.split(' ')[0]));
+        return dateA - dateB;
+      });
+
+      charts.monthly = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: sortedMonths,
+          datasets: [{
+            label: 'Gastos (R$)',
+            data: sortedMonths.map(month => monthlyData[month]),
+            borderColor: '#007bff',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            tension: 0.4,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return 'R$ ' + value.toFixed(0);
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateItemsChart() {
+      const ctx = document.getElementById('itemsChart').getContext('2d');
+      
+      if (charts.items) {
+        charts.items.destroy();
+      }
+
+      const allHistory = Object.values(lists).flatMap(list => list.history);
+      const itemCounts = {};
+      
+      allHistory.forEach(item => {
+        itemCounts[item.name] = (itemCounts[item.name] || 0) + item.quantity;
+      });
+
+      const sortedItems = Object.entries(itemCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      charts.items = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: sortedItems.map(item => item[0]),
+          datasets: [{
+            data: sortedItems.map(item => item[1]),
+            backgroundColor: [
+              '#007bff',
+              '#28a745',
+              '#ffc107',
+              '#dc3545',
+              '#6c757d'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+    }
+
+    function updateExpenseChart() {
+      const ctx = document.getElementById('expenseChart').getContext('2d');
+      
+      if (charts.expense) {
+        charts.expense.destroy();
+      }
+
+      const allHistory = Object.values(lists).flatMap(list => list.history);
+      const ranges = {
+        'Até R$ 10': 0,
+        'R$ 10-30': 0,
+        'R$ 30-50': 0,
+        'R$ 50-100': 0,
+        'Acima R$ 100': 0
+      };
+      
+      allHistory.forEach(item => {
+        if (item.total <= 10) ranges['Até R$ 10']++;
+        else if (item.total <= 30) ranges['R$ 10-30']++;
+        else if (item.total <= 50) ranges['R$ 30-50']++;
+        else if (item.total <= 100) ranges['R$ 50-100']++;
+        else ranges['Acima R$ 100']++;
+      });
+
+      charts.expense = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(ranges),
+          datasets: [{
+            label: 'Quantidade de Compras',
+            data: Object.values(ranges),
+            backgroundColor: '#28a745'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateTrendChart() {
+      const ctx = document.getElementById('trendChart').getContext('2d');
+      
+      if (charts.trend) {
+        charts.trend.destroy();
+      }
+
+      const allHistory = Object.values(lists).flatMap(list => list.history);
+      const weeklyData = {};
+      
+      allHistory.forEach(item => {
+        const date = new Date(item.date.split('/').reverse().join('-'));
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        const weekKey = weekStart.toLocaleDateString('pt-BR');
+        weeklyData[weekKey] = (weeklyData[weekKey] || 0) + item.total;
+      });
+
+      const sortedWeeks = Object.keys(weeklyData).sort((a, b) => {
+        return new Date(a.split('/').reverse().join('-')) - new Date(b.split('/').reverse().join('-'));
+      }).slice(-8); // Últimas 8 semanas
+
+      charts.trend = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: sortedWeeks.map(week => `Sem ${week.split('/')[0]}/${week.split('/')[1]}`),
+          datasets: [{
+            label: 'Gastos Semanais (R$)',
+            data: sortedWeeks.map(week => weeklyData[week]),
+            borderColor: '#ffc107',
+            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+            tension: 0.4,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return 'R$ ' + value.toFixed(0);
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function getMonthNumber(monthName) {
+      const months = {
+        'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5,
+        'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11
+      };
+      return months[monthName] || 0;
+    }
+
+    function toggleMenu() {
+      isMenuOpen = !isMenuOpen;
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      const menuToggle = document.getElementById('menuToggle');
+      
+      if (isMenuOpen) {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+        menuToggle.classList.add('active');
+        menuToggle.innerHTML = '✕';
+      } else {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+        menuToggle.classList.remove('active');
+        menuToggle.innerHTML = '☰';
+      }
+    }
+
+    function closeMenu() {
+      if (isMenuOpen) {
+        toggleMenu();
+      }
+    }
+
+    function updateFooter() {
+      const footerListName = document.getElementById('footerListName');
+      const footerItemCount = document.getElementById('footerItemCount');
+      const footerBalance = document.getElementById('footerBalance');
+      
+      if (footerListName && footerItemCount && footerBalance) {
+        const balance = lists[currentListName].balance;
+        const itemCount = lists[currentListName].items.length;
+        
+        footerListName.textContent = currentListName;
+        footerItemCount.textContent = `${itemCount} ${itemCount === 1 ? 'item' : 'itens'}`;
+        footerBalance.textContent = `R$ ${balance.toFixed(2).replace('.', ',')}`;
+        
+        // Remove classes anteriores
+        footerBalance.classList.remove('negative', 'positive');
+        
+        // Adiciona classe baseada no saldo
+        if (balance < 0) {
+          footerBalance.classList.add('negative');
+        } else if (balance > 0) {
+          footerBalance.classList.add('positive');
+        }
+      } else {
+        console.error("Elementos do rodapé não encontrados");
+      }
+    }
+
+    function showSection(sectionId) {
+      document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+      });
+      document.querySelectorAll('.sidebar button').forEach(button => {
+        button.classList.remove('active');
+      });
+      const targetSection = document.getElementById(sectionId);
+      if (targetSection) {
+        targetSection.classList.add('active');
+      } else {
+        console.error(`Seção ${sectionId} não encontrada`);
+      }
+      const targetButton = document.querySelector(`.sidebar button[onclick="showSection('${sectionId}')"]`);
+      if (targetButton) {
+        targetButton.classList.add('active');
+      }
+      const sectionTitles = {
+        homeSection: 'Início',
+        balanceSection: 'Saldo',
+        shoppingSection: 'Lista de Compras',
+        historySection: 'Histórico',
+        divideSection: 'Divisão',
+        adsSection: 'Anúncios'
+      };
+      document.getElementById('mainTitle').textContent = sectionTitles[sectionId] || 'Lista de Compras';
+      
+      // Fecha o menu após selecionar uma opção
+      closeMenu();
+      
+      if (sectionId === 'homeSection') {
+        updateDashboard();
+      }
+      if (sectionId === 'historySection') {
+        updateHistory();
+        updateTargetListSelect();
+      }
+      if (sectionId === 'divideSection') {
+        document.getElementById('divisionResult').innerHTML = '';
+        document.getElementById('selectedDivideList').textContent = selectedDivideListName || 'Nenhuma lista selecionada';
+      }
+      if (sectionId === 'balanceSection') {
+        document.getElementById('selectedBalanceList').textContent = selectedBalanceListName || 'Nenhuma lista selecionada';
+      }
+    }
+
+    function formatPrice(input) {
+      let value = input.value.replace(/[^\d]/g, '');
+      if (value === '') {
+        input.value = '';
+        return;
+      }
+      value = (parseInt(value) / 100).toFixed(2).replace('.', ',');
+      input.value = value;
+    }
+
+    function parsePrice(value) {
+      return parseFloat(value.replace(',', '.')) || 0;
+    }
+
+    function openBalanceListDialog() {
+      console.log("Tentando abrir diálogo de seleção de lista para saldo");
+      const dialog = document.getElementById('selectListDialog');
+      if (!dialog) {
+        console.error("Elemento de diálogo 'selectListDialog' não encontrado");
+        return;
+      }
+      const options = document.getElementById('selectListOptions');
+      if (!options) {
+        console.error("Elemento de opções de seleção de lista não encontrado");
+        return;
+      }
+      options.innerHTML = '';
+      Object.keys(lists).forEach(listName => {
+        const li = document.createElement('li');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `select-${listName}`;
+        checkbox.name = 'selectList';
+        checkbox.value = listName;
+        if (listName === selectedBalanceListName) {
+          checkbox.checked = true;
+        }
+        const label = document.createElement('label');
+        label.htmlFor = `select-${listName}`;
+        label.textContent = listName;
+        li.appendChild(checkbox);
+        li.appendChild(label);
+        options.appendChild(li);
+      });
+      dialog.style.display = 'flex';
+      console.log("Diálogo de seleção de lista para saldo aberto com sucesso");
+    }
+
+    function setBalance() {
+      const balanceInput = document.getElementById('balanceInput');
+      if (!balanceInput) {
+        console.error("Elemento de entrada de saldo não encontrado");
+        return;
+      }
+      if (!selectedBalanceListName) {
+        alert('Por favor, selecione uma lista para definir o saldo.');
+        return;
+      }
+      if (!lists[selectedBalanceListName]) {
+        console.error(`Lista selecionada ${selectedBalanceListName} não existe`);
+        alert('Erro: A lista selecionada não existe.');
+        return;
+      }
+      const balanceValue = parsePrice(balanceInput.value);
+      if (balanceValue >= 0) {
+        const totalSpent = lists[selectedBalanceListName].items.reduce((sum, item) => sum + item.total, 0);
+        lists[selectedBalanceListName].initialBalance = balanceValue;
+        lists[selectedBalanceListName].balance = balanceValue - totalSpent;
+        hasShownLowBalanceAlert = false;
+        try {
+          localStorage.setItem('lists', JSON.stringify(lists));
+          console.log("Saldo inicial atualizado e saldo restante recalculado para:", selectedBalanceListName, lists[selectedBalanceListName]);
+        } catch (e) {
+          console.error("Erro ao salvar listas no localStorage:", e);
+        }
+        if (selectedBalanceListName === currentListName) {
+          updateBalance();
+          updateTotal();
+          updateFooter();
+        }
+        balanceInput.value = '';
+      } else {
+        alert('Por favor, insira um saldo válido.');
+      }
+    }
+
+    function addItem() {
+      const itemName = document.getElementById('itemName').value.trim();
+      const itemPrice = parsePrice(document.getElementById('itemPrice').value);
+      const itemQuantity = parseInt(document.getElementById('itemQuantity').value) || 1;
+      const itemTotal = itemPrice * itemQuantity;
+
+      if (itemName && itemPrice > 0 && itemQuantity > 0) {
+        if (itemTotal > lists[currentListName].balance) {
+          if (!confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${lists[currentListName].balance.toFixed(2).replace('.', ',')})`)) {
+            return;
+          }
+        }
+        const item = {
+          name: itemName,
+          price: itemPrice,
+          quantity: itemQuantity,
+          total: itemTotal,
+          date: new Date().toLocaleDateString(),
+          checked: false
+        };
+        shoppingList.push(item);
+        listHistory.push(item);
+        lists[currentListName].balance -= item.total;
+        try {
+          localStorage.setItem('lists', JSON.stringify(lists));
+        } catch (e) {
+          console.error("Erro ao salvar listas no localStorage:", e);
+        }
+        updateList();
+        updateTotal();
+        updateBalance();
+        updateMonthSelect();
+        updateFooter();
+        updateDashboard();
+        document.getElementById('itemName').value = '';
+        document.getElementById('itemPrice').value = '';
+        document.getElementById('itemQuantity').value = '1';
+      } else {
+        alert('Por favor, insira um nome, preço e quantidade válidos.');
+      }
+    }
+
+    function editItem(index) {
+      if (editingIndex !== null) {
+        alert('Por favor, conclua ou cancele a edição atual antes de editar outro item.');
+        return;
+      }
+      editingIndex = index;
+      updateList();
+    }
+
+    function saveEdit(index) {
+      const li = document.getElementById(`item-${index}`);
+      if (!li) {
+        console.error(`Elemento item-${index} não encontrado`);
+        return;
+      }
+      const itemName = li.querySelector('.edit-name').value.trim();
+      const itemPrice = parsePrice(li.querySelector('.edit-price').value);
+      const itemQuantity = parseInt(li.querySelector('.edit-quantity').value) || 1;
+      const itemTotal = itemPrice * itemQuantity;
+
+      if (itemName && itemPrice > 0 && itemQuantity > 0) {
+        const oldItem = shoppingList[index];
+        lists[currentListName].balance += oldItem.total;
+        if (itemTotal > lists[currentListName].balance) {
+          if (!confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${lists[currentListName].balance.toFixed(2).replace('.', ',')})`)) {
+            lists[currentListName].balance -= oldItem.total;
+            return;
+          }
+        }
+        const newItem = {
+          name: itemName,
+          price: itemPrice,
+          quantity: itemQuantity,
+          total: itemTotal,
+          date: new Date().toLocaleDateString(),
+          checked: oldItem.checked
+        };
+        shoppingList[index] = newItem;
+        listHistory.push(newItem);
+        lists[currentListName].balance -= newItem.total;
+        try {
+          localStorage.setItem('lists', JSON.stringify(lists));
+        } catch (e) {
+          console.error("Erro ao salvar listas no localStorage:", e);
+        }
+        editingIndex = null;
+        updateList();
+        updateTotal();
+        updateBalance();
+        updateMonthSelect();
+        updateFooter();
+        updateDashboard();
+      } else {
+        alert('Por favor, insira um nome, preço e quantidade válidos.');
+      }
+    }
+
+    function cancelEdit(index) {
+      editingIndex = null;
+      updateList();
+    }
+
+    function removeItem(index) {
+      const item = shoppingList[index];
+      lists[currentListName].balance += item.total;
+      shoppingList.splice(index, 1);
+      try {
+        localStorage.setItem('lists', JSON.stringify(lists));
+      } catch (e) {
+        console.error("Erro ao salvar listas no localStorage:", e);
+      }
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateFooter();
+      updateDashboard();
+    }
+
+    function toggleSelectAll() {
+      allSelected = !allSelected;
+      shoppingList.forEach((item, index) => {
+        item.checked = allSelected;
+      });
+      try {
+        localStorage.setItem('lists', JSON.stringify(lists));
+        console.log(`Todos os itens ${allSelected ? 'marcados' : 'desmarcados'}`);
+      } catch (e) {
+        console.error("Erro ao salvar listas no localStorage:", e);
+      }
+      updateList();
+    }
+
+    function deleteSelectedListItems() {
+      const checkboxes = document.querySelectorAll('input[name="listItem"]:checked');
+      if (checkboxes.length === 0) {
+        alert('Selecione pelo menos um item para excluir!');
+        return;
+      }
+      if (confirm('Tem certeza que deseja excluir os itens selecionados da lista? Esta ação não pode ser desfeita.')) {
+        const indices = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        indices.sort((a, b) => b - a);
+        indices.forEach(index => {
+          const item = shoppingList[index];
+          lists[currentListName].balance += item.total;
+          console.log(`Excluindo item da lista no índice: ${index}`);
+          shoppingList.splice(index, 1);
+        });
+        try {
+          localStorage.setItem('lists', JSON.stringify(lists));
+        } catch (e) {
+          console.error("Erro ao salvar listas no localStorage:", e);
+        }
+        allSelected = false;
+        updateList();
+        updateTotal();
+        updateBalance();
+        updateFooter();
+        updateDashboard();
+        console.log("Itens selecionados da lista excluídos com sucesso");
+      }
+    }
+
+    function clearHistory() {
+      if (confirm('Tem certeza que deseja limpar o histórico desta lista? Esta ação não pode ser desfeita.')) {
+        console.log("Limpando histórico da lista:", currentListName);
+        listHistory = [];
+        shoppingList = [];
+        lists[currentListName].history = listHistory;
+        lists[currentListName].items = shoppingList;
+        lists[currentListName].balance = lists[currentListName].initialBalance;
+        try {
+          localStorage.setItem('lists', JSON.stringify(lists));
+        } catch (e) {
+          console.error("Erro ao salvar listas no localStorage:", e);
+        }
+        updateHistory();
+        updateList();
+        updateTotal();
+        updateBalance();
+        updateFooter();
+        updateDashboard();
+        console.log("Histórico limpo com sucesso");
+      }
+    }
+
+    function deleteSelectedHistoryItems() {
+      const checkboxes = document.querySelectorAll('input[name="historyItem"]:checked');
+      if (checkboxes.length === 0) {
+        alert('Selecione pelo menos um item do histórico para excluir!');
+        return;
+      }
+      if (confirm('Tem certeza que deseja excluir os itens selecionados do histórico? Esta ação não pode ser desfeita.')) {
+        const indices = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        indices.sort((a, b) => b - a);
+        indices.forEach(index => {
+          console.log(`Excluindo item do histórico no índice: ${index}`);
+          listHistory.splice(index, 1);
+        });
+        lists[currentListName].history = listHistory;
+        try {
+          localStorage.setItem('lists', JSON.stringify(lists));
+        } catch (e) {
+          console.error("Erro ao salvar listas no localStorage:", e);
+        }
+        updateHistory();
+        updateMonthSelect();
+        updateDashboard();
+        console.log("Itens selecionados do histórico excluídos com sucesso");
+      }
+    }
+
+    function clearComparison() {
+      const comparisonView = document.getElementById('comparisonView');
+      const comparisonResult = document.getElementById('comparisonResult');
+      if (!comparisonResult) {
+        console.error("Elemento de resultado de comparação não encontrado");
+        return;
+      }
+      comparisonResult.innerHTML = '';
+      comparisonView.style.display = 'none';
+      console.log("Dados de comparação limpos com sucesso");
+    }
+
+    function updateList() {
+      const list = document.getElementById('shoppingList');
+      if (!list) {
+        console.error("Elemento de lista de compras não encontrado");
+        return;
+      }
+      list.innerHTML = '';
+      shoppingList.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.id = `item-${index}`;
+        if (editingIndex === index) {
+          li.classList.add('editing');
+          li.innerHTML = `
+            <input type="text" class="edit-name" value="${item.name}">
+            <input type="text" class="edit-price" value="${item.price.toFixed(2).replace('.', ',')}" oninput="formatPrice(this)">
+            <input type="number" class="edit-quantity" value="${item.quantity}" min="1">
+            <button onclick="saveEdit(${index})">Salvar</button>
+            <button onclick="cancelEdit(${index})">Cancelar</button>
+          `;
+        } else {
+          li.innerHTML = `
+            <div class="item-info">
+              <span class="${item.checked ? 'checked' : ''}">${item.name} - ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}</span>
+            </div>
+            <div class="item-controls">
+              <div class="checkbox-container">
+                <input type="checkbox" name="listItem" id="list-item-${index}" value="${index}" ${item.checked ? 'checked' : ''}>
+              </div>
+              <div class="action-buttons">
+                <button class="edit" onclick="editItem(${index})">Editar</button>
+                <button onclick="removeItem(${index})">Remover</button>
+              </div>
+            </div>
+          `;
+          const checkbox = li.querySelector(`#list-item-${index}`);
+          if (checkbox) {
+            checkbox.addEventListener('change', () => {
+              shoppingList[index].checked = checkbox.checked;
+              try {
+                localStorage.setItem('lists', JSON.stringify(lists));
+                console.log(`Item ${index} marcado como ${checkbox.checked ? 'checked' : 'unchecked'}`);
+              } catch (e) {
+                console.error("Erro ao salvar listas no localStorage:", e);
+              }
+              updateList();
+            });
+          }
+        }
+        list.appendChild(li);
+      });
+      const selectAllButton = document.querySelector('.select-all');
+      if (selectAllButton) {
+        selectAllButton.textContent = allSelected ? 'Desmarcar Todos' : 'Selecionar Todos';
+      }
+    }
+
+    function updateTotal() {
+      const total = shoppingList.reduce((sum, item) => sum + item.total, 0);
+      const totalElement = document.getElementById('total');
+      if (totalElement) {
+        totalElement.textContent = total.toFixed(2).replace('.', ',');
+      } else {
+        console.error("Elemento de total não encontrado");
+      }
+    }
+
+    function updateBalance() {
+      const balanceElement = document.getElementById('balance');
+      if (!balanceElement) {
+        console.error("Elemento de saldo não encontrado");
+        return;
+      }
+      const balance = lists[currentListName].balance;
+      const initialBalance = lists[currentListName].initialBalance;
+      balanceElement.textContent = balance.toFixed(2).replace('.', ',');
+      balanceElement.parentElement.className = 'balance' + (balance < 0 ? ' negative' : '');
+      const alertElement = document.getElementById('lowBalanceAlert');
+      if (!alertElement) {
+        console.error("Elemento de alerta de saldo baixo não encontrado");
+        return;
+      }
+      if (initialBalance > 0 && balance <= initialBalance * 0.1 && !hasShownLowBalanceAlert) {
+        alertElement.classList.add('active');
+        alert('Atenção: Seu saldo está baixo! Restam menos de 10% do valor inicial.');
+        hasShownLowBalanceAlert = true;
+      } else if (balance > initialBalance * 0.1 || initialBalance === 0) {
+        alertElement.classList.remove('active');
+        hasShownLowBalanceAlert = false;
+      }
+      updateFooter();
+    }
+
+    function updateHistory() {
+      const historyList = document.getElementById('historyList');
+      if (!historyList) {
+        console.error("Elemento de histórico não encontrado");
+        return;
+      }
+      historyList.innerHTML = '';
+      listHistory.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.className = 'history-item';
+        li.innerHTML = `
+          <label for="history-${index}">${item.date}: ${item.name} - ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}</label>
+          <input type="checkbox" name="historyItem" id="history-${index}" value="${index}">
+        `;
+        historyList.appendChild(li);
+      });
+      updateMonthSelect();
+    }
+
+    function updateMonthSelect() {
+      const monthSelect = document.getElementById('monthSelect');
+      if (!monthSelect) {
+        console.error("Elemento de seleção de mês não encontrado");
+        return;
+      }
+      monthSelect.innerHTML = '<option value="">Selecione um mês</option>';
+      const months = [...new Set(listHistory.map(item => {
+        const date = new Date(item.date.split('/').reverse().join('-'));
+        return date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+      }))];
+      months.forEach(month => {
+        const option = document.createElement('option');
+        option.value = month;
+        option.textContent = month.charAt(0).toUpperCase() + month.slice(1);
+        monthSelect.appendChild(option);
+      });
+    }
+
+    function loadMonthHistory() {
+      const monthSelect = document.getElementById('monthSelect');
+      const targetListSelect = document.getElementById('targetListSelect');
+      if (!monthSelect || !targetListSelect) {
+        console.error("Elemento de seleção de mês ou lista de destino não encontrado");
+        return;
+      }
+      const selectedMonth = monthSelect.value;
+      const targetListName = targetListSelect.value;
+      if (!selectedMonth) {
+        alert('Por favor, selecione um mês.');
+        return;
+      }
+      if (!targetListName) {
+        alert('Por favor, selecione uma lista de destino.');
+        return;
+      }
+      if (!lists[targetListName]) {
+        console.error(`Lista de destino ${targetListName} não existe`);
+        alert('Erro: A lista de destino não existe.');
+        return;
+      }
+      const [monthName, year] = selectedMonth.split(' de ');
+      const monthNames = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+      const monthIndex = monthNames.indexOf(monthName.toLowerCase());
+      if (monthIndex === -1) {
+        console.error(`Mês inválido: ${monthName}`);
+        alert('Mês inválido selecionado.');
+        return;
+      }
+      const filteredHistory = listHistory.filter(item => {
+        const date = new Date(item.date.split('/').reverse().join('-'));
+        return date.getMonth() === monthIndex && date.getFullYear() === parseInt(year);
+      });
+      let totalCost = 0;
+      filteredHistory.forEach(item => {
+        totalCost += item.total;
+      });
+      if (totalCost > lists[targetListName].balance) {
+        if (!confirm(`O valor ultrapassa o saldo da lista "${targetListName}". Confirma inclusão dos itens? (Total: R$ ${totalCost.toFixed(2).replace('.', ',')} | Saldo: R$ ${lists[targetListName].balance.toFixed(2).replace('.', ',')})`)) {
+          return;
+        }
+      }
+      filteredHistory.forEach(item => {
+        const newItem = { ...item, checked: false };
+        lists[targetListName].items.push(newItem);
+      });
+      lists[targetListName].balance -= totalCost;
+      try {
+        localStorage.setItem('lists', JSON.stringify(lists));
+      } catch (e) {
+        console.error("Erro ao salvar listas no localStorage:", e);
+      }
+      
+      // Se a lista de destino é a atual, atualiza a interface
+      if (targetListName === currentListName) {
+        shoppingList = lists[currentListName].items;
+        updateList();
+        updateTotal();
+        updateBalance();
+        updateFooter();
+      }
+      updateDashboard();
+      monthSelect.value = '';
+      targetListSelect.value = '';
+      alert(`Itens do mês ${selectedMonth} carregados na lista "${targetListName}" com sucesso!`);
+      console.log(`Histórico carregado na lista ${targetListName}`);
+    }
+
+    function compareWithPreviousMonth() {
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+      const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+      const currentMonthItems = listHistory.filter(item => {
+        const date = new Date(item.date.split('/').reverse().join('-'));
+        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      });
+
+      const previousMonthItems = listHistory.filter(item => {
+        const date = new Date(item.date.split('/').reverse().join('-'));
+        return date.getMonth() === previousMonth && date.getFullYear() === previousYear;
+      });
+
+      const currentTotal = currentMonthItems.reduce((sum, item) => sum + item.total, 0);
+      const previousTotal = previousMonthItems.reduce((sum, item) => sum + item.total, 0);
+
+      const comparisonView = document.getElementById('comparisonView');
+      const comparisonResult = document.getElementById('comparisonResult');
+      if (!comparisonResult) {
+        console.error("Elemento de resultado de comparação não encontrado");
+        return;
+      }
+      comparisonResult.innerHTML = '';
+      comparisonView.style.display = 'block';
+
+      comparisonResult.innerHTML += `
+        <p><strong>Total Gasto no Mês Atual (${now.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}):</strong> R$ ${currentTotal.toFixed(2).replace('.', ',')}</p>
+        <p><strong>Total Gasto no Mês Anterior (${new Date(previousYear, previousMonth).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}):</strong> R$ ${previousTotal.toFixed(2).replace('.', ',')}</p>
+        <p><strong>Diferença:</strong> R$ ${(currentTotal - previousTotal).toFixed(2).replace('.', ',')} (${currentTotal > previousTotal ? 'mais' : currentTotal < previousTotal ? 'menos' : 'igual'})</p>
+      `;
+
+      const itemComparison = {};
+      currentMonthItems.forEach(item => {
+        if (!itemComparison[item.name]) {
+          itemComparison[item.name] = { current: { price: 0, quantity: 0, total: 0 }, previous: { price: 0, quantity: 0, total: 0 } };
+        }
+        itemComparison[item.name].current.price = item.price;
+        itemComparison[item.name].current.quantity += item.quantity;
+        itemComparison[item.name].current.total += item.total;
+      });
+
+      previousMonthItems.forEach(item => {
+        if (!itemComparison[item.name]) {
+          itemComparison[item.name] = { current: { price: 0, quantity: 0, total: 0 }, previous: { price: 0, quantity: 0, total: 0 } };
+        }
+        itemComparison[item.name].previous.price = item.price;
+        itemComparison[item.name].previous.quantity += item.quantity;
+        itemComparison[item.name].previous.total += item.total;
+      });
+
+      const comparisonList = document.createElement('ul');
+      Object.keys(itemComparison).forEach(name => {
+        const current = itemComparison[name].current;
+        const previous = itemComparison[name].previous;
+        if (current.total > 0 || previous.total > 0) {
+          const li = document.createElement('li');
+          li.className = 'comparison-item';
+          li.innerHTML = `
+            ${name}: 
+            Mês Atual - ${current.quantity} x R$ ${current.price.toFixed(2).replace('.', ',')} = R$ ${current.total.toFixed(2).replace('.', ',')} | 
+            Mês Anterior - ${previous.quantity} x R$ ${previous.price.toFixed(2).replace('.', ',')} = R$ ${previous.total.toFixed(2).replace('.', ',')} | 
+            Diferença - R$ ${(current.total - previous.total).toFixed(2).replace('.', ',')}
+          `;
+          comparisonList.appendChild(li);
+        }
+      });
+
+      if (comparisonList.children.length > 0) {
+        comparisonResult.appendChild(comparisonList);
+      } else {
+        comparisonResult.innerHTML += '<p>Nenhum item comum encontrado para comparação.</p>';
+      }
+    }
+
+    function openDivideListDialog() {
+      console.log("Tentando abrir diálogo de seleção de lista para divisão");
+      const dialog = document.getElementById('divideListDialog');
+      if (!dialog) {
+        console.error("Elemento de diálogo 'divideListDialog' não encontrado");
+        return;
+      }
+      const options = document.getElementById('divideListOptions');
+      if (!options) {
+        console.error("Elemento de opções de seleção de lista para divisão não encontrado");
+        return;
+      }
+      options.innerHTML = '';
+      Object.keys(lists).forEach(listName => {
+        const li = document.createElement('li');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `divide-${listName}`;
+        checkbox.name = 'divideList';
+        checkbox.value = listName;
+        if (listName === selectedDivideListName) {
+          checkbox.checked = true;
+        }
+        const label = document.createElement('label');
+        label.htmlFor = `divide-${listName}`;
+        label.textContent = listName;
+        li.appendChild(checkbox);
+        li.appendChild(label);
+        options.appendChild(li);
+      });
+      dialog.style.display = 'flex';
+      console.log("Diálogo de seleção de lista para divisão aberto com sucesso");
+    }
+
+    function selectDivideList() {
+      const checkboxes = document.querySelectorAll('input[name="divideList"]:checked');
+      if (checkboxes.length === 0) {
+        alert('Selecione pelo menos uma lista para divisão!');
+        return;
+      }
+      if (checkboxes.length > 1) {
+        alert('Selecione apenas uma lista por vez!');
+        return;
+      }
+      const selectedListName = checkboxes[0].value;
+      if (!lists[selectedListName]) {
+        console.error(`Lista selecionada ${selectedListName} não existe`);
+        alert('Erro: A lista selecionada não existe.');
+        return;
+      }
+      selectedDivideListName = selectedListName;
+      const selectedListSpan = document.getElementById('selectedDivideList');
+      if (selectedListSpan) {
+        selectedListSpan.textContent = selectedListName;
+      }
+      closeDialog('divideListDialog');
+      console.log("Lista selecionada para divisão:", selectedListName);
+    }
+
+    function calculateDivision() {
+      const input = document.getElementById('dividePeople');
+      const resultDiv = document.getElementById('divisionResult');
+      if (!input || !resultDiv) {
+        console.error("Elemento de entrada ou resultado de divisão não encontrado");
+        return;
+      }
+      const numPeople = parseInt(input.value) || 0;
+      if (!selectedDivideListName) {
+        resultDiv.innerHTML = '<p style="color: red;">Por favor, selecione uma lista.</p>';
+        return;
+      }
+      if (numPeople <= 0) {
+        resultDiv.innerHTML = '<p style="color: red;">Por favor, insira um número válido de pessoas (maior que 0).</p>';
+        return;
+      }
+      if (!lists[selectedDivideListName]) {
+        console.error(`Lista selecionada ${selectedDivideListName} não existe`);
+        resultDiv.innerHTML = '<p style="color: red;">Erro: A lista selecionada não existe.</p>';
+        return;
+      }
+      const total = lists[selectedDivideListName].items.reduce((sum, item) => sum + item.total, 0);
+      if (total === 0) {
+        resultDiv.innerHTML = '<p style="color: red;">A lista selecionada não possui itens para dividir.</p>';
+        return;
+      }
+      const perPerson = total / numPeople;
+      resultDiv.innerHTML = `
+        <p>Lista: ${selectedDivideListName}</p>
+        <p>Total: R$ ${total.toFixed(2).replace('.', ',')}</p>
+        <p>Dividido por ${numPeople} pessoas: R$ ${perPerson.toFixed(2).replace('.', ',')} por pessoa</p>
+      `;
+      console.log(`Divisão calculada: Total R$ ${total.toFixed(2)} / ${numPeople} = R$ ${perPerson.toFixed(2)} por pessoa`);
+    }
+
+    function showShareDialog() {
+      console.log("Tentando abrir diálogo de compartilhamento");
+      const dialog = document.getElementById('shareListDialog');
+      const shareListName = document.getElementById('shareListName');
+      const shareLink = document.getElementById('shareLink');
+      if (!dialog || !shareListName || !shareLink) {
+        console.error("Elementos de diálogo de compartilhamento não encontrados");
+        return;
+      }
+      shareListName.textContent = currentListName;
+      const listData = {
+        name: currentListName,
+        data: lists[currentListName]
+      };
+      const encodedData = btoa(JSON.stringify(listData));
+      const baseUrl = window.location.origin + window.location.pathname;
+      shareLink.value = `${baseUrl}?importList=${encodedData}`;
+      dialog.style.display = 'flex';
+      console.log("Diálogo de compartilhamento aberto com sucesso");
+    }
+
+    function openListNavigationDialog() {
+      console.log("Abrindo diálogo de navegação de listas");
+      const dialog = document.getElementById('listNavigationDialog');
+      if (!dialog) {
+        console.error("Elemento de diálogo 'listNavigationDialog' não encontrado");
+        return;
+      }
+      const options = document.getElementById('listNavigationOptions');
+      if (!options) {
+        console.error("Elemento de opções de navegação de lista não encontrado");
+        return;
+      }
+      options.innerHTML = '';
+      Object.keys(lists).forEach(listName => {
+        const li = document.createElement('li');
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.id = `nav-${listName}`;
+        radio.name = 'navigationList';
+        radio.value = listName;
+        if (listName === currentListName) {
+          radio.checked = true;
+        }
+        const label = document.createElement('label');
+        label.htmlFor = `nav-${listName}`;
+        label.textContent = `${listName} (${lists[listName].items.length} itens)`;
+        li.appendChild(radio);
+        li.appendChild(label);
+        options.appendChild(li);
+      });
+      dialog.style.display = 'flex';
+      console.log("Diálogo de navegação de listas aberto com sucesso");
+    }
+
+    function navigateToSelectedList() {
+      const radio = document.querySelector('input[name="navigationList"]:checked');
+      if (!radio) {
+        alert('Selecione uma lista para navegar!');
+        return;
+      }
+      const selectedListName = radio.value;
+      if (!lists[selectedListName]) {
+        console.error(`Lista selecionada ${selectedListName} não existe`);
+        alert('Erro: A lista selecionada não existe.');
+        return;
+      }
+      currentListName = selectedListName;
+      selectedBalanceListName = selectedListName;
+      shoppingList = lists[currentListName].items;
+      listHistory = lists[currentListName].history;
+      allSelected = false;
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateMonthSelect();
+      updateFooter();
+      updateDashboard();
+      setupListButtons();
+      const selectedBalanceListSpan = document.getElementById('selectedBalanceList');
+      if (selectedBalanceListSpan) {
+        selectedBalanceListSpan.textContent = selectedBalanceListName;
+      }
+      closeDialog('listNavigationDialog');
+      showSection('shoppingSection');
+      console.log("Navegado para lista:", currentListName);
+    }
+
+    function updateTargetListSelect() {
+      const targetListSelect = document.getElementById('targetListSelect');
+      if (!targetListSelect) {
+        console.error("Elemento de seleção de lista de destino não encontrado");
+        return;
+      }
+      targetListSelect.innerHTML = '<option value="">Selecione uma lista</option>';
+      Object.keys(lists).forEach(listName => {
+        const option = document.createElement('option');
+        option.value = listName;
+        option.textContent = listName;
+        if (listName === currentListName) {
+          option.selected = true;
+        }
+        targetListSelect.appendChild(option);
+      });
+    }
+
+    function copyShareLink() {
+      const shareLink = document.getElementById('shareLink');
+      if (!shareLink) {
+        console.error("Elemento de link de compartilhamento não encontrado");
+        return;
+      }
+      shareLink.select();
+      try {
+        document.execCommand('copy');
+        alert('Link copiado para a área de transferência!');
+        console.log("Link de compartilhamento copiado com sucesso");
+      } catch (e) {
+        console.error("Erro ao copiar link:", e);
+        alert('Erro ao copiar o link. Por favor, copie manualmente.');
+      }
+    }
+
+    function setupListButtons() {
+      const listButtons = document.getElementById('listButtons');
+      if (!listButtons) {
+        console.error("Contêiner de botões de lista não encontrado");
+        return;
+      }
+      listButtons.innerHTML = '';
+      Object.keys(lists).forEach(listName => {
+        console.log("Criando botão para:", listName);
+        const button = document.createElement('button');
+        button.className = `list ${listName === currentListName ? 'active' : ''}`;
+        button.textContent = listName;
+        button.onclick = () => {
+          if (!lists[listName]) {
+            console.error(`Lista ${listName} não existe ao trocar`);
+            return;
+          }
+          console.log("Trocando para lista:", listName);
+          currentListName = listName;
+          shoppingList = lists[currentListName].items;
+          listHistory = lists[currentListName].history;
+          allSelected = false;
+          updateList();
+          updateTotal();
+          updateBalance();
+          updateMonthSelect();
+          updateFooter();
+          updateDashboard();
+          setupListButtons();
+          showSection('shoppingSection');
+        };
+        listButtons.appendChild(button);
+      });
+    }
+
+    function createNewListDialog() {
+      console.log("Tentando abrir diálogo de criação de lista");
+      const dialog = document.getElementById('createListDialog');
+      if (!dialog) {
+        console.error("Elemento de diálogo 'createListDialog' não encontrado");
+        return;
+      }
+      dialog.style.display = 'flex';
+      const input = document.getElementById('newListName');
+      if (input) {
+        input.value = '';
+        console.log("Diálogo de criação de lista aberto com sucesso");
+      } else {
+        console.error("Elemento de entrada 'newListName' não encontrado");
+      }
+    }
+
+    function createNewList() {
+      const input = document.getElementById('newListName');
+      if (!input) {
+        console.error("Elemento de entrada 'newListName' não encontrado");
+        return;
+      }
+      const newName = input.value.trim();
+      if (newName && !lists[newName]) {
+        lists[newName] = { items: [], history: [], balance: 0, initialBalance: 0 };
+        try {
+          localStorage.setItem('lists', JSON.stringify(lists));
+        } catch (e) {
+          console.error("Erro ao salvar listas no localStorage:", e);
+        }
+        closeDialog('createListDialog');
+        setupListButtons();
+        updateDashboard();
+        console.log("Nova lista criada:", newName);
+      } else if (newName) {
+        alert('Nome já existe ou é inválido!');
+      } else {
+        alert('Por favor, insira um nome válido para a lista.');
+      }
+    }
+
+    function deleteListDialog() {
+      console.log("Tentando abrir diálogo de exclusão de lista");
+      const dialog = document.getElementById('deleteListDialog');
+      if (!dialog) {
+        console.error("Elemento de diálogo 'deleteListDialog' não encontrado");
+        return;
+      }
+      const options = document.getElementById('deleteListOptions');
+      if (!options) {
+        console.error("Elemento de opções de exclusão de lista não encontrado");
+        return;
+      }
+      options.innerHTML = '';
+      Object.keys(lists).forEach(listName => {
+        const li = document.createElement('li');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `delete-${listName}`;
+        checkbox.name = 'deleteList';
+        checkbox.value = listName;
+        const label = document.createElement('label');
+        label.htmlFor = `delete-${listName}`;
+        label.textContent = listName;
+        li.appendChild(checkbox);
+        li.appendChild(label);
+        options.appendChild(li);
+      });
+      dialog.style.display = 'flex';
+      console.log("Diálogo de exclusão de lista aberto com sucesso");
+    }
+
+    function deleteSelectedLists() {
+      const checkboxes = document.querySelectorAll('input[name="deleteList"]:checked');
+      if (checkboxes.length === 0) {
+        alert('Selecione pelo menos uma lista para excluir!');
+        return;
+      }
+      if (checkboxes.length === Object.keys(lists).length) {
+        alert('Não é possível apagar todas as listas!');
+        return;
+      }
+      let currentWasDeleted = false;
+      let divideListWasDeleted = false;
+      let balanceListWasDeleted = false;
+      checkboxes.forEach(checkbox => {
+        const listName = checkbox.value;
+        console.log("Excluindo lista:", listName);
+        if (listName === currentListName) currentWasDeleted = true;
+        if (listName === selectedDivideListName) divideListWasDeleted = true;
+        if (listName === selectedBalanceListName) balanceListWasDeleted = true;
+        delete lists[listName];
+      });
+      if (currentWasDeleted && Object.keys(lists).length > 0) {
+        currentListName = Object.keys(lists)[0];
+        console.log("Trocado para nova lista atual:", currentListName);
+      } else if (Object.keys(lists).length === 0) {
+        console.warn("Nenhuma lista restante após exclusão. Criando lista padrão.");
+        currentListName = "Lista 1";
+        lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
+      }
+      if (divideListWasDeleted) {
+        selectedDivideListName = '';
+        const selectedListSpan = document.getElementById('selectedDivideList');
+        if (selectedListSpan) {
+          selectedListSpan.textContent = 'Nenhuma lista selecionada';
+        }
+      }
+      if (balanceListWasDeleted) {
+        selectedBalanceListName = currentListName;
+        const selectedListSpan = document.getElementById('selectedBalanceList');
+        if (selectedListSpan) {
+          selectedListSpan.textContent = currentListName;
+        }
+      }
+      shoppingList = lists[currentListName].items;
+      listHistory = lists[currentListName].history;
+      try {
+        localStorage.setItem('lists', JSON.stringify(lists));
+      } catch (e) {
+        console.error("Erro ao salvar listas no localStorage:", e);
+      }
+      closeDialog('deleteListDialog');
+      setupListButtons();
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateMonthSelect();
+      updateFooter();
+      updateDashboard();
+      console.log("Listas selecionadas excluídas com sucesso");
+    }
+
+    function editListNamesDialog() {
+      console.log("Tentando abrir diálogo de edição de nomes");
+      const dialog = document.getElementById('editListDialog');
+      if (!dialog) {
+        console.error("Elemento de diálogo 'editListDialog' não encontrado");
+        return;
+      }
+      const options = document.getElementById('editListOptions');
+      if (!options) {
+        console.error("Elemento de opções de edição de lista não encontrado");
+        return;
+      }
+      options.innerHTML = '';
+      const nameInputs = {};
+      Object.keys(lists).forEach(listName => {
+        const li = document.createElement('li');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = listName;
+        nameInputs[listName] = input;
+        li.appendChild(input);
+        options.appendChild(li);
+      });
+      dialog.style.display = 'flex';
+      window.nameInputs = nameInputs;
+      console.log("Diálogo de edição de nomes aberto com sucesso");
+    }
+
+    function saveListNames() {
+      const newNames = {};
+      let hasConflict = false;
+      Object.keys(window.nameInputs).forEach(oldName => {
+        const newName = window.nameInputs[oldName].value.trim();
+        if (newName && !newNames[newName] && newName !== oldName) {
+          newNames[newName] = lists[oldName];
+          if (currentListName === oldName) currentListName = newName;
+          if (selectedDivideListName === oldName) selectedDivideListName = newName;
+          if (selectedBalanceListName === oldName) selectedBalanceListName = newName;
+        } else if (newName && newName !== oldName) {
+          hasConflict = true;
+        } else {
+          newNames[oldName] = lists[oldName];
+        }
+      });
+      if (hasConflict) {
+        alert('Nomes duplicados ou inválidos detectados! Certifique-se de que todos os nomes sejam únicos.');
+      } else {
+        lists = newNames;
+        if (!lists[currentListName]) {
+          console.warn(`Lista atual "${currentListName}" não encontrada após renomeação. Redefinindo para a primeira lista disponível.`);
+          currentListName = Object.keys(lists)[0] || "Lista 1";
+          if (!lists[currentListName]) {
+            lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
+            console.log(`Criada lista padrão: ${currentListName}`);
+          }
+        }
+        shoppingList = lists[currentListName].items;
+        listHistory = lists[currentListName].history;
+        const selectedDivideListSpan = document.getElementById('selectedDivideList');
+        if (selectedDivideListSpan) {
+          selectedDivideListSpan.textContent = selectedDivideListName || 'Nenhuma lista selecionada';
+        }
+        const selectedBalanceListSpan = document.getElementById('selectedBalanceList');
+        if (selectedBalanceListSpan) {
+          selectedBalanceListSpan.textContent = selectedBalanceListName || 'Nenhuma lista selecionada';
+        }
+        try {
+          localStorage.setItem('lists', JSON.stringify(lists));
+        } catch (e) {
+          console.error("Erro ao salvar listas no localStorage:", e);
+        }
+        closeDialog('editListDialog');
+        setupListButtons();
+        updateList();
+        updateFooter();
+        updateDashboard();
+        console.log("Nomes das listas salvos com sucesso");
+      }
+    }
+
+    function selectListDialog() {
+      console.log("Tentando abrir diálogo de seleção de lista");
+      const dialog = document.getElementById('selectListDialog');
+      if (!dialog) {
+        console.error("Elemento de diálogo 'selectListDialog' não encontrado");
+        return;
+      }
+      const options = document.getElementById('selectListOptions');
+      if (!options) {
+        console.error("Elemento de opções de seleção de lista não encontrado");
+        return;
+      }
+      options.innerHTML = '';
+      Object.keys(lists).forEach(listName => {
+        const li = document.createElement('li');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `select-${listName}`;
+        checkbox.name = 'selectList';
+        checkbox.value = listName;
+        const label = document.createElement('label');
+        label.htmlFor = `select-${listName}`;
+        label.textContent = listName;
+        li.appendChild(checkbox);
+        li.appendChild(label);
+        options.appendChild(li);
+      });
+      dialog.style.display = 'flex';
+      console.log("Diálogo de seleção de lista aberto com sucesso");
+    }
+
+    function selectChosenLists() {
+      const checkboxes = document.querySelectorAll('input[name="selectList"]:checked');
+      if (checkboxes.length === 0) {
+        alert('Selecione pelo menos uma lista para escolher!');
+        return;
+      }
+      if (checkboxes.length > 1) {
+        alert('Selecione apenas uma lista por vez!');
+        return;
+      }
+      const selectedListName = checkboxes[0].value;
+      if (!lists[selectedListName]) {
+        console.error(`Lista selecionada ${selectedListName} não existe`);
+        alert('Erro: A lista selecionada não existe.');
+        return;
+      }
+      currentListName = selectedListName;
+      selectedBalanceListName = selectedListName;
+      shoppingList = lists[currentListName].items;
+      listHistory = lists[currentListName].history;
+      allSelected = false;
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateMonthSelect();
+      updateFooter();
+      updateDashboard();
+      setupListButtons();
+      const selectedBalanceListSpan = document.getElementById('selectedBalanceList');
+      if (selectedBalanceListSpan) {
+        selectedBalanceListSpan.textContent = selectedBalanceListName;
+      }
+      closeDialog('selectListDialog');
+      showSection('shoppingSection');
+      console.log("Lista selecionada:", currentListName);
+    }
+
+    function closeDialog(dialogId) {
+      const dialog = document.getElementById(dialogId);
+      if (dialog) {
+        dialog.style.display = 'none';
+        console.log(`Diálogo ${dialogId} fechado`);
+      } else {
+        console.error(`Elemento de diálogo ${dialogId} não encontrado`);
+      }
+    }
+
+    // Event listener para fechar menu ao clicar fora
+    document.addEventListener('click', (e) => {
+      const sidebar = document.getElementById('sidebar');
+      const menuToggle = document.getElementById('menuToggle');
+      
+      if (isMenuOpen && !sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+        closeMenu();
+      }
+    });
+
+    initializeLists();
+    setupListButtons();
+    updateHistory();
+    updateBalance();
+    showSection('homeSection'); // Definir a seção inicial como 'Início'
+  </script>
+</body>
+</html>
+

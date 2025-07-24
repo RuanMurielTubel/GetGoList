@@ -2729,6 +2729,77 @@
     updateBalance();
     showSection('homeSection'); // Definir a seção inicial como 'Início'
   </script>
+
+  <script>
+  // Coordenadas dos mercados (adicione mais se quiser)
+  const markets = [
+    {
+      name: "Supermercado Central",
+      lat: -23.55052,
+      lng: -46.633308,
+      message: "Confira as ofertas do Supermercado Central!"
+    },
+    // Exemplo de outro mercado:
+    // { name: "Padaria do Bairro", lat: -23.551, lng: -46.634, message: "Promoção na Padaria do Bairro!" }
+  ];
+
+  // Distância máxima em metros para notificar
+  const notifyDistance = 150;
+
+  // Função para calcular distância entre dois pontos (Haversine)
+  function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+
+  // Solicita permissão de notificação
+  function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+  }
+
+  // Checa localização periodicamente
+  function checkLocationForMarkets() {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+        markets.forEach(market => {
+          const distance = getDistanceFromLatLonInMeters(
+            userLat, userLng, market.lat, market.lng
+          );
+          if (distance <= notifyDistance) {
+            showMarketNotification(market);
+          }
+        });
+      });
+    }
+  }
+
+  // Mostra notificação
+  function showMarketNotification(market) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Você chegou ao mercado!', {
+        body: market.message,
+        icon: 'https://cdn-icons-png.flaticon.com/512/3075/3075977.png'
+      });
+    }
+  }
+
+  // Inicia monitoramento ao carregar a página
+  window.addEventListener('load', () => {
+    requestNotificationPermission();
+    setInterval(checkLocationForMarkets, 60000); // Checa a cada 60 segundos
+  });
+</script>
 </body>
 </html>
 

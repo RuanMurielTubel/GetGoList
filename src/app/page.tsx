@@ -3,7 +3,7 @@ export default function Home() {
     <iframe
       src="/login.html"
       style={{ width: "100vw", height: "100vh", border: "none" }}
-      title="Lista de Compras"
+      title="Go List"
     />
   );
 }

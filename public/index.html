@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lista de Compras</title>
+  <title>Get Go List</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -91,6 +91,7 @@
       font-size: 16px;
       text-align: left;
       transition: all 0.3s ease;
+      -webkit-backdrop-filter: blur(10px);
       backdrop-filter: blur(10px);
     }
     
@@ -466,6 +467,7 @@
       align-items: center;
       gap: 8px;
       flex-wrap: nowrap;
+      min-width: -webkit-fill-available;
       min-width: fit-content;
     }
     
@@ -603,6 +605,10 @@
       padding: 20px;
       margin: 20px 0;
       border: 1px solid #ffeaa7;
+      display: block;
+    }
+    #comparisonView {
+      display: none;
     }
     
     #listActions {
@@ -959,7 +965,7 @@
           </select>
           <button onclick="loadMonthHistory()">Carregar</button>
         </div>
-        
+      <div id="comparisonView" class="comparison-section">
         <ul id="historyList"></ul>
       </div>
       

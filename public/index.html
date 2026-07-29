@@ -113,7 +113,7 @@
     .sidebar button.share-button::before { content: "📤"; }
     .sidebar button.ads-button::before { content: "📢"; }
     .sidebar button.profile-button::before { content: "👤"; }
-    .sidebar button.logout-button::before { content: "🚪"; }
+    .sidebar button.logout-button::before { content: "↩"; }
     
     .sidebar button:hover {
       background-color: rgba(255,255,255,0.2);
@@ -844,7 +844,7 @@
     <button onclick="showSection('adsSection')" class="ads-button"><span>Anúncios</span></button>
     <button onclick="showShareDialog()" class="share-button"><span>Compartilhar Lista</span></button>
     <button onclick="showSection('profileSection')" class="profile-button"><span>Meu Perfil</span></button>
-    <button onclick="logout()" class="logout-button"><span>Sair</span></button>
+    <button onclick="window.location.href='/'" class="logout-button"><span>Página inicial</span></button>
   </div>
   
   <div class="container" id="mainContainer">

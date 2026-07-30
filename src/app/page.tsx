@@ -38,7 +38,12 @@ export default function Home() {
           <span>GetGoList</span>
         </Link>
 
-        <span className="beta-badge">Versão inicial</span>
+        <nav className="header-actions" aria-label="Acesso">
+          <span className="beta-badge">Versão inicial</span>
+          <Link className="header-login" href="/login">
+            Entrar e sincronizar
+          </Link>
+        </nav>
       </header>
 
       <section className="hero">

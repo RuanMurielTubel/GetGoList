@@ -76,6 +76,48 @@
       color: #fff;
       font-weight: 300;
     }
+
+    .account-panel {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      color: #fff;
+      margin-bottom: 18px;
+      padding: 12px;
+    }
+
+    .account-panel strong,
+    .account-panel small {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .account-panel strong {
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .account-panel small {
+      color: rgba(255,255,255,0.7);
+      font-size: 11px;
+      margin-bottom: 10px;
+    }
+
+    .sidebar .account-panel button {
+      background: #fff;
+      color: #16445a;
+      font-size: 12px;
+      font-weight: 700;
+      justify-content: center;
+      margin: 0;
+      padding: 9px 10px;
+    }
+
+    .sidebar .account-panel button::before {
+      display: none;
+    }
     
     .sidebar button {
       display: flex;
@@ -836,6 +878,11 @@
   <!-- Menu lateral -->
   <div class="sidebar" id="sidebar">
     <h2>Menu</h2>
+    <div class="account-panel" id="accountPanel">
+      <strong id="syncStatus">Modo visitante</strong>
+      <small id="accountEmail">Listas salvas neste dispositivo</small>
+      <button id="accountAction" onclick="handleAccountAction()">Entrar e sincronizar</button>
+    </div>
     <button onclick="showSection('homeSection')" class="home-button active"><span>Início</span></button>
     <button onclick="showSection('balanceSection')" class="balance-button"><span>Saldo</span></button>
     <button onclick="showSection('shoppingSection')" class="shopping-button"><span>Lista de Compras</span></button>
@@ -1132,6 +1179,9 @@
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore-compat.js"></script>
   <script>
     let lists = {};
     let currentListName = "Lista 1";
@@ -1144,6 +1194,205 @@
     let allSelected = false;
     let isMenuOpen = false;
     let charts = {};
+    let firebaseAuth = null;
+    let firestoreDb = null;
+    let currentFirebaseUser = null;
+    let remoteListReference = null;
+    let remoteListUnsubscribe = null;
+    let remoteSyncReady = false;
+    let applyingRemoteLists = false;
+    let remoteSaveTimer = null;
+    let initialRemoteSnapshotHandled = false;
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyApgAliwYTpeIyYgEpeFTw6HrS5Bc-Kc9Q",
+      authDomain: "getgolist.firebaseapp.com",
+      projectId: "getgolist",
+      appId: "getgolist"
+    };
+
+    function saveLists(options = {}) {
+      try {
+        localStorage.setItem('lists', JSON.stringify(lists));
+      } catch (error) {
+        console.error("Não foi possível salvar as listas neste dispositivo.", error);
+      }
+
+      if (
+        options.localOnly ||
+        applyingRemoteLists ||
+        !remoteSyncReady ||
+        !currentFirebaseUser ||
+        !remoteListReference
+      ) {
+        return;
+      }
+
+      window.clearTimeout(remoteSaveTimer);
+      remoteSaveTimer = window.setTimeout(() => {
+        remoteListReference.set({
+          lists,
+          currentListName,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).catch(() => {
+          updateAccountPanel("Conta conectada • sincronização pendente");
+        });
+      }, 350);
+    }
+
+    function updateAccountPanel(statusMessage) {
+      const status = document.getElementById('syncStatus');
+      const email = document.getElementById('accountEmail');
+      const action = document.getElementById('accountAction');
+
+      if (!status || !email || !action) {
+        return;
+      }
+
+      if (currentFirebaseUser) {
+        status.textContent = statusMessage || "Conta conectada • sincronizado";
+        email.textContent = currentFirebaseUser.email || "Conta GetGoList";
+        action.textContent = "Sair da conta";
+      } else {
+        status.textContent = "Modo visitante";
+        email.textContent = "Listas salvas neste dispositivo";
+        action.textContent = "Entrar e sincronizar";
+      }
+    }
+
+    function handleAccountAction() {
+      if (currentFirebaseUser && firebaseAuth) {
+        firebaseAuth.signOut().catch(() => {
+          updateAccountPanel("Não foi possível sair. Tente novamente.");
+        });
+        return;
+      }
+
+      window.location.href = '/login';
+    }
+
+    function mergeLocalAndRemoteLists(remoteLists, localLists) {
+      const mergedLists = { ...remoteLists };
+
+      Object.entries(localLists || {}).forEach(([listName, listData]) => {
+        if (!mergedLists[listName]) {
+          mergedLists[listName] = listData;
+          return;
+        }
+
+        if (JSON.stringify(mergedLists[listName]) === JSON.stringify(listData)) {
+          return;
+        }
+
+        let migratedName = `${listName} (deste dispositivo)`;
+        let suffix = 2;
+        while (mergedLists[migratedName]) {
+          migratedName = `${listName} (deste dispositivo ${suffix})`;
+          suffix += 1;
+        }
+        mergedLists[migratedName] = listData;
+      });
+
+      return mergedLists;
+    }
+
+    function applyRemoteLists(remoteLists, preferredListName) {
+      if (!remoteLists || typeof remoteLists !== 'object' || !Object.keys(remoteLists).length) {
+        return;
+      }
+
+      applyingRemoteLists = true;
+      lists = remoteLists;
+      currentListName =
+        preferredListName && lists[preferredListName]
+          ? preferredListName
+          : Object.keys(lists)[0];
+      shoppingList = lists[currentListName].items || [];
+      listHistory = lists[currentListName].history || [];
+      selectedBalanceListName = currentListName;
+      saveLists({ localOnly: true });
+
+      setupListButtons();
+      updateList();
+      updateHistory();
+      updateFooter();
+      updateDashboard();
+      updateTargetListSelect();
+      updateMonthSelect();
+      applyingRemoteLists = false;
+    }
+
+    function initializeFirebaseSync() {
+      if (typeof firebase === 'undefined') {
+        updateAccountPanel("Sincronização indisponível");
+        return;
+      }
+
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+
+        firebaseAuth = firebase.auth();
+        firestoreDb = firebase.firestore();
+        firestoreDb.enablePersistence({ synchronizeTabs: true }).catch(() => {
+          // O app continua funcionando com cache em memória.
+        });
+
+        firebaseAuth.onAuthStateChanged((user) => {
+          currentFirebaseUser = user;
+          remoteSyncReady = false;
+          initialRemoteSnapshotHandled = false;
+
+          if (remoteListUnsubscribe) {
+            remoteListUnsubscribe();
+            remoteListUnsubscribe = null;
+          }
+
+          if (!user) {
+            remoteListReference = null;
+            updateAccountPanel();
+            return;
+          }
+
+          updateAccountPanel("Conta conectada • sincronizando");
+          remoteListReference = firestoreDb
+            .collection('users')
+            .doc(user.uid)
+            .collection('appData')
+            .doc('lists');
+
+          remoteListUnsubscribe = remoteListReference.onSnapshot((snapshot) => {
+            const remoteData = snapshot.exists ? snapshot.data() : null;
+
+            if (remoteData && remoteData.lists && Object.keys(remoteData.lists).length) {
+              if (!initialRemoteSnapshotHandled) {
+                const mergedLists = mergeLocalAndRemoteLists(remoteData.lists, lists);
+                applyRemoteLists(mergedLists, remoteData.currentListName);
+                initialRemoteSnapshotHandled = true;
+                remoteSyncReady = true;
+                saveLists();
+              } else {
+                applyRemoteLists(remoteData.lists, remoteData.currentListName);
+                remoteSyncReady = true;
+              }
+            } else {
+              initialRemoteSnapshotHandled = true;
+              remoteSyncReady = true;
+              saveLists();
+            }
+
+            updateAccountPanel();
+          }, () => {
+            remoteSyncReady = false;
+            updateAccountPanel("Conta conectada • sincronização pendente");
+          });
+        });
+      } catch (error) {
+        console.error("Não foi possível iniciar a sincronização.", error);
+        updateAccountPanel("Sincronização indisponível");
+      }
+    }
 
     function initializeLists() {
       const defaultLists = {
@@ -1221,7 +1470,7 @@
 
       // Salva listas no localStorage
       try {
-        localStorage.setItem('lists', JSON.stringify(lists));
+        saveLists();
         console.log("Estrutura inicial salva no localStorage:", lists);
       } catch (e) {
         console.error("Erro ao salvar listas no localStorage:", e);
@@ -1662,7 +1911,7 @@
         lists[selectedBalanceListName].balance = balanceValue - totalSpent;
         hasShownLowBalanceAlert = false;
         try {
-          localStorage.setItem('lists', JSON.stringify(lists));
+          saveLists();
           console.log("Saldo inicial atualizado e saldo restante recalculado para:", selectedBalanceListName, lists[selectedBalanceListName]);
         } catch (e) {
           console.error("Erro ao salvar listas no localStorage:", e);
@@ -1702,7 +1951,7 @@
         listHistory.push(item);
         lists[currentListName].balance -= item.total;
         try {
-          localStorage.setItem('lists', JSON.stringify(lists));
+          saveLists();
         } catch (e) {
           console.error("Erro ao salvar listas no localStorage:", e);
         }
@@ -1761,7 +2010,7 @@
         listHistory.push(newItem);
         lists[currentListName].balance -= newItem.total;
         try {
-          localStorage.setItem('lists', JSON.stringify(lists));
+          saveLists();
         } catch (e) {
           console.error("Erro ao salvar listas no localStorage:", e);
         }
@@ -1787,7 +2036,7 @@
       lists[currentListName].balance += item.total;
       shoppingList.splice(index, 1);
       try {
-        localStorage.setItem('lists', JSON.stringify(lists));
+        saveLists();
       } catch (e) {
         console.error("Erro ao salvar listas no localStorage:", e);
       }
@@ -1804,7 +2053,7 @@
         item.checked = allSelected;
       });
       try {
-        localStorage.setItem('lists', JSON.stringify(lists));
+        saveLists();
         console.log(`Todos os itens ${allSelected ? 'marcados' : 'desmarcados'}`);
       } catch (e) {
         console.error("Erro ao salvar listas no localStorage:", e);
@@ -1828,7 +2077,7 @@
           shoppingList.splice(index, 1);
         });
         try {
-          localStorage.setItem('lists', JSON.stringify(lists));
+          saveLists();
         } catch (e) {
           console.error("Erro ao salvar listas no localStorage:", e);
         }
@@ -1851,7 +2100,7 @@
         lists[currentListName].items = shoppingList;
         lists[currentListName].balance = lists[currentListName].initialBalance;
         try {
-          localStorage.setItem('lists', JSON.stringify(lists));
+          saveLists();
         } catch (e) {
           console.error("Erro ao salvar listas no localStorage:", e);
         }
@@ -1880,7 +2129,7 @@
         });
         lists[currentListName].history = listHistory;
         try {
-          localStorage.setItem('lists', JSON.stringify(lists));
+          saveLists();
         } catch (e) {
           console.error("Erro ao salvar listas no localStorage:", e);
         }
@@ -1942,7 +2191,7 @@
             checkbox.addEventListener('change', () => {
               shoppingList[index].checked = checkbox.checked;
               try {
-                localStorage.setItem('lists', JSON.stringify(lists));
+                saveLists();
                 console.log(`Item ${index} marcado como ${checkbox.checked ? 'checked' : 'unchecked'}`);
               } catch (e) {
                 console.error("Erro ao salvar listas no localStorage:", e);
@@ -2082,7 +2331,7 @@
       });
       lists[targetListName].balance -= totalCost;
       try {
-        localStorage.setItem('lists', JSON.stringify(lists));
+        saveLists();
       } catch (e) {
         console.error("Erro ao salvar listas no localStorage:", e);
       }
@@ -2459,7 +2708,7 @@
       if (newName && !lists[newName]) {
         lists[newName] = { items: [], history: [], balance: 0, initialBalance: 0 };
         try {
-          localStorage.setItem('lists', JSON.stringify(lists));
+          saveLists();
         } catch (e) {
           console.error("Erro ao salvar listas no localStorage:", e);
         }
@@ -2551,7 +2800,7 @@
       shoppingList = lists[currentListName].items;
       listHistory = lists[currentListName].history;
       try {
-        localStorage.setItem('lists', JSON.stringify(lists));
+        saveLists();
       } catch (e) {
         console.error("Erro ao salvar listas no localStorage:", e);
       }
@@ -2633,7 +2882,7 @@
           selectedBalanceListSpan.textContent = selectedBalanceListName || 'Nenhuma lista selecionada';
         }
         try {
-          localStorage.setItem('lists', JSON.stringify(lists));
+          saveLists();
         } catch (e) {
           console.error("Erro ao salvar listas no localStorage:", e);
         }
@@ -2735,6 +2984,7 @@
     });
 
     initializeLists();
+    initializeFirebaseSync();
     setupListButtons();
     updateHistory();
     updateBalance();
@@ -2805,11 +3055,8 @@
     }
   }
 
-  // Inicia monitoramento ao carregar a página
-  window.addEventListener('load', () => {
-    requestNotificationPermission();
-    setInterval(checkLocationForMarkets, 60000); // Checa a cada 60 segundos
-  });
+  // Localização e notificações só serão ativadas após uma ação explícita
+  // do usuário em uma etapa futura do produto.
 </script>
 </body>
 </html>

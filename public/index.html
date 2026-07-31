@@ -147,15 +147,15 @@
       background-repeat: no-repeat;
     }
     
-    .sidebar button.home-button::before { content: "🏠"; }
-    .sidebar button.balance-button::before { content: "💰"; }
-    .sidebar button.shopping-button::before { content: "🛒"; }
-    .sidebar button.history-button::before { content: "📜"; }
-    .sidebar button.divide-button::before { content: "➗"; }
-    .sidebar button.share-button::before { content: "📤"; }
-    .sidebar button.ads-button::before { content: "📢"; }
-    .sidebar button.profile-button::before { content: "👤"; }
-    .sidebar button.logout-button::before { content: "↩"; }
+    .sidebar button.home-button::before { content: ""; }
+    .sidebar button.balance-button::before { content: ""; }
+    .sidebar button.shopping-button::before { content: ""; }
+    .sidebar button.history-button::before { content: ""; }
+    .sidebar button.divide-button::before { content: ""; }
+    .sidebar button.share-button::before { content: ""; }
+    .sidebar button.ads-button::before { content: ""; }
+    .sidebar button.profile-button::before { content: ""; }
+    .sidebar button.logout-button::before { content: ""; }
     
     .sidebar button:hover {
       background-color: rgba(255,255,255,0.2);
@@ -1281,26 +1281,61 @@
       window.location.href = '/login';
     }
 
+    function normalizeListData(listData) {
+      if (!listData || typeof listData !== 'object') {
+        return { items: [], history: [], balance: 0, initialBalance: 0 };
+      }
+
+      const normalizedItems = Array.isArray(listData.items)
+        ? listData.items.map((item) => ({
+            ...item,
+            checked: Boolean(item && typeof item === 'object' ? item.checked : false)
+          }))
+        : [];
+
+      return {
+        items: normalizedItems,
+        history: Array.isArray(listData.history) ? listData.history : [],
+        balance: typeof listData.balance === 'number' ? listData.balance : 0,
+        initialBalance: typeof listData.initialBalance === 'number' ? listData.initialBalance : 0
+      };
+    }
+
+    function hasListData(listData) {
+      if (!listData || typeof listData !== 'object') {
+        return false;
+      }
+
+      return (
+        (Array.isArray(listData.items) && listData.items.length > 0) ||
+        (Array.isArray(listData.history) && listData.history.length > 0) ||
+        (typeof listData.balance === 'number' && listData.balance !== 0) ||
+        (typeof listData.initialBalance === 'number' && listData.initialBalance !== 0)
+      );
+    }
+
     function mergeLocalAndRemoteLists(remoteLists, localLists) {
-      const mergedLists = { ...remoteLists };
+      const mergedLists = {};
+      const allListNames = new Set([
+        ...Object.keys(remoteLists || {}),
+        ...Object.keys(localLists || {})
+      ]);
 
-      Object.entries(localLists || {}).forEach(([listName, listData]) => {
-        if (!mergedLists[listName]) {
-          mergedLists[listName] = listData;
+      allListNames.forEach((listName) => {
+        const remoteList = remoteLists && remoteLists[listName];
+        const localList = localLists && localLists[listName];
+
+        if (remoteList && localList) {
+          const remoteHasData = hasListData(remoteList);
+          const localHasData = hasListData(localList);
+
+          mergedLists[listName] = remoteHasData || !localHasData
+            ? normalizeListData(remoteList)
+            : normalizeListData(localList);
           return;
         }
 
-        if (JSON.stringify(mergedLists[listName]) === JSON.stringify(listData)) {
-          return;
-        }
-
-        let migratedName = `${listName} (deste dispositivo)`;
-        let suffix = 2;
-        while (mergedLists[migratedName]) {
-          migratedName = `${listName} (deste dispositivo ${suffix})`;
-          suffix += 1;
-        }
-        mergedLists[migratedName] = listData;
+        mergedLists[listName] = normalizeListData(remoteList || localList);
       });
 
       return mergedLists;
@@ -1450,16 +1485,19 @@
         console.warn("localStorage vazio, corrompido ou inválido. Usando listas padrão ou importada.");
         lists = importedListName ? lists : defaultLists;
       } else {
-        lists = { ...storedLists };
-        Object.keys(lists).forEach(listName => {
+        lists = {};
+        Object.keys(storedLists).forEach(listName => {
+          const storedList = storedLists[listName];
           lists[listName] = {
-            items: lists[listName].items.map(item => ({
-              ...item,
-              checked: item.checked || false
-            })) || [],
-            history: lists[listName].history || [],
-            balance: lists[listName].balance || 0,
-            initialBalance: lists[listName].initialBalance || 0
+            items: Array.isArray(storedList?.items)
+              ? storedList.items.map((item) => ({
+                  ...item,
+                  checked: Boolean(item && typeof item === 'object' ? item.checked : false)
+                }))
+              : [],
+            history: Array.isArray(storedList?.history) ? storedList.history : [],
+            balance: typeof storedList?.balance === 'number' ? storedList.balance : 0,
+            initialBalance: typeof storedList?.initialBalance === 'number' ? storedList.initialBalance : 0
           };
         });
         if (importedListName) {

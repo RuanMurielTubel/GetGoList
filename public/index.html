@@ -1356,6 +1356,15 @@
       return mergedLists;
     }
 
+    function clearLocalCache() {
+      try {
+        localStorage.removeItem('lists');
+        console.log('Cache local de listas limpo');
+      } catch (error) {
+        console.error('Não foi possível limpar o cache local:', error);
+      }
+    }
+
     function applyRemoteLists(remoteLists, preferredListName) {
       if (!remoteLists || typeof remoteLists !== 'object' || !Object.keys(remoteLists).length) {
         return;
@@ -1370,6 +1379,7 @@
       shoppingList = lists[currentListName].items || [];
       listHistory = lists[currentListName].history || [];
       selectedBalanceListName = currentListName;
+      clearLocalCache();
       saveLists({ localOnly: true });
 
       setupListButtons();

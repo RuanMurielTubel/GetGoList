@@ -1009,7 +1009,7 @@
     <button onclick="showSection('divideSection')" class="divide-button"><span>Divisão</span></button>
     <button onclick="showShareDialog()" class="share-button"><span>Compartilhar Lista</span></button>
     <button onclick="showSection('profileSection')" class="profile-button"><span>Meu Perfil</span></button>
-    <button onclick="window.location.href='/'" class="logout-button"><span>Página inicial</span></button>
+    <button onclick="window.location.href='/'" class="logout-button"><span>Sair</span></button>
   </div>
   
   <div class="container" id="mainContainer">
@@ -2254,6 +2254,12 @@
       // Fecha o menu após selecionar uma opção
       closeMenu();
       
+      if (!currentFirebaseUser && sectionId !== 'homeSection') {
+        alert('Faça login para acessar esta área.');
+        showSection('homeSection');
+        return;
+      }
+
       if (sectionId === 'homeSection') {
         updateDashboard();
       }
@@ -3521,7 +3527,7 @@
     setupListButtons();
     updateHistory();
     updateBalance();
-    showSection('shoppingSection'); // Definir a seção inicial como 'Lista de Compras'
+    showSection('homeSection'); // Definir a seção inicial para visitante
   </script>
 
   <script>

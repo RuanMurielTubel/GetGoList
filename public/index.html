@@ -2166,8 +2166,9 @@
       const itemTotal = itemPrice * itemQuantity;
 
       if (itemName && itemPrice > 0 && itemQuantity > 0) {
-        if (itemTotal > lists[currentListName].balance) {
-          if (!confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${lists[currentListName].balance.toFixed(2).replace('.', ',')})`)) {
+        const currentBalance = lists[currentListName].balance;
+        if (currentBalance >= 0 && itemTotal > currentBalance) {
+          if (!confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${currentBalance.toFixed(2).replace('.', ',')})`)) {
             return;
           }
         }
@@ -2224,8 +2225,9 @@
       if (itemName && itemPrice > 0 && itemQuantity > 0) {
         const oldItem = shoppingList[index];
         lists[currentListName].balance += oldItem.total;
-        if (itemTotal > lists[currentListName].balance) {
-          if (!confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${lists[currentListName].balance.toFixed(2).replace('.', ',')})`)) {
+        const currentBalance = lists[currentListName].balance;
+        if (currentBalance >= 0 && itemTotal > currentBalance) {
+          if (!confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${currentBalance.toFixed(2).replace('.', ',')})`)) {
             lists[currentListName].balance -= oldItem.total;
             return;
           }

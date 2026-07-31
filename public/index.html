@@ -1375,14 +1375,36 @@
         return;
       }
 
+      const navButtons = document.querySelectorAll('.sidebar > button');
+      const sidebarGreeting = document.getElementById('sidebarGreeting');
+      const sidebarAccount = document.querySelector('.sidebar-account');
+
       if (currentFirebaseUser) {
         status.textContent = statusMessage || "Conta conectada • sincronizado";
         email.textContent = currentFirebaseUser.email || "Conta GetGoList";
         action.textContent = "Sair da conta";
+        navButtons.forEach((button) => {
+          button.style.display = 'block';
+        });
+        if (sidebarGreeting) {
+          sidebarGreeting.style.display = 'block';
+        }
+        if (sidebarAccount) {
+          sidebarAccount.style.display = 'flex';
+        }
       } else {
         status.textContent = "Modo visitante";
         email.textContent = "Listas salvas neste dispositivo";
         action.textContent = "Entrar e sincronizar";
+        navButtons.forEach((button) => {
+          button.style.display = 'none';
+        });
+        if (sidebarGreeting) {
+          sidebarGreeting.style.display = 'none';
+        }
+        if (sidebarAccount) {
+          sidebarAccount.style.display = 'none';
+        }
       }
       updateProfileSection();
     }
@@ -3499,7 +3521,7 @@
     setupListButtons();
     updateHistory();
     updateBalance();
-    showSection('homeSection'); // Definir a seção inicial como 'Início'
+    showSection('shoppingSection'); // Definir a seção inicial como 'Lista de Compras'
   </script>
 
   <script>

@@ -1259,7 +1259,7 @@
           lists,
           currentListName,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).catch(() => {
+        }).catch(() => {
           updateAccountPanel("Conta conectada • sincronização pendente");
         });
       }, 350);

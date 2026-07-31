@@ -85,6 +85,41 @@
       margin-bottom: 18px;
       padding: 12px;
     }
+    .sidebar-account {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .sidebar-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #0d6efd;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .sidebar-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .sidebar-account-text strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+      color: white;
+    }
+    .sidebar-account-text small {
+      display: block;
+      font-size: 12px;
+      color: rgba(255,255,255,0.8);
+    }
 
     .account-panel strong,
     .account-panel small {
@@ -958,8 +993,13 @@
   <div class="sidebar" id="sidebar">
     <h2 id="sidebarGreeting">Olá, Visitante</h2>
     <div class="account-panel" id="accountPanel">
-      <strong id="syncStatus">Modo visitante</strong>
-      <small id="accountEmail">Listas salvas neste dispositivo</small>
+      <div class="sidebar-account">
+        <div class="sidebar-avatar" id="sidebarAvatar"><span>G</span></div>
+        <div class="sidebar-account-text">
+          <strong id="sidebarName">Visitante</strong>
+          <small id="accountEmail">Listas salvas neste dispositivo</small>
+        </div>
+      </div>
       <button id="accountAction" onclick="handleAccountAction()">Entrar e sincronizar</button>
     </div>
     <button onclick="showSection('homeSection')" class="home-button active"><span>Início</span></button>
@@ -1008,28 +1048,28 @@
       
       <div class="dashboard-grid">
         <div class="dashboard-card">
-          <h3>📊 Gastos por Mês</h3>
+          <h3>Gastos por Mês</h3>
           <div class="chart-container">
             <canvas id="monthlyChart"></canvas>
           </div>
         </div>
         
         <div class="dashboard-card">
-          <h3>🛒 Itens Mais Comprados</h3>
+          <h3>Itens Mais Comprados</h3>
           <div class="chart-container">
             <canvas id="itemsChart"></canvas>
           </div>
         </div>
         
         <div class="dashboard-card">
-          <h3>💰 Distribuição de Gastos</h3>
+          <h3>Distribuição de Gastos</h3>
           <div class="chart-container">
             <canvas id="expenseChart"></canvas>
           </div>
         </div>
         
         <div class="dashboard-card">
-          <h3>📈 Tendência de Consumo</h3>
+          <h3>Tendência de Consumo</h3>
           <div class="chart-container">
             <canvas id="trendChart"></canvas>
           </div>
@@ -1253,12 +1293,12 @@
   <div class="footer" id="footer">
     <div class="info-section">
       <div class="list-info">
-        <span>📋</span>
+        <span></span>
         <span class="list-name" id="footerListName">Lista 1</span>
         <span id="footerItemCount">0 itens</span>
       </div>
       <div class="balance-info">
-        <span>💰</span>
+        <span></span>
         <span>Saldo:</span>
         <span class="balance-value" id="footerBalance">R$ 0,00</span>
       </div>
@@ -1364,21 +1404,28 @@
       const statusElement = document.getElementById('profileStatus');
       const displayNameInput = document.getElementById('displayNameInput');
       const photoUrlInput = document.getElementById('photoUrlInput');
+      const profileBioInput = document.getElementById('profileBioInput');
       const avatar = document.getElementById('profileAvatar');
-      const initials = document.getElementById('profileInitials');
+      const sidebarName = document.getElementById('sidebarName');
+      const sidebarAvatar = document.getElementById('sidebarAvatar');
 
-      if (!nameElement || !emailElement || !statusElement || !displayNameInput || !photoUrlInput || !avatar || !initials) {
+      if (!nameElement || !emailElement || !statusElement || !displayNameInput || !photoUrlInput || !avatar || !sidebarName || !sidebarAvatar) {
         return;
       }
 
+      const localProfileData = loadLocalProfileData();
+      const isDataPhoto = localProfileData.photoDataUrl && localProfileData.photoDataUrl.startsWith('data:image/');
+
       if (currentFirebaseUser) {
-        const displayName = currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList';
-        const photoURL = currentFirebaseUser.photoURL || '';
+          const displayName = localProfileData.displayName || currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList';
+        const photoURL = localProfileData.photoDataUrl || currentFirebaseUser.photoURL || '';
+        const emailValue = currentFirebaseUser.email || 'Sem email';
 
         nameElement.textContent = displayName;
-        emailElement.textContent = currentFirebaseUser.email || 'Sem email';
+        emailElement.textContent = emailValue;
         statusElement.textContent = 'Conta conectada • perfil disponível';
-        displayNameInput.value = currentFirebaseUser.displayName || '';
+        displayNameInput.value = localProfileData.displayName || currentFirebaseUser.displayName || '';
+        profileBioInput.value = localProfileData.bio || '';
         photoUrlInput.value = photoURL;
 
         const welcomeGreeting = document.getElementById('welcomeGreeting');
@@ -1389,9 +1436,11 @@
         if (sidebarGreeting) {
           sidebarGreeting.textContent = `Olá, ${displayName}`;
         }
+        sidebarName.textContent = displayName;
 
         if (photoURL) {
           avatar.innerHTML = `<img src="${photoURL}" alt="Avatar do perfil" />`;
+          sidebarAvatar.innerHTML = `<img src="${photoURL}" alt="Avatar do perfil" />`;
         } else {
           const initialsText = displayName
             .split(' ')
@@ -1400,59 +1449,110 @@
             .slice(0, 2)
             .join('') || 'GV';
           avatar.innerHTML = `<span id="profileInitials">${initialsText}</span>`;
+          sidebarAvatar.innerHTML = `<span>${initialsText}</span>`;
         }
       } else {
-        nameElement.textContent = 'Visitante';
+        const displayName = localProfileData.displayName || 'Visitante';
+        const photoURL = localProfileData.photoDataUrl || '';
+
+        nameElement.textContent = displayName;
         emailElement.textContent = 'Listas salvas neste dispositivo';
         statusElement.textContent = 'Entre para ativar o perfil';
-        displayNameInput.value = '';
-        photoUrlInput.value = '';
-        avatar.innerHTML = '<span id="profileInitials">GV</span>';
+        displayNameInput.value = localProfileData.displayName || '';
+        profileBioInput.value = localProfileData.bio || '';
+        photoUrlInput.value = photoURL;
+        sidebarName.textContent = displayName;
+
+        if (photoURL) {
+          avatar.innerHTML = `<img src="${photoURL}" alt="Avatar do perfil" />`;
+          sidebarAvatar.innerHTML = `<img src="${photoURL}" alt="Avatar do perfil" />`;
+        } else {
+          const initialsText = displayName
+            .split(' ')
+            .filter(Boolean)
+            .map((word) => word[0].toUpperCase())
+            .slice(0, 2)
+            .join('') || 'GV';
+          avatar.innerHTML = `<span id="profileInitials">${initialsText}</span>`;
+          sidebarAvatar.innerHTML = `<span>${initialsText}</span>`;
+        }
+
         const welcomeGreeting = document.getElementById('welcomeGreeting');
         const sidebarGreeting = document.getElementById('sidebarGreeting');
         if (welcomeGreeting) {
-          welcomeGreeting.textContent = 'Olá, Visitante';
+          welcomeGreeting.textContent = `Olá, ${displayName}`;
         }
         if (sidebarGreeting) {
-          sidebarGreeting.textContent = 'Olá, Visitante';
+          sidebarGreeting.textContent = `Olá, ${displayName}`;
         }
         updateProfileStats();
       }
     }
 
     function saveProfileEdits() {
-      if (!currentFirebaseUser || !firebaseAuth) {
-        alert('Entre na conta para alterar o perfil.');
-        return;
-      }
-
       const displayNameInput = document.getElementById('displayNameInput');
       const photoUrlInput = document.getElementById('photoUrlInput');
+      const profileBioInput = document.getElementById('profileBioInput');
 
-      if (!displayNameInput || !photoUrlInput) {
+      if (!displayNameInput || !photoUrlInput || !profileBioInput) {
         return;
       }
 
       const displayName = displayNameInput.value.trim();
       const photoURL = photoUrlInput.value.trim();
+      const bio = profileBioInput.value.trim();
+      const isDataUrl = photoURL.startsWith('data:image/');
 
-      if (!displayName && !photoURL) {
-        alert('Informe um nome ou uma URL de foto para atualizar.');
+      if (!displayName && !photoURL && !bio) {
+        alert('Informe um nome, uma URL de foto ou uma bio para atualizar.');
         return;
       }
 
-      currentFirebaseUser.updateProfile({
-        displayName: displayName || currentFirebaseUser.displayName,
-        photoURL: photoURL || currentFirebaseUser.photoURL
-      })
+      const localProfileData = loadLocalProfileData();
+      const profileOverrides = {
+        displayName: displayName || localProfileData.displayName || '',
+        photoDataUrl: photoURL || localProfileData.photoDataUrl || '',
+        bio: bio || localProfileData.bio || ''
+      };
+      saveLocalProfileData(profileOverrides);
+
+      if (!currentFirebaseUser || !firebaseAuth) {
+        updateProfileSection();
+        alert('Perfil atualizado localmente. Faça login para sincronizar com o perfil remoto.');
+        return;
+      }
+
+      const updates = {};
+      if (displayName) {
+        updates.displayName = displayName;
+      }
+      if (photoURL && !isDataUrl) {
+        updates.photoURL = photoURL;
+      }
+
+      const finish = () => {
+        updateProfileSection();
+        updateAccountPanel('Conta conectada • perfil atualizado');
+        alert('Perfil atualizado com sucesso!');
+      };
+
+      if (Object.keys(updates).length === 0) {
+        finish();
+        return;
+      }
+
+      currentFirebaseUser.updateProfile(updates)
         .then(() => {
-          updateProfileSection();
-          updateAccountPanel('Conta conectada • perfil atualizado');
-          alert('Perfil atualizado com sucesso!');
+          finish();
         })
         .catch((error) => {
           console.error('Erro ao atualizar perfil:', error);
-          alert('Não foi possível atualizar o perfil.');
+          finish();
+          if (isDataUrl) {
+            alert('Perfil atualizado localmente com a foto enviada, mas o Firebase não aceita imagens em data URL.');
+          } else {
+            alert('Perfil atualizado localmente, mas não foi possível atualizar o perfil remoto.');
+          }
         });
     }
 
@@ -1484,15 +1584,17 @@
       reader.onload = () => {
         const dataURL = reader.result;
         const photoUrlInput = document.getElementById('photoUrlInput');
-        const avatar = document.getElementById('profileAvatar');
 
         if (photoUrlInput && typeof dataURL === 'string') {
           photoUrlInput.value = dataURL;
         }
 
-        if (avatar && typeof dataURL === 'string') {
-          avatar.innerHTML = `<img src="${dataURL}" alt="Avatar do perfil" />`;
-        }
+        const currentData = loadLocalProfileData();
+        saveLocalProfileData({
+          ...currentData,
+          photoDataUrl: typeof dataURL === 'string' ? dataURL : currentData.photoDataUrl
+        });
+        updateProfileSection();
       };
       reader.readAsDataURL(file);
     }
@@ -1510,6 +1612,23 @@
       if (totalLists) totalLists.textContent = totalListsCount;
       if (totalItems) totalItems.textContent = totalItemsCount;
       if (totalSpentEl) totalSpentEl.textContent = `R$ ${totalSpent.toFixed(2).replace('.', ',')}`;
+    }
+
+    function loadLocalProfileData() {
+      try {
+        const raw = localStorage.getItem('profileData');
+        return raw ? JSON.parse(raw) : { displayName: '', photoDataUrl: '', bio: '' };
+      } catch (error) {
+        return { displayName: '', photoDataUrl: '', bio: '' };
+      }
+    }
+
+    function saveLocalProfileData(data) {
+      try {
+        localStorage.setItem('profileData', JSON.stringify(data));
+      } catch (error) {
+        console.error('Erro ao salvar dados de perfil localmente:', error);
+      }
     }
 
     function normalizeListData(listData) {

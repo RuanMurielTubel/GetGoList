@@ -438,6 +438,11 @@
     
     .profile-body {
       display: grid;
+      gap: 20px;
+    }
+    
+    .profile-grid {
+      display: grid;
       gap: 16px;
     }
     
@@ -451,7 +456,8 @@
       color: #495057;
     }
     
-    .profile-field input {
+    .profile-field input,
+    .profile-field textarea {
       width: 100%;
       padding: 12px 14px;
       border: 1px solid #ced4da;
@@ -459,6 +465,36 @@
       font-size: 15px;
       color: #212529;
       background: #f8f9fa;
+    }
+    
+    .profile-field textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+    
+    .profile-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 12px;
+    }
+    
+    .profile-stat {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+    
+    .profile-stat strong {
+      display: block;
+      font-size: 22px;
+      color: #212529;
+    }
+    
+    .profile-stat span {
+      color: #6c757d;
+      font-size: 13px;
     }
     
     .profile-actions {
@@ -1098,13 +1134,33 @@
           </div>
         </div>
         <div class="profile-body">
-          <div class="profile-field">
-            <label for="displayNameInput">Nome de exibição</label>
-            <input id="displayNameInput" type="text" placeholder="Digite seu nome" />
+          <div class="profile-grid">
+            <div class="profile-field">
+              <label for="displayNameInput">Nome de exibição</label>
+              <input id="displayNameInput" type="text" placeholder="Digite seu nome" />
+            </div>
+            <div class="profile-field">
+              <label for="photoUrlInput">URL da foto</label>
+              <input id="photoUrlInput" type="text" placeholder="https://..." />
+            </div>
+            <div class="profile-field">
+              <label for="profileBioInput">Bio (opcional)</label>
+              <textarea id="profileBioInput" placeholder="Fale um pouquinho sobre você"></textarea>
+            </div>
           </div>
-          <div class="profile-field">
-            <label for="photoUrlInput">URL da foto</label>
-            <input id="photoUrlInput" type="text" placeholder="https://..." />
+          <div class="profile-stats">
+            <div class="profile-stat">
+              <strong id="profileTotalLists">0</strong>
+              <span>Listas criadas</span>
+            </div>
+            <div class="profile-stat">
+              <strong id="profileTotalItems">0</strong>
+              <span>Itens adicionados</span>
+            </div>
+            <div class="profile-stat">
+              <strong id="profileTotalSpent">R$ 0,00</strong>
+              <span>Gasto total</span>
+            </div>
           </div>
           <div class="profile-actions">
             <button class="update-profile" onclick="saveProfileEdits()">Salvar perfil</button>
@@ -1337,13 +1393,7 @@
         displayNameInput.value = '';
         photoUrlInput.value = '';
         avatar.innerHTML = '<span id="profileInitials">GV</span>';
-      }
-    }
-
-    function promptPhotoEdit() {
-      const photoUrlInput = document.getElementById('photoUrlInput');
-      if (photoUrlInput) {
-        photoUrlInput.focus();
+        updateProfileStats();
       }
     }
 
@@ -1385,6 +1435,21 @@
 
     function loadCurrentProfile() {
       updateProfileSection();
+    }
+
+    function updateProfileStats() {
+      const totalListsCount = Object.keys(lists).length;
+      const totalItemsCount = Object.values(lists).reduce((sum, list) => sum + list.history.length, 0);
+      const totalSpent = Object.values(lists).reduce((sum, list) =>
+        sum + list.history.reduce((listSum, item) => listSum + item.total, 0), 0);
+
+      const totalLists = document.getElementById('profileTotalLists');
+      const totalItems = document.getElementById('profileTotalItems');
+      const totalSpentEl = document.getElementById('profileTotalSpent');
+
+      if (totalLists) totalLists.textContent = totalListsCount;
+      if (totalItems) totalItems.textContent = totalItemsCount;
+      if (totalSpentEl) totalSpentEl.textContent = `R$ ${totalSpent.toFixed(2).replace('.', ',')}`;
     }
 
     function normalizeListData(listData) {

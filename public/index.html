@@ -1012,8 +1012,7 @@
     <button onclick="showSection('divideSection')" class="divide-button"><span>Divisão</span></button>
     <button onclick="showShareDialog()" class="share-button"><span>Compartilhar Lista</span></button>
     <button onclick="showSection('profileSection')" class="profile-button"><span>Meu Perfil</span></button>
-    <button onclick="window.location.href='/'" class="logout-button"><span>Sair</span></button>
-  </div>
+      </div>
   
   <div class="container" id="mainContainer">
     <header class="app-heading">
@@ -1185,10 +1184,10 @@
               <input id="displayNameInput" type="text" placeholder="Digite seu nome" />
             </div>
             <div class="profile-field">
-              <label for="photoUrlInput">URL da foto</label>
+              <label for="photoFileInput">Foto do perfil</label>
               <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                <input id="photoUrlInput" type="text" placeholder="https://..." style="flex: 1;" />
-                <button type="button" class="update-profile" onclick="triggerPhotoUpload()">Enviar imagem</button>
+                <button type="button" class="update-profile" onclick="triggerPhotoUpload()">Trocar foto</button>
+                <span id="photoUploadHint" style="font-size: 14px; color: #495057;">PNG ou JPEG</span>
               </div>
               <input id="photoFileInput" type="file" accept="image/png, image/jpeg" style="display:none" onchange="handlePhotoFileSelect(event)" />
             </div>
@@ -1311,6 +1310,7 @@
   <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-storage-compat.js"></script>
   <script>
     let lists = {};
     let currentListName = "Lista 1";
@@ -1325,6 +1325,7 @@
     let charts = {};
     let firebaseAuth = null;
     let firestoreDb = null;
+    let firebaseStorage = null;
     let currentFirebaseUser = null;
     let remoteListReference = null;
     let remoteListUnsubscribe = null;
@@ -1428,13 +1429,12 @@
       const emailElement = document.getElementById('profileEmail');
       const statusElement = document.getElementById('profileStatus');
       const displayNameInput = document.getElementById('displayNameInput');
-      const photoUrlInput = document.getElementById('photoUrlInput');
       const profileBioInput = document.getElementById('profileBioInput');
       const avatar = document.getElementById('profileAvatar');
       const sidebarName = document.getElementById('sidebarName');
       const sidebarAvatar = document.getElementById('sidebarAvatar');
 
-      if (!nameElement || !emailElement || !statusElement || !displayNameInput || !photoUrlInput || !avatar || !sidebarName || !sidebarAvatar) {
+      if (!nameElement || !emailElement || !statusElement || !displayNameInput || !profileBioInput || !avatar || !sidebarName || !sidebarAvatar) {
         return;
       }
 
@@ -1451,7 +1451,6 @@
         statusElement.textContent = 'Conta conectada • perfil disponível';
         displayNameInput.value = localProfileData.displayName || currentFirebaseUser.displayName || '';
         profileBioInput.value = localProfileData.bio || '';
-        photoUrlInput.value = photoURL;
 
         const welcomeGreeting = document.getElementById('welcomeGreeting');
         const sidebarGreeting = document.getElementById('sidebarGreeting');
@@ -1485,7 +1484,6 @@
         statusElement.textContent = 'Entre para ativar o perfil';
         displayNameInput.value = localProfileData.displayName || '';
         profileBioInput.value = localProfileData.bio || '';
-        photoUrlInput.value = photoURL;
         sidebarName.textContent = displayName;
 
         if (photoURL) {
@@ -1516,27 +1514,24 @@
 
     function saveProfileEdits() {
       const displayNameInput = document.getElementById('displayNameInput');
-      const photoUrlInput = document.getElementById('photoUrlInput');
       const profileBioInput = document.getElementById('profileBioInput');
 
-      if (!displayNameInput || !photoUrlInput || !profileBioInput) {
+      if (!displayNameInput || !profileBioInput) {
         return;
       }
 
       const displayName = displayNameInput.value.trim();
-      const photoURL = photoUrlInput.value.trim();
       const bio = profileBioInput.value.trim();
-      const isDataUrl = photoURL.startsWith('data:image/');
 
-      if (!displayName && !photoURL && !bio) {
-        alert('Informe um nome, uma URL de foto ou uma bio para atualizar.');
+      if (!displayName && !bio) {
+        alert('Informe um nome ou uma bio para atualizar.');
         return;
       }
 
       const localProfileData = loadLocalProfileData();
       const profileOverrides = {
         displayName: displayName || localProfileData.displayName || '',
-        photoDataUrl: photoURL || localProfileData.photoDataUrl || '',
+        photoDataUrl: localProfileData.photoDataUrl || '',
         bio: bio || localProfileData.bio || ''
       };
       saveLocalProfileData(profileOverrides);
@@ -1550,9 +1545,6 @@
       const updates = {};
       if (displayName) {
         updates.displayName = displayName;
-      }
-      if (photoURL && !isDataUrl) {
-        updates.photoURL = photoURL;
       }
 
       const finish = () => {
@@ -1573,12 +1565,51 @@
         .catch((error) => {
           console.error('Erro ao atualizar perfil:', error);
           finish();
-          if (isDataUrl) {
-            alert('Perfil atualizado localmente com a foto enviada, mas o Firebase não aceita imagens em data URL.');
-          } else {
-            alert('Perfil atualizado localmente, mas não foi possível atualizar o perfil remoto.');
-          }
+          alert('Perfil atualizado localmente, mas não foi possível atualizar o perfil remoto.');
         });
+    }
+
+    function uploadProfilePhoto(file) {
+      if (!firebaseStorage || !currentFirebaseUser) {
+        return;
+      }
+
+      const extension = file.type === 'image/png' ? 'png' : 'jpg';
+      const storagePath = `profilePhotos/${currentFirebaseUser.uid}.${extension}`;
+      const storageRef = firebaseStorage.ref(storagePath);
+
+      updateAccountPanel('Enviando foto de perfil...');
+      const uploadTask = storageRef.put(file);
+
+      uploadTask.on(
+        'state_changed',
+        null,
+        (error) => {
+          console.error('Erro ao enviar foto de perfil:', error);
+          updateAccountPanel('Erro ao enviar foto. Tente novamente.');
+          alert('Não foi possível enviar a foto de perfil.');
+        },
+        () => {
+          uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+            const currentData = loadLocalProfileData();
+            saveLocalProfileData({
+              ...currentData,
+              photoDataUrl: downloadURL
+            });
+            currentFirebaseUser.updateProfile({ photoURL: downloadURL })
+              .then(() => {
+                updateProfileSection();
+                updateAccountPanel('Conta conectada • perfil atualizado');
+                alert('Foto de perfil salva e persistida com sucesso.');
+              })
+              .catch((error) => {
+                console.error('Erro ao atualizar foto no perfil Firebase:', error);
+                updateProfileSection();
+                updateAccountPanel('Conta conectada • perfil atualizado localmente');
+              });
+          });
+        }
+      );
     }
 
     function loadCurrentProfile() {
@@ -1608,12 +1639,6 @@
       const reader = new FileReader();
       reader.onload = () => {
         const dataURL = reader.result;
-        const photoUrlInput = document.getElementById('photoUrlInput');
-
-        if (photoUrlInput && typeof dataURL === 'string') {
-          photoUrlInput.value = dataURL;
-        }
-
         const currentData = loadLocalProfileData();
         saveLocalProfileData({
           ...currentData,
@@ -1621,7 +1646,12 @@
         });
         updateProfileSection();
       };
-      reader.readAsDataURL(file);
+
+      if (currentFirebaseUser && firebaseStorage) {
+        uploadProfilePhoto(file);
+      } else {
+        reader.readAsDataURL(file);
+      }
     }
 
     function updateProfileStats() {
@@ -1765,6 +1795,7 @@
 
         firebaseAuth = firebase.auth();
         firestoreDb = firebase.firestore();
+        firebaseStorage = firebase.storage();
         firestoreDb.enablePersistence({ synchronizeTabs: true }).catch(() => {
           // O app continua funcionando com cache em memória.
         });

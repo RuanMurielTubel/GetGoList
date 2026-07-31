@@ -1000,6 +1000,9 @@
           <small id="accountEmail">Listas salvas neste dispositivo</small>
         </div>
       </div>
+      <div id="syncStatus" style="margin-top: 10px; font-size: 13px; color: rgba(255,255,255,0.78);">
+        Modo visitante
+      </div>
       <button id="accountAction" onclick="handleAccountAction()">Entrar e sincronizar</button>
     </div>
     <button onclick="showSection('homeSection')" class="home-button active"><span>Início</span></button>
@@ -1371,7 +1374,7 @@
       const email = document.getElementById('accountEmail');
       const action = document.getElementById('accountAction');
 
-      if (!status || !email || !action) {
+      if (!email || !action) {
         return;
       }
 

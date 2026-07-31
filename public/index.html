@@ -1131,6 +1131,7 @@
     <div class="dialog-content">
       <h3>Excluir Lista</h3>
       <ul id="deleteListOptions"></ul>
+      <button onclick="selectAllDeleteLists()">Selecionar todas</button>
       <button onclick="deleteSelectedLists()">Confirmar</button>
       <button onclick="closeDialog('deleteListDialog')">Cancelar</button>
     </div>
@@ -2790,22 +2791,41 @@
         return;
       }
       options.innerHTML = '';
+
+      const fragment = document.createDocumentFragment();
       Object.keys(lists).forEach(listName => {
         const li = document.createElement('li');
+        li.className = 'dialog-list-item';
+
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.id = `delete-${listName}`;
         checkbox.name = 'deleteList';
         checkbox.value = listName;
+
         const label = document.createElement('label');
         label.htmlFor = `delete-${listName}`;
         label.textContent = listName;
+
         li.appendChild(checkbox);
         li.appendChild(label);
-        options.appendChild(li);
+        fragment.appendChild(li);
       });
+      options.appendChild(fragment);
+
       dialog.style.display = 'flex';
       console.log("Diálogo de exclusão de lista aberto com sucesso");
+    }
+
+    function selectAllDeleteLists() {
+      const checkboxes = document.querySelectorAll('input[name="deleteList"]');
+      if (!checkboxes.length) {
+        return;
+      }
+      checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+      });
+      console.log('Todas as listas no diálogo de exclusão foram selecionadas');
     }
 
     function deleteSelectedLists() {

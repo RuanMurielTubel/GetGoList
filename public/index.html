@@ -3027,11 +3027,18 @@
       }
     }
 
-    // Event listener para fechar menu ao clicar fora
+    // Event listener para fechar modal ao clicar fora e fechar menu ao clicar fora
     document.addEventListener('click', (e) => {
       const sidebar = document.getElementById('sidebar');
       const menuToggle = document.getElementById('menuToggle');
-      
+      const dialog = e.target.closest('.dialog');
+      const dialogContent = e.target.closest('.dialog-content');
+
+      if (dialog && !dialogContent) {
+        dialog.style.display = 'none';
+        console.log(`Diálogo ${dialog.id} fechado por clique fora`);
+      }
+
       if (isMenuOpen && !sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
         closeMenu();
       }

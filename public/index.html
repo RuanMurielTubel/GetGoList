@@ -1136,6 +1136,14 @@
       <button onclick="closeDialog('deleteListDialog')">Cancelar</button>
     </div>
   </div>
+  <div id="deleteAllConfirmDialog" class="dialog">
+    <div class="dialog-content">
+      <h3>Confirmar exclusão</h3>
+      <p>Você tem certeza que deseja excluir todas as listas? Essa ação não pode ser desfeita.</p>
+      <button onclick="confirmDeleteAllLists()">Sim, excluir tudo</button>
+      <button onclick="closeDialog('deleteAllConfirmDialog')">Cancelar</button>
+    </div>
+  </div>
   <div id="editListDialog" class="dialog">
     <div class="dialog-content">
       <h3>Editar Nomes das Listas</h3>
@@ -2835,10 +2843,12 @@
         return;
       }
       if (checkboxes.length === Object.keys(lists).length) {
-        const confirmDeleteAll = confirm('Você tem certeza? Excluir todas as listas apagará todos os dados atuais.');
-        if (!confirmDeleteAll) {
-          return;
+        closeDialog('deleteListDialog');
+        const confirmDialog = document.getElementById('deleteAllConfirmDialog');
+        if (confirmDialog) {
+          confirmDialog.style.display = 'flex';
         }
+        return;
       }
       let currentWasDeleted = false;
       let divideListWasDeleted = false;
@@ -2889,6 +2899,63 @@
       updateFooter();
       updateDashboard();
       console.log("Listas selecionadas excluídas com sucesso");
+    }
+
+    function confirmDeleteAllLists() {
+      const checkboxes = document.querySelectorAll('input[name="deleteList"]:checked');
+      if (!checkboxes.length) {
+        closeDialog('deleteAllConfirmDialog');
+        return;
+      }
+      let currentWasDeleted = false;
+      let divideListWasDeleted = false;
+      let balanceListWasDeleted = false;
+      checkboxes.forEach(checkbox => {
+        const listName = checkbox.value;
+        console.log("Excluindo lista:", listName);
+        if (listName === currentListName) currentWasDeleted = true;
+        if (listName === selectedDivideListName) divideListWasDeleted = true;
+        if (listName === selectedBalanceListName) balanceListWasDeleted = true;
+        delete lists[listName];
+      });
+      if (currentWasDeleted && Object.keys(lists).length > 0) {
+        currentListName = Object.keys(lists)[0];
+        console.log("Trocado para nova lista atual:", currentListName);
+      } else if (Object.keys(lists).length === 0) {
+        console.warn("Nenhuma lista restante após exclusão. Criando lista padrão.");
+        currentListName = "Lista 1";
+        lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
+      }
+      if (divideListWasDeleted) {
+        selectedDivideListName = '';
+        const selectedListSpan = document.getElementById('selectedDivideList');
+        if (selectedListSpan) {
+          selectedListSpan.textContent = 'Nenhuma lista selecionada';
+        }
+      }
+      if (balanceListWasDeleted) {
+        selectedBalanceListName = currentListName;
+        const selectedListSpan = document.getElementById('selectedBalanceList');
+        if (selectedListSpan) {
+          selectedListSpan.textContent = currentListName;
+        }
+      }
+      shoppingList = lists[currentListName].items;
+      listHistory = lists[currentListName].history;
+      try {
+        saveLists();
+      } catch (e) {
+        console.error("Erro ao salvar listas no localStorage:", e);
+      }
+      closeDialog('deleteAllConfirmDialog');
+      setupListButtons();
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateMonthSelect();
+      updateFooter();
+      updateDashboard();
+      console.log("Todas as listas excluídas com sucesso");
     }
 
     function editListNamesDialog() {

@@ -956,7 +956,7 @@
   
   <!-- Menu lateral -->
   <div class="sidebar" id="sidebar">
-    <h2>Menu</h2>
+    <h2 id="sidebarGreeting">Olá, Visitante</h2>
     <div class="account-panel" id="accountPanel">
       <strong id="syncStatus">Modo visitante</strong>
       <small id="accountEmail">Listas salvas neste dispositivo</small>
@@ -974,12 +974,12 @@
   
   <div class="container" id="mainContainer">
     <header class="app-heading">
-      <a class="app-brand" href="/" aria-label="Página inicial do GetGoList">
+      <div class="app-brand" aria-label="Bem-vindo a sua lista de compras">
         <span class="app-brand-mark" aria-hidden="true">G</span>
-        <span>GetGoList</span>
-      </a>
+        <span id="welcomeGreeting">Olá, Visitante</span>
+      </div>
       <div class="app-page-title">
-        <p>Sua compra, mais simples</p>
+        <p id="homeSubtitle">Vamos montar sua lista de compras juntos.</p>
         <h1 id="mainTitle">Início</h1>
       </div>
     </header>
@@ -1143,7 +1143,11 @@
             </div>
             <div class="profile-field">
               <label for="photoUrlInput">URL da foto</label>
-              <input id="photoUrlInput" type="text" placeholder="https://..." />
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <input id="photoUrlInput" type="text" placeholder="https://..." style="flex: 1;" />
+                <button type="button" class="update-profile" onclick="triggerPhotoUpload()">Enviar imagem</button>
+              </div>
+              <input id="photoFileInput" type="file" accept="image/png, image/jpeg" style="display:none" onchange="handlePhotoFileSelect(event)" />
             </div>
             <div class="profile-field">
               <label for="profileBioInput">Bio (opcional)</label>
@@ -1377,6 +1381,15 @@
         displayNameInput.value = currentFirebaseUser.displayName || '';
         photoUrlInput.value = photoURL;
 
+        const welcomeGreeting = document.getElementById('welcomeGreeting');
+        const sidebarGreeting = document.getElementById('sidebarGreeting');
+        if (welcomeGreeting) {
+          welcomeGreeting.textContent = `Olá, ${displayName}`;
+        }
+        if (sidebarGreeting) {
+          sidebarGreeting.textContent = `Olá, ${displayName}`;
+        }
+
         if (photoURL) {
           avatar.innerHTML = `<img src="${photoURL}" alt="Avatar do perfil" />`;
         } else {
@@ -1395,6 +1408,14 @@
         displayNameInput.value = '';
         photoUrlInput.value = '';
         avatar.innerHTML = '<span id="profileInitials">GV</span>';
+        const welcomeGreeting = document.getElementById('welcomeGreeting');
+        const sidebarGreeting = document.getElementById('sidebarGreeting');
+        if (welcomeGreeting) {
+          welcomeGreeting.textContent = 'Olá, Visitante';
+        }
+        if (sidebarGreeting) {
+          sidebarGreeting.textContent = 'Olá, Visitante';
+        }
         updateProfileStats();
       }
     }
@@ -1437,6 +1458,43 @@
 
     function loadCurrentProfile() {
       updateProfileSection();
+    }
+
+    function promptPhotoEdit() {
+      const photoFileInput = document.getElementById('photoFileInput');
+      if (photoFileInput) {
+        photoFileInput.click();
+      }
+    }
+
+    function triggerPhotoUpload() {
+      promptPhotoEdit();
+    }
+
+    function handlePhotoFileSelect(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      if (!file.type.match('image/(jpeg|png)')) {
+        alert('Por favor selecione um arquivo PNG ou JPEG.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataURL = reader.result;
+        const photoUrlInput = document.getElementById('photoUrlInput');
+        const avatar = document.getElementById('profileAvatar');
+
+        if (photoUrlInput && typeof dataURL === 'string') {
+          photoUrlInput.value = dataURL;
+        }
+
+        if (avatar && typeof dataURL === 'string') {
+          avatar.innerHTML = `<img src="${dataURL}" alt="Avatar do perfil" />`;
+        }
+      };
+      reader.readAsDataURL(file);
     }
 
     function updateProfileStats() {

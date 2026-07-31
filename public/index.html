@@ -2834,6 +2834,12 @@
         alert('Selecione pelo menos uma lista para excluir!');
         return;
       }
+      if (checkboxes.length === Object.keys(lists).length) {
+        const confirmDeleteAll = confirm('Você tem certeza? Excluir todas as listas apagará todos os dados atuais.');
+        if (!confirmDeleteAll) {
+          return;
+        }
+      }
       let currentWasDeleted = false;
       let divideListWasDeleted = false;
       let balanceListWasDeleted = false;

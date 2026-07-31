@@ -387,11 +387,11 @@
     }
     
     .profile-card {
-      background: #ffffff;
-      border: 1px solid #dee2e6;
+      background: linear-gradient(135deg, #e9f7ff 0%, #ffffff 100%);
+      border: 1px solid #8ecae6;
       border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+      box-shadow: 0 10px 30px rgba(14, 100, 182, 0.08);
       margin: 20px 0;
     }
     
@@ -427,13 +427,13 @@
     
     .profile-info h2 {
       margin: 0;
-      font-size: 26px;
-      color: #212529;
+      font-size: 28px;
+      color: #023047;
     }
     
     .profile-info p {
       margin: 6px 0;
-      color: #495057;
+      color: #212529;
     }
     
     .profile-body {
@@ -1133,6 +1133,7 @@
             <p id="profileStatus">Entre para ativar o perfil</p>
           </div>
         </div>
+        <h3 style="margin: 0 0 18px; color: #006d9c;">Detalhes do Perfil</h3>
         <div class="profile-body">
           <div class="profile-grid">
             <div class="profile-field">
@@ -2464,12 +2465,20 @@
         console.error("Elemento de alerta de saldo baixo não encontrado");
         return;
       }
-      if (initialBalance > 0 && balance <= initialBalance * 0.1 && !hasShownLowBalanceAlert) {
+
+      if (initialBalance > 0 && balance < 0 && !hasShownLowBalanceAlert) {
+        alertElement.textContent = 'Atenção: você já ultrapassou o saldo estabelecido!';
         alertElement.classList.add('active');
-        alert('Atenção: Seu saldo está baixo! Restam menos de 10% do valor inicial.');
+        alert('Atenção: você já ultrapassou o saldo estabelecido!');
+        hasShownLowBalanceAlert = true;
+      } else if (initialBalance > 0 && balance <= initialBalance * 0.1 && balance >= 0 && !hasShownLowBalanceAlert) {
+        alertElement.textContent = 'Atenção: Seu saldo está baixo. Restam menos de 10% do valor inicial.';
+        alertElement.classList.add('active');
+        alert('Atenção: seu saldo está baixo. Restam menos de 10% do valor inicial.');
         hasShownLowBalanceAlert = true;
       } else if (balance > initialBalance * 0.1 || initialBalance === 0) {
         alertElement.classList.remove('active');
+        alertElement.textContent = 'Atenção: Seu saldo está baixo. Restam menos de 10% do valor inicial.';
         hasShownLowBalanceAlert = false;
       }
       updateFooter();

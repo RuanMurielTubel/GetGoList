@@ -680,6 +680,7 @@
       justify-content: center;
       align-items: center;
       z-index: 1002;
+      overflow: auto;
     }
     
     .dialog-content {
@@ -688,6 +689,8 @@
       border-radius: 12px;
       max-width: 450px;
       width: 90%;
+      max-height: 85vh;
+      overflow: hidden;
       text-align: center;
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
@@ -695,6 +698,9 @@
     .dialog-content ul {
       list-style: none;
       padding: 0;
+      max-height: 55vh;
+      overflow-y: auto;
+      margin: 0 -10px 16px;
     }
     
     .dialog-content li {

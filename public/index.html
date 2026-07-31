@@ -386,6 +386,106 @@
       margin: 4px;
     }
     
+    .profile-card {
+      background: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+      margin: 20px 0;
+    }
+    
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    
+    .profile-avatar {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #007bff, #6610f2);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 700;
+      border: 4px solid rgba(0,0,0,0.06);
+      overflow: hidden;
+      cursor: pointer;
+    }
+    
+    .profile-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .profile-info h2 {
+      margin: 0;
+      font-size: 26px;
+      color: #212529;
+    }
+    
+    .profile-info p {
+      margin: 6px 0;
+      color: #495057;
+    }
+    
+    .profile-body {
+      display: grid;
+      gap: 16px;
+    }
+    
+    .profile-field {
+      display: grid;
+      gap: 6px;
+    }
+    
+    .profile-field label {
+      font-size: 14px;
+      color: #495057;
+    }
+    
+    .profile-field input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #ced4da;
+      border-radius: 10px;
+      font-size: 15px;
+      color: #212529;
+      background: #f8f9fa;
+    }
+    
+    .profile-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    
+    button.update-profile {
+      background-color: #0d6efd;
+      color: white;
+      padding: 10px 16px;
+      border-radius: 10px;
+    }
+    
+    button.update-profile:hover {
+      background-color: #0b5ed7;
+    }
+    
+    .profile-note {
+      font-size: 13px;
+      color: #6c757d;
+      margin-top: 12px;
+    }
+    
     button.create-list:hover, button.divide:hover, button.select-list:hover, button.copy-link:hover {
       background-color: #5936a7;
     }
@@ -985,6 +1085,36 @@
       <div class="division-result" id="divisionResult"></div>
     </div>
 
+    <div id="profileSection" class="section">
+      <div class="profile-card">
+        <div class="profile-header">
+          <div class="profile-avatar" id="profileAvatar" onclick="promptPhotoEdit()">
+            <span id="profileInitials">GV</span>
+          </div>
+          <div class="profile-info">
+            <h2 id="profileName">Visitante</h2>
+            <p id="profileEmail">Sem login</p>
+            <p id="profileStatus">Entre para ativar o perfil</p>
+          </div>
+        </div>
+        <div class="profile-body">
+          <div class="profile-field">
+            <label for="displayNameInput">Nome de exibição</label>
+            <input id="displayNameInput" type="text" placeholder="Digite seu nome" />
+          </div>
+          <div class="profile-field">
+            <label for="photoUrlInput">URL da foto</label>
+            <input id="photoUrlInput" type="text" placeholder="https://..." />
+          </div>
+          <div class="profile-actions">
+            <button class="update-profile" onclick="saveProfileEdits()">Salvar perfil</button>
+            <button class="update-profile" onclick="loadCurrentProfile()">Recarregar</button>
+          </div>
+          <p class="profile-note">Clique no avatar para editar a URL. As alterações só são salvas quando você estiver logado.</p>
+        </div>
+      </div>
+    </div>
+
   </div>
   
   <!-- Diálogos -->
@@ -1152,6 +1282,7 @@
         email.textContent = "Listas salvas neste dispositivo";
         action.textContent = "Entrar e sincronizar";
       }
+      updateProfileSection();
     }
 
     function handleAccountAction() {
@@ -1163,6 +1294,97 @@
       }
 
       window.location.href = '/login';
+    }
+
+    function updateProfileSection() {
+      const nameElement = document.getElementById('profileName');
+      const emailElement = document.getElementById('profileEmail');
+      const statusElement = document.getElementById('profileStatus');
+      const displayNameInput = document.getElementById('displayNameInput');
+      const photoUrlInput = document.getElementById('photoUrlInput');
+      const avatar = document.getElementById('profileAvatar');
+      const initials = document.getElementById('profileInitials');
+
+      if (!nameElement || !emailElement || !statusElement || !displayNameInput || !photoUrlInput || !avatar || !initials) {
+        return;
+      }
+
+      if (currentFirebaseUser) {
+        const displayName = currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList';
+        const photoURL = currentFirebaseUser.photoURL || '';
+
+        nameElement.textContent = displayName;
+        emailElement.textContent = currentFirebaseUser.email || 'Sem email';
+        statusElement.textContent = 'Conta conectada • perfil disponível';
+        displayNameInput.value = currentFirebaseUser.displayName || '';
+        photoUrlInput.value = photoURL;
+
+        if (photoURL) {
+          avatar.innerHTML = `<img src="${photoURL}" alt="Avatar do perfil" />`;
+        } else {
+          const initialsText = displayName
+            .split(' ')
+            .filter(Boolean)
+            .map((word) => word[0].toUpperCase())
+            .slice(0, 2)
+            .join('') || 'GV';
+          avatar.innerHTML = `<span id="profileInitials">${initialsText}</span>`;
+        }
+      } else {
+        nameElement.textContent = 'Visitante';
+        emailElement.textContent = 'Listas salvas neste dispositivo';
+        statusElement.textContent = 'Entre para ativar o perfil';
+        displayNameInput.value = '';
+        photoUrlInput.value = '';
+        avatar.innerHTML = '<span id="profileInitials">GV</span>';
+      }
+    }
+
+    function promptPhotoEdit() {
+      const photoUrlInput = document.getElementById('photoUrlInput');
+      if (photoUrlInput) {
+        photoUrlInput.focus();
+      }
+    }
+
+    function saveProfileEdits() {
+      if (!currentFirebaseUser || !firebaseAuth) {
+        alert('Entre na conta para alterar o perfil.');
+        return;
+      }
+
+      const displayNameInput = document.getElementById('displayNameInput');
+      const photoUrlInput = document.getElementById('photoUrlInput');
+
+      if (!displayNameInput || !photoUrlInput) {
+        return;
+      }
+
+      const displayName = displayNameInput.value.trim();
+      const photoURL = photoUrlInput.value.trim();
+
+      if (!displayName && !photoURL) {
+        alert('Informe um nome ou uma URL de foto para atualizar.');
+        return;
+      }
+
+      currentFirebaseUser.updateProfile({
+        displayName: displayName || currentFirebaseUser.displayName,
+        photoURL: photoURL || currentFirebaseUser.photoURL
+      })
+        .then(() => {
+          updateProfileSection();
+          updateAccountPanel('Conta conectada • perfil atualizado');
+          alert('Perfil atualizado com sucesso!');
+        })
+        .catch((error) => {
+          console.error('Erro ao atualizar perfil:', error);
+          alert('Não foi possível atualizar o perfil.');
+        });
+    }
+
+    function loadCurrentProfile() {
+      updateProfileSection();
     }
 
     function normalizeListData(listData) {
@@ -1772,6 +1994,9 @@
       if (sectionId === 'historySection') {
         updateHistory();
         updateTargetListSelect();
+      }
+      if (sectionId === 'profileSection') {
+        updateProfileSection();
       }
       if (sectionId === 'divideSection') {
         document.getElementById('divisionResult').innerHTML = '';

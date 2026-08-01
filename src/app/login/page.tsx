@@ -11,7 +11,7 @@ import {
   signInWithRedirect,
 } from "firebase/auth";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { firebaseAuth } from "@/lib/firebase";
 
@@ -51,8 +51,7 @@ function messageForError(code?: string) {
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/index.html';
+  const [redirectTo, setRedirectTo] = useState('/index.html');
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -60,6 +59,11 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    setRedirectTo(searchParams.get('redirect') || '/index.html');
+  }, []);
 
   useEffect(() => {
     return onAuthStateChanged(firebaseAuth, (user) => {

@@ -1328,32 +1328,108 @@ textarea {
 }
 
 .sector-group {
-  background: transparent;
-  border: 0;
+  background: #fff;
+  border: 1px solid var(--gg-line);
   border-radius: 16px;
   margin-bottom: 14px;
-  overflow: visible;
+  overflow: hidden;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.sector-group:hover,
+.sector-group:focus-within {
+  border-color: #b8d4da;
+  box-shadow: var(--gg-shadow-sm);
+}
+
+.sector-group.is-collapsed {
+  background: #f8fbfc;
 }
 
 .sector-header {
-  background: transparent;
+  background: linear-gradient(135deg, #f2f9fa 0%, #f8fbfc 100%);
   border: 0;
+  border-radius: 0;
   box-shadow: none;
   color: var(--gg-ink);
-  min-height: 42px;
-  padding: 8px 4px 10px;
+  gap: 12px;
+  min-height: 66px;
+  padding: 12px 14px;
+  transition: background .18s ease;
 }
 
-.sector-header span:last-child {
+.sector-header:hover {
+  background: var(--gg-primary-pale);
+  transform: none;
+}
+
+.sector-header:focus-visible {
+  outline: 3px solid rgba(8, 127, 140, .22);
+  outline-offset: -3px;
+}
+
+.sector-heading {
+  align-items: center;
+  display: flex;
+  gap: 11px;
+  min-width: 0;
+}
+
+.sector-chevron {
+  align-items: center;
+  background: var(--gg-primary);
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 24px;
+  font-weight: 700;
+  height: 32px;
+  justify-content: center;
+  line-height: 1;
+  padding-bottom: 2px;
+  transform: rotate(90deg);
+  transition: transform .18s ease, background .18s ease;
+  width: 32px;
+}
+
+.sector-group.is-collapsed .sector-chevron {
+  background: #dcecee;
+  color: var(--gg-primary-dark);
+  transform: rotate(0deg);
+}
+
+.sector-labels {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sector-name {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sector-action {
+  color: var(--gg-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sector-count {
   background: var(--gg-primary-pale);
   border-radius: 999px;
   color: var(--gg-primary-dark);
+  flex: 0 0 auto;
   font-size: 11px;
   padding: 5px 9px;
 }
 
 .sector-body {
-  padding: 0;
+  border-top: 1px solid #edf3f5;
+  padding: 10px;
 }
 
 .sector-items {

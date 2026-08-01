@@ -1804,15 +1804,51 @@
         return first.localeCompare(second, 'pt-BR');
       });
 
-      sectorNames.forEach((sectorName) => {
+      sectorNames.forEach((sectorName, sectorIndex) => {
         const sectorItems = groupedItems[sectorName];
+        const isCollapsed = collapsedSectors.has(sectorName);
         const section = document.createElement('section');
         section.className = 'sector-group';
+        section.classList.toggle('is-collapsed', isCollapsed);
 
         const header = document.createElement('button');
         header.type = 'button';
         header.className = 'sector-header';
-        header.innerHTML = `<span>${sectorName}</span><span>${sectorItems.length} item${sectorItems.length === 1 ? '' : 's'}</span>`;
+        header.setAttribute('aria-expanded', String(!isCollapsed));
+
+        const bodyId = `sector-body-${sectorIndex}`;
+        header.setAttribute('aria-controls', bodyId);
+
+        const heading = document.createElement('span');
+        heading.className = 'sector-heading';
+
+        const chevron = document.createElement('span');
+        chevron.className = 'sector-chevron';
+        chevron.setAttribute('aria-hidden', 'true');
+        chevron.textContent = '›';
+
+        const labels = document.createElement('span');
+        labels.className = 'sector-labels';
+
+        const name = document.createElement('strong');
+        name.className = 'sector-name';
+        name.textContent = sectorName;
+
+        const action = document.createElement('small');
+        action.className = 'sector-action';
+        action.textContent = isCollapsed ? 'Toque para ver os produtos' : 'Toque para recolher';
+
+        labels.appendChild(name);
+        labels.appendChild(action);
+        heading.appendChild(chevron);
+        heading.appendChild(labels);
+
+        const count = document.createElement('span');
+        count.className = 'sector-count';
+        count.textContent = `${sectorItems.length} item${sectorItems.length === 1 ? '' : 's'}`;
+
+        header.appendChild(heading);
+        header.appendChild(count);
         header.addEventListener('click', () => {
           if (collapsedSectors.has(sectorName)) {
             collapsedSectors.delete(sectorName);
@@ -1824,7 +1860,8 @@
 
         const body = document.createElement('div');
         body.className = 'sector-body';
-        if (collapsedSectors.has(sectorName)) {
+        body.id = bodyId;
+        if (isCollapsed) {
           body.classList.add('collapsed');
         }
 

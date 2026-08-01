@@ -1026,6 +1026,51 @@
       .stats-grid {
         grid-template-columns: repeat(2, 1fr);
       }
+
+      /* Improve item and sector layout on small screens */
+      .sector-items li {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .sector-items li .item-controls {
+        justify-content: flex-start;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .sector-items li .item-controls .action-buttons {
+        margin-left: auto;
+      }
+
+      /* Make editing inputs and selects expand to full width */
+      li.editing input[type="text"],
+      li.editing input[type="number"],
+      li.editing select.edit-sector,
+      select#itemSector,
+      .edit-sector {
+        width: 100% !important;
+        box-sizing: border-box;
+        margin: 6px 0;
+      }
+
+      /* Allow item text to wrap instead of being cut off */
+      li .item-info span {
+        white-space: normal;
+        word-break: break-word;
+      }
+
+      .sector-header {
+        padding: 10px 12px;
+        font-size: 15px;
+      }
+
+      .sector-body {
+        padding: 8px 8px 6px;
+      }
     }
   </style>
   <link rel="stylesheet" href="/app-theme.css">

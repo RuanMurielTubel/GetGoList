@@ -1187,6 +1187,13 @@
     </div>
     
     <div id="shoppingSection" class="section">
+      <div class="shared-mode-banner" id="sharedModeBanner" style="display: none;">
+        <span class="shared-mode-dot" aria-hidden="true"></span>
+        <div>
+          <strong>Colaboração em tempo real</strong>
+          <small>Você está editando “<span id="sharedModeListName"></span>” com outros colaboradores.</small>
+        </div>
+      </div>
       <div class="button-group primary">
         <button class="create-list" id="openCreateListDialogButton">Criar Nova Lista</button>        
         <button class="list-action" id="openEditListNamesDialogButton">Editar Nomes</button>
@@ -1368,17 +1375,19 @@
   </div>
   <div id="shareListDialog" class="dialog">
     <div class="dialog-content">
-      <h3>Compartilhar Lista</h3>
+      <h3>Compartilhar para colaborar</h3>
       <p>Compartilhar a lista "<span id="shareListName"></span>":</p>
-      <label for="shareEmailInput">Convidar por e-mail (separados por vírgula):</label>
+      <p class="share-login-note">Quem receber o link precisará entrar com Google ou criar uma conta antes de acessar.</p>
+      <label for="shareEmailInput">Opcional: convidar e-mails específicos, separados por vírgula:</label>
       <input type="text" id="shareEmailInput" placeholder="email1@exemplo.com, email2@exemplo.com">
       <label class="share-link-toggle">
         <input type="checkbox" id="shareLinkToggle" checked>
-        Permitir acesso a qualquer pessoa com o link
+        Permitir colaboração para qualquer pessoa autenticada com o link
       </label>
+      <button id="saveShareSettingsButton">Gerar link colaborativo</button>
       <input type="text" id="shareLink" readonly>
       <div id="shareErrorMessage" style="display:none; margin-top: 12px; color: #fff; background: #a00; border: 1px solid #f44; padding: 12px; border-radius: 10px; white-space: pre-wrap;"></div>
-      <button class="copy-link" id="copyShareLinkButton">Copiar Link</button>
+      <button class="copy-link" id="copyShareLinkButton" disabled>Copiar Link</button>
       <button id="closeShareListDialogButton">Fechar</button>
     </div>
   </div>

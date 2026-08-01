@@ -8,20 +8,29 @@ service cloud.firestore {
     }
 
     match /sharedLists/{listId} {
+      function hasSharedListAccess() {
+        return request.auth != null && (
+          request.auth.uid == resource.data.owner ||
+          (request.auth.token.email != null && request.auth.token.email in resource.data.get('allowedEmails', [])) ||
+          resource.data.get('linkAccess', false) == true
+        );
+      }
+
+      function preservesSharingPermissions() {
+        return request.resource.data.owner == resource.data.owner
+          && request.resource.data.get('ownerEmail', '') == resource.data.get('ownerEmail', '')
+          && request.resource.data.get('allowedEmails', []) == resource.data.get('allowedEmails', [])
+          && request.resource.data.get('linkAccess', false) == resource.data.get('linkAccess', false);
+      }
+
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.owner;
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.owner ||
-        (request.auth.token.email != null && request.auth.token.email in resource.data.allowedEmails) ||
-        resource.data.linkAccess == true
+      allow update: if hasSharedListAccess() && (
+        request.auth.uid == resource.data.owner || preservesSharingPermissions()
       );
       allow delete: if request.auth != null
         && request.auth.uid == resource.data.owner;
-      allow read: if request.auth != null && (
-        request.auth.uid == resource.data.owner ||
-        (request.auth.token.email != null && request.auth.token.email in resource.data.allowedEmails) ||
-        resource.data.linkAccess == true
-      );
+      allow read: if hasSharedListAccess();
     }
 
     match /{document=**} {

@@ -51,7 +51,7 @@ function messageForError(code?: string) {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [redirectTo, setRedirectTo] = useState('/index.html');
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -66,6 +66,9 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
+    if (!redirectTo) {
+      return;
+    }
     return onAuthStateChanged(firebaseAuth, (user) => {
       if (user) {
         router.replace(redirectTo);

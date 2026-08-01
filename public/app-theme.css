@@ -351,6 +351,55 @@ button.select-all:hover {
   margin: 18px 0;
 }
 
+.shared-mode-banner {
+  align-items: center;
+  background: var(--gg-primary-pale);
+  border: 1px solid #b8e2e6;
+  border-radius: 14px;
+  color: var(--gg-primary-dark);
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+}
+
+.shared-mode-banner div {
+  display: grid;
+  gap: 3px;
+}
+
+.shared-mode-banner small {
+  color: var(--gg-muted);
+}
+
+.shared-mode-dot {
+  background: #22a06b;
+  border: 4px solid rgba(34, 160, 107, .16);
+  border-radius: 999px;
+  flex: 0 0 auto;
+  height: 11px;
+  width: 11px;
+}
+
+.share-login-note {
+  background: var(--gg-primary-pale);
+  border-radius: 10px;
+  color: var(--gg-primary-dark);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 11px 13px;
+}
+
+#saveShareSettingsButton,
+#shareLink,
+#copyShareLinkButton {
+  width: calc(100% - 16px);
+}
+
+#copyShareLinkButton:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
 .button-group.primary,
 .button-group.secondary,
 .history-section,

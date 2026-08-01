@@ -22,6 +22,9 @@
     let applyingRemoteLists = false;
     let remoteSaveTimer = null;
     let initialRemoteSnapshotHandled = false;
+    let lastSharedListsSnapshot = null;
+    let pendingShareDocumentReference = null;
+    let currentSharedOwnerId = null;
 
     const firebaseConfig = {
       apiKey: "AIzaSyApgAliwYTpeIyYgEpeFTw6HrS5Bc-Kc9Q",
@@ -42,6 +45,17 @@
       'Congelados'
     ];
 
+    function cloneSerializable(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function createEntityId(prefix = 'item') {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return `${prefix}-${window.crypto.randomUUID()}`;
+      }
+      return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
     function saveLists(options = {}) {
       try {
         localStorage.setItem('lists', JSON.stringify(lists));
@@ -59,7 +73,9 @@
         return;
       }
 
-      const listsPayload = JSON.parse(JSON.stringify(lists));
+      const listsPayload = sharedListId
+        ? { [currentListName]: cloneSerializable(lists[currentListName]) }
+        : cloneSerializable(lists);
       const payload = {
         lists: listsPayload,
         currentListName,
@@ -75,7 +91,7 @@
         // Usar set(..., { merge: true }) preservava chaves removidas no
         // Firestore e fazia listas excluídas reaparecerem no próximo snapshot.
         const remoteSave = sharedListId
-          ? remoteListReference.update(payload)
+          ? saveSharedListsTransaction(payload)
           : remoteListReference.set(payload);
 
         remoteSave.catch((error) => {
@@ -402,15 +418,32 @@
       }
     }
 
+    function legacyEntityId(prefix, entity, index) {
+      const source = [
+        prefix,
+        index,
+        entity && entity.name,
+        entity && entity.price,
+        entity && entity.quantity,
+        entity && entity.date,
+      ].join('|');
+      let hash = 0;
+      for (let position = 0; position < source.length; position += 1) {
+        hash = ((hash << 5) - hash + source.charCodeAt(position)) | 0;
+      }
+      return `${prefix}-legacy-${Math.abs(hash)}`;
+    }
+
     function normalizeListData(listData) {
       if (!listData || typeof listData !== 'object') {
         return { items: [], history: [], balance: 0, initialBalance: 0 };
       }
 
       const normalizedItems = Array.isArray(listData.items)
-        ? listData.items.map((item) => {
+        ? listData.items.map((item, index) => {
             const sanitizedItem = item && typeof item === 'object' ? item : {};
             return {
+              id: String(sanitizedItem.id || legacyEntityId('item', sanitizedItem, index)),
               name: String(sanitizedItem.name || ''),
               price: Number(sanitizedItem.price) || 0,
               quantity: Number(sanitizedItem.quantity) || 1,
@@ -423,9 +456,10 @@
         : [];
 
       const normalizedHistory = Array.isArray(listData.history)
-        ? listData.history.map((entry) => {
+        ? listData.history.map((entry, index) => {
             const sanitizedEntry = entry && typeof entry === 'object' ? entry : {};
             return {
+              id: String(sanitizedEntry.id || legacyEntityId('history', sanitizedEntry, index)),
               name: String(sanitizedEntry.name || ''),
               price: Number(sanitizedEntry.price) || 0,
               quantity: Number(sanitizedEntry.quantity) || 1,
@@ -443,6 +477,84 @@
         balance: typeof listData.balance === 'number' ? listData.balance : Number(listData.balance) || 0,
         initialBalance: typeof listData.initialBalance === 'number' ? listData.initialBalance : Number(listData.initialBalance) || 0,
       };
+    }
+
+    function mergeSharedCollection(remoteEntries, baselineEntries, desiredEntries) {
+      const remoteMap = new Map((remoteEntries || []).map((entry) => [entry.id, entry]));
+      const baselineMap = new Map((baselineEntries || []).map((entry) => [entry.id, entry]));
+      const desiredMap = new Map((desiredEntries || []).map((entry) => [entry.id, entry]));
+
+      baselineMap.forEach((entry, id) => {
+        if (!desiredMap.has(id)) {
+          remoteMap.delete(id);
+        }
+      });
+
+      desiredMap.forEach((entry, id) => {
+        const baselineEntry = baselineMap.get(id);
+        if (!baselineEntry || JSON.stringify(entry) !== JSON.stringify(baselineEntry)) {
+          remoteMap.set(id, entry);
+        }
+      });
+
+      const desiredOrder = (desiredEntries || []).map((entry) => entry.id);
+      const remainingIds = Array.from(remoteMap.keys()).filter((id) => !desiredOrder.includes(id));
+      return [...desiredOrder, ...remainingIds]
+        .filter((id) => remoteMap.has(id))
+        .map((id) => remoteMap.get(id));
+    }
+
+    function mergeSharedListData(remoteList, baselineList, desiredList) {
+      const remote = normalizeListData(remoteList);
+      const baseline = normalizeListData(baselineList);
+      const desired = normalizeListData(desiredList);
+      const items = mergeSharedCollection(remote.items, baseline.items, desired.items);
+      const history = mergeSharedCollection(remote.history, baseline.history, desired.history);
+      const initialBalanceChanged = desired.initialBalance !== baseline.initialBalance;
+      const initialBalance = initialBalanceChanged ? desired.initialBalance : remote.initialBalance;
+
+      return {
+        items,
+        history,
+        initialBalance,
+        balance: initialBalance - items.reduce((sum, item) => sum + item.total, 0),
+      };
+    }
+
+    function saveSharedListsTransaction(payload) {
+      if (!firestoreDb || !remoteListReference) {
+        return Promise.reject(new Error('Sincronização compartilhada indisponível.'));
+      }
+
+      const desiredListName = payload.currentListName;
+      const desiredList = payload.lists[desiredListName];
+      const baselineLists = lastSharedListsSnapshot || {};
+      const baselineListName = Object.keys(baselineLists)[0] || desiredListName;
+      const baselineList = baselineLists[baselineListName] || desiredList;
+
+      return firestoreDb.runTransaction((transaction) => {
+        return transaction.get(remoteListReference).then((snapshot) => {
+          if (!snapshot.exists) {
+            throw new Error('A lista compartilhada não existe mais.');
+          }
+
+          const remoteData = snapshot.data() || {};
+          const remoteLists = remoteData.lists || {};
+          const remoteList = remoteLists[desiredListName]
+            || remoteLists[Object.keys(remoteLists)[0]]
+            || desiredList;
+          const mergedList = mergeSharedListData(remoteList, baselineList, desiredList);
+
+          transaction.update(remoteListReference, {
+            lists: { [desiredListName]: mergedList },
+            currentListName: desiredListName,
+            lastEditedBy: payload.lastEditedBy,
+            lastEditedByEmail: payload.lastEditedByEmail,
+            lastEditedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+        });
+      });
     }
 
     function hasListData(listData) {
@@ -500,7 +612,15 @@
       }
 
       applyingRemoteLists = true;
-      lists = remoteLists;
+      lists = Object.fromEntries(
+        Object.entries(remoteLists).map(([listName, listData]) => [
+          listName,
+          normalizeListData(listData),
+        ])
+      );
+      if (sharedListId) {
+        lastSharedListsSnapshot = cloneSerializable(lists);
+      }
       currentListName =
         preferredListName && lists[preferredListName]
           ? preferredListName
@@ -522,7 +642,102 @@
       updateDashboard();
       updateTargetListSelect();
       updateMonthSelect();
+      updateSharedModeUi();
       applyingRemoteLists = false;
+    }
+
+    function updateSharedModeUi() {
+      const sharedBanner = document.getElementById('sharedModeBanner');
+      const sharedListName = document.getElementById('sharedModeListName');
+      const listManagementIds = [
+        'openCreateListDialogButton',
+        'openEditListNamesDialogButton',
+        'openSelectListDialogButton',
+        'openDeleteListDialogButton',
+        'openBalanceListButton',
+        'openDivideListButton',
+      ];
+
+      if (sharedBanner) {
+        sharedBanner.style.display = sharedListId ? 'flex' : 'none';
+      }
+      if (sharedListName) {
+        sharedListName.textContent = currentListName;
+      }
+      listManagementIds.forEach((id) => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.style.display = sharedListId ? 'none' : '';
+        }
+      });
+    }
+
+    function subscribeToRemoteLists() {
+      if (!remoteListReference) {
+        return;
+      }
+      if (remoteListUnsubscribe) {
+        remoteListUnsubscribe();
+      }
+
+      remoteListUnsubscribe = remoteListReference.onSnapshot((snapshot) => {
+        const remoteData = snapshot.exists ? snapshot.data() : null;
+        if (sharedListId && remoteData) {
+          currentSharedOwnerId = remoteData.owner || null;
+        }
+
+        if (remoteData && remoteData.lists && Object.keys(remoteData.lists).length) {
+          if (sharedListId) {
+            const sharedName = remoteData.currentListName && remoteData.lists[remoteData.currentListName]
+              ? remoteData.currentListName
+              : Object.keys(remoteData.lists)[0];
+            applyRemoteLists({ [sharedName]: remoteData.lists[sharedName] }, sharedName);
+            initialRemoteSnapshotHandled = true;
+            remoteSyncReady = true;
+          } else if (!initialRemoteSnapshotHandled) {
+            const mergedLists = mergeLocalAndRemoteLists(remoteData.lists, lists);
+            applyRemoteLists(mergedLists, remoteData.currentListName);
+            initialRemoteSnapshotHandled = true;
+            remoteSyncReady = true;
+            saveLists();
+          } else {
+            applyRemoteLists(remoteData.lists, remoteData.currentListName);
+            remoteSyncReady = true;
+          }
+        } else if (sharedListId) {
+          remoteSyncReady = false;
+          updateAccountPanel('Lista compartilhada indisponível');
+        } else {
+          initialRemoteSnapshotHandled = true;
+          remoteSyncReady = true;
+          saveLists();
+        }
+
+        const lastEditorName = remoteData && (remoteData.lastEditedBy || remoteData.lastEditedByEmail);
+        updateLastEditedInfo(lastEditorName);
+        if (remoteSyncReady) {
+          updateAccountPanel(sharedListId ? 'Conta conectada • colaboração em tempo real' : undefined);
+        }
+      }, (error) => {
+        console.error('Não foi possível acompanhar a lista em tempo real.', error);
+        remoteSyncReady = false;
+        updateAccountPanel(sharedListId ? 'Sem acesso a esta lista compartilhada' : 'Conta conectada • sincronização pendente');
+      });
+    }
+
+    function activateSharedList(docRef, documentId, initialLists) {
+      remoteListReference = docRef;
+      sharedListId = documentId;
+      isSharedListMode = true;
+      initialRemoteSnapshotHandled = true;
+      remoteSyncReady = true;
+      lastSharedListsSnapshot = cloneSerializable(initialLists);
+      const sharedUrl = `${window.location.origin}${window.location.pathname}?sharedList=${documentId}`;
+      window.history.replaceState({}, document.title, sharedUrl);
+      updateSharedModeUi();
+      subscribeToRemoteLists();
+      updateAccountPanel('Conta conectada • colaboração em tempo real');
+      return sharedUrl;
     }
 
     function initializeFirebaseSync() {
@@ -581,40 +796,8 @@
               .doc('lists');
           }
           showSection('shoppingSection');
-
-          remoteListUnsubscribe = remoteListReference.onSnapshot((snapshot) => {
-            const remoteData = snapshot.exists ? snapshot.data() : null;
-
-            if (remoteData && remoteData.lists && Object.keys(remoteData.lists).length) {
-              if (sharedListId) {
-                // O documento compartilhado é a fonte de verdade. Mesclar o
-                // cache particular aqui duplicava listas a cada atualização.
-                applyRemoteLists(remoteData.lists, remoteData.currentListName);
-                initialRemoteSnapshotHandled = true;
-                remoteSyncReady = true;
-              } else if (!initialRemoteSnapshotHandled) {
-                const mergedLists = mergeLocalAndRemoteLists(remoteData.lists, lists);
-                applyRemoteLists(mergedLists, remoteData.currentListName);
-                initialRemoteSnapshotHandled = true;
-                remoteSyncReady = true;
-                saveLists();
-              } else {
-                applyRemoteLists(remoteData.lists, remoteData.currentListName);
-                remoteSyncReady = true;
-              }
-            } else {
-              initialRemoteSnapshotHandled = true;
-              remoteSyncReady = true;
-              saveLists();
-            }
-
-            const lastEditorName = remoteData && (remoteData.lastEditedBy || remoteData.lastEditedByEmail);
-            updateLastEditedInfo(lastEditorName);
-            updateAccountPanel();
-          }, () => {
-            remoteSyncReady = false;
-            updateAccountPanel("Conta conectada • sincronização pendente");
-          });
+          updateSharedModeUi();
+          subscribeToRemoteLists();
         });
       } catch (error) {
         console.error("Não foi possível iniciar a sincronização.", error);
@@ -693,18 +876,7 @@
         lists = {};
         Object.keys(storedLists).forEach(listName => {
           const storedList = storedLists[listName];
-          lists[listName] = {
-            items: Array.isArray(storedList?.items)
-              ? storedList.items.map((item) => ({
-                  ...item,
-                  sector: item?.sector || 'Geral',
-                  checked: Boolean(item && typeof item === 'object' ? item.checked : false)
-                }))
-              : [],
-            history: Array.isArray(storedList?.history) ? storedList.history : [],
-            balance: typeof storedList?.balance === 'number' ? storedList.balance : 0,
-            initialBalance: typeof storedList?.initialBalance === 'number' ? storedList.initialBalance : 0
-          };
+          lists[listName] = normalizeListData(storedList);
         });
         if (importedListName) {
           lists[importedListName] = lists[importedListName] || defaultLists["Lista 1"];
@@ -1217,6 +1389,7 @@
           }
         }
         const item = {
+          id: createEntityId('item'),
           name: itemName,
           price: itemPrice,
           quantity: itemQuantity,
@@ -1226,7 +1399,7 @@
           checked: false
         };
         shoppingList.push(item);
-        listHistory.push(item);
+        listHistory.push({ ...item, id: createEntityId('history') });
         lists[currentListName].balance -= item.total;
         try {
           saveLists();
@@ -1281,6 +1454,7 @@
           }
         }
         const newItem = {
+          id: oldItem.id || createEntityId('item'),
           name: itemName,
           price: itemPrice,
           quantity: itemQuantity,
@@ -1290,7 +1464,7 @@
           checked: oldItem.checked
         };
         shoppingList[index] = newItem;
-        listHistory.push(newItem);
+        listHistory.push({ ...newItem, id: createEntityId('history') });
         lists[currentListName].balance -= newItem.total;
         try {
           saveLists();
@@ -1879,7 +2053,7 @@
         .filter((email) => email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
     }
 
-    function showShareDialog() {
+    function showShareDialogLegacy() {
       console.log("Tentando abrir diálogo de compartilhamento");
       const dialog = document.getElementById('shareListDialog');
       const shareListName = document.getElementById('shareListName');
@@ -1999,6 +2173,147 @@
         initializeDialogFields({ linkAccess: true });
         createOrUpdateShareDoc(docRef, false);
       }
+    }
+
+    function showShareError(error) {
+      const shareErrorMessage = document.getElementById('shareErrorMessage');
+      const errorMessage = error && (error.message || error.code || error.toString())
+        ? (error.message || error.code || error.toString())
+        : 'Não foi possível concluir o compartilhamento.';
+      if (shareErrorMessage) {
+        shareErrorMessage.style.display = 'block';
+        shareErrorMessage.textContent = errorMessage;
+      }
+    }
+
+    function configureShareDialogForOwner(isOwner) {
+      const shareEmailInput = document.getElementById('shareEmailInput');
+      const shareLinkToggle = document.getElementById('shareLinkToggle');
+      const saveButton = document.getElementById('saveShareSettingsButton');
+      if (shareEmailInput) shareEmailInput.disabled = !isOwner;
+      if (shareLinkToggle) shareLinkToggle.disabled = !isOwner;
+      if (saveButton) saveButton.style.display = isOwner ? '' : 'none';
+    }
+
+    function showShareDialog() {
+      const dialog = document.getElementById('shareListDialog');
+      const shareListName = document.getElementById('shareListName');
+      const shareEmailInput = document.getElementById('shareEmailInput');
+      const shareLinkToggle = document.getElementById('shareLinkToggle');
+      const shareLink = document.getElementById('shareLink');
+      const copyButton = document.getElementById('copyShareLinkButton');
+      const saveButton = document.getElementById('saveShareSettingsButton');
+      const shareErrorMessage = document.getElementById('shareErrorMessage');
+
+      if (!dialog || !shareListName || !shareEmailInput || !shareLinkToggle || !shareLink || !copyButton || !saveButton) {
+        return;
+      }
+      if (!currentFirebaseUser || !firebaseAuth) {
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+      }
+      if (!firestoreDb) {
+        showShareError(new Error('A sincronização ainda não está disponível. Recarregue a página.'));
+        return;
+      }
+
+      shareListName.textContent = currentListName;
+      shareEmailInput.value = '';
+      shareLinkToggle.checked = true;
+      shareLink.value = '';
+      copyButton.disabled = true;
+      saveButton.textContent = sharedListId ? 'Atualizar compartilhamento' : 'Gerar link colaborativo';
+      configureShareDialogForOwner(!sharedListId || currentSharedOwnerId === currentFirebaseUser.uid);
+      if (shareErrorMessage) {
+        shareErrorMessage.style.display = 'none';
+        shareErrorMessage.textContent = '';
+      }
+
+      pendingShareDocumentReference = sharedListId
+        ? firestoreDb.collection('sharedLists').doc(sharedListId)
+        : firestoreDb.collection('sharedLists').doc();
+      dialog.style.display = 'flex';
+
+      if (!sharedListId) {
+        return;
+      }
+
+      pendingShareDocumentReference.get().then((snapshot) => {
+        if (!snapshot.exists) {
+          throw new Error('A lista compartilhada não existe mais.');
+        }
+        const data = snapshot.data() || {};
+        currentSharedOwnerId = data.owner || null;
+        const isOwner = currentSharedOwnerId === currentFirebaseUser.uid;
+        configureShareDialogForOwner(isOwner);
+        const currentUserEmail = (currentFirebaseUser.email || '').toLowerCase();
+        shareEmailInput.value = Array.isArray(data.allowedEmails)
+          ? data.allowedEmails.filter((email) => email !== currentUserEmail).join(', ')
+          : '';
+        shareLinkToggle.checked = data.linkAccess !== false;
+        shareLink.value = `${window.location.origin}${window.location.pathname}?sharedList=${sharedListId}`;
+        copyButton.disabled = false;
+      }).catch(showShareError);
+    }
+
+    function saveShareSettings() {
+      const shareEmailInput = document.getElementById('shareEmailInput');
+      const shareLinkToggle = document.getElementById('shareLinkToggle');
+      const shareLink = document.getElementById('shareLink');
+      const copyButton = document.getElementById('copyShareLinkButton');
+      const saveButton = document.getElementById('saveShareSettingsButton');
+      if (!pendingShareDocumentReference || !currentFirebaseUser || !shareEmailInput || !shareLinkToggle || !shareLink || !copyButton || !saveButton) {
+        return;
+      }
+
+      saveButton.disabled = true;
+      saveButton.textContent = 'Salvando...';
+      const ownerEmail = (currentFirebaseUser.email || '').toLowerCase();
+      const allowedEmails = [ownerEmail, ...parseSharedEmails(shareEmailInput.value)]
+        .filter((email, index, collection) => email && collection.indexOf(email) === index);
+
+      const isExistingShare = Boolean(sharedListId);
+      const selectedList = normalizeListData(lists[currentListName]);
+      const selectedLists = { [currentListName]: selectedList };
+      const metadata = {
+        allowedEmails,
+        linkAccess: shareLinkToggle.checked,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      const writePromise = isExistingShare
+        ? pendingShareDocumentReference.update(metadata)
+        : pendingShareDocumentReference.set({
+            ...metadata,
+            lists: selectedLists,
+            currentListName,
+            owner: currentFirebaseUser.uid,
+            ownerEmail: currentFirebaseUser.email || '',
+            lastEditedBy: currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList',
+            lastEditedByEmail: currentFirebaseUser.email || '',
+            lastEditedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+
+      writePromise.then(() => {
+        if (!isExistingShare) {
+          currentSharedOwnerId = currentFirebaseUser.uid;
+          applyRemoteLists(selectedLists, currentListName);
+          shareLink.value = activateSharedList(
+            pendingShareDocumentReference,
+            pendingShareDocumentReference.id,
+            selectedLists
+          );
+        } else {
+          shareLink.value = `${window.location.origin}${window.location.pathname}?sharedList=${sharedListId}`;
+        }
+        copyButton.disabled = false;
+        saveButton.disabled = false;
+        saveButton.textContent = 'Compartilhamento atualizado';
+      }).catch((error) => {
+        saveButton.disabled = false;
+        saveButton.textContent = isExistingShare ? 'Atualizar compartilhamento' : 'Gerar link colaborativo';
+        showShareError(error);
+      });
     }
 
     function openListNavigationDialog() {
@@ -2593,6 +2908,7 @@
       const selectDivideListButton = document.getElementById('selectDivideListButton');
       const closeDivideListDialogButton = document.getElementById('closeDivideListDialogButton');
       const copyShareLinkButton = document.getElementById('copyShareLinkButton');
+      const saveShareSettingsButton = document.getElementById('saveShareSettingsButton');
       const closeShareListDialogButton = document.getElementById('closeShareListDialogButton');
       const navigateToSelectedListButton = document.getElementById('navigateToSelectedListButton');
       const closeListNavigationDialogButton = document.getElementById('closeListNavigationDialogButton');
@@ -2722,6 +3038,9 @@
       }
       if (copyShareLinkButton) {
         copyShareLinkButton.addEventListener('click', copyShareLink);
+      }
+      if (saveShareSettingsButton) {
+        saveShareSettingsButton.addEventListener('click', saveShareSettings);
       }
       if (closeShareListDialogButton) {
         closeShareListDialogButton.addEventListener('click', () => closeDialog('shareListDialog'));

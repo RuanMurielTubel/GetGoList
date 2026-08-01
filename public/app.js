@@ -1923,7 +1923,11 @@
           ? { ...listData }
           : { ...listData, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
 
-        docRef.set(payload, { merge })
+        const setPromise = merge
+          ? docRef.set(payload, { merge: true })
+          : docRef.set(payload);
+
+        setPromise
           .then(() => {
             remoteListReference = docRef;
             const sharedUrl = `${window.location.origin}${window.location.pathname}?sharedList=${docRef.id}`;
@@ -1935,7 +1939,7 @@
           })
           .catch((error) => {
             console.error('Erro ao salvar lista compartilhada:', error);
-            alert('Não foi possível atualizar o compartilhamento da lista. Tente novamente.');
+            alert(`Não foi possível criar o compartilhamento da lista. Erro: ${error.message || error.code || 'desconhecido'}`);
           });
       };
 

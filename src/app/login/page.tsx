@@ -11,7 +11,7 @@ import {
   signInWithRedirect,
 } from "firebase/auth";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { firebaseAuth } from "@/lib/firebase";
 
@@ -51,6 +51,8 @@ function messageForError(code?: string) {
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/index.html';
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -62,10 +64,10 @@ export default function LoginPage() {
   useEffect(() => {
     return onAuthStateChanged(firebaseAuth, (user) => {
       if (user) {
-        router.replace("/index.html");
+        router.replace(redirectTo);
       }
     });
-  }, [router]);
+  }, [router, redirectTo]);
 
   async function handleGoogleSignIn() {
     setFeedback("");

@@ -59,13 +59,17 @@
         return;
       }
 
+      const listsPayload = JSON.parse(JSON.stringify(lists));
+      const payload = {
+        lists: listsPayload,
+        currentListName,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
       window.clearTimeout(remoteSaveTimer);
       remoteSaveTimer = window.setTimeout(() => {
-        remoteListReference.set({
-          lists,
-          currentListName,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }).catch(() => {
+        const saveOptions = sharedListId ? { merge: true } : {};
+        remoteListReference.set(payload, saveOptions).catch(() => {
           updateAccountPanel("Conta conectada • sincronização pendente");
         });
       }, 350);
@@ -394,17 +398,40 @@
       }
 
       const normalizedItems = Array.isArray(listData.items)
-        ? listData.items.map((item) => ({
-            ...item,
-            checked: Boolean(item && typeof item === 'object' ? item.checked : false)
-          }))
+        ? listData.items.map((item) => {
+            const sanitizedItem = item && typeof item === 'object' ? item : {};
+            return {
+              name: String(sanitizedItem.name || ''),
+              price: Number(sanitizedItem.price) || 0,
+              quantity: Number(sanitizedItem.quantity) || 1,
+              total: Number(sanitizedItem.total) || 0,
+              sector: String(sanitizedItem.sector || 'Geral'),
+              date: String(sanitizedItem.date || new Date().toLocaleDateString()),
+              checked: Boolean(sanitizedItem.checked),
+            };
+          })
+        : [];
+
+      const normalizedHistory = Array.isArray(listData.history)
+        ? listData.history.map((entry) => {
+            const sanitizedEntry = entry && typeof entry === 'object' ? entry : {};
+            return {
+              name: String(sanitizedEntry.name || ''),
+              price: Number(sanitizedEntry.price) || 0,
+              quantity: Number(sanitizedEntry.quantity) || 1,
+              total: Number(sanitizedEntry.total) || 0,
+              sector: String(sanitizedEntry.sector || 'Geral'),
+              date: String(sanitizedEntry.date || new Date().toLocaleDateString()),
+              checked: Boolean(sanitizedEntry.checked),
+            };
+          })
         : [];
 
       return {
         items: normalizedItems,
-        history: Array.isArray(listData.history) ? listData.history : [],
-        balance: typeof listData.balance === 'number' ? listData.balance : 0,
-        initialBalance: typeof listData.initialBalance === 'number' ? listData.initialBalance : 0
+        history: normalizedHistory,
+        balance: typeof listData.balance === 'number' ? listData.balance : Number(listData.balance) || 0,
+        initialBalance: typeof listData.initialBalance === 'number' ? listData.initialBalance : Number(listData.initialBalance) || 0,
       };
     }
 
@@ -578,16 +605,18 @@
         "Lista 1": { items: [], history: [], balance: 0, initialBalance: 0 }
       };
 
-      // Tenta carregar listas do localStorage
+      // Tenta carregar listas do localStorage, mas ignore em modo de lista compartilhada.
       let storedLists = null;
-      try {
-        const storedData = localStorage.getItem('lists');
-        if (storedData) {
-          storedLists = JSON.parse(storedData);
-          console.log("Dados carregados do localStorage:", storedLists);
+      if (!sharedListId) {
+        try {
+          const storedData = localStorage.getItem('lists');
+          if (storedData) {
+            storedLists = JSON.parse(storedData);
+            console.log("Dados carregados do localStorage:", storedLists);
+          }
+        } catch (e) {
+          console.error("Erro ao parsear localStorage 'lists':", e);
         }
-      } catch (e) {
-        console.error("Erro ao parsear localStorage 'lists':", e);
       }
 
       // Verifica se há uma lista importada na URL

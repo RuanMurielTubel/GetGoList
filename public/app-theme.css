@@ -351,7 +351,8 @@ button.select-all:hover {
   margin: 18px 0;
 }
 
-.shared-mode-banner {
+.shared-mode-banner,
+.recent-shared-banner {
   align-items: center;
   background: var(--gg-primary-pale);
   border: 1px solid #b8e2e6;
@@ -362,13 +363,38 @@ button.select-all:hover {
   padding: 14px 16px;
 }
 
-.shared-mode-banner div {
+.shared-mode-banner > div,
+.recent-shared-banner > div {
   display: grid;
+  flex: 1;
   gap: 3px;
 }
 
-.shared-mode-banner small {
+.shared-mode-banner small,
+.recent-shared-banner small {
   color: var(--gg-muted);
+}
+
+.recent-shared-banner {
+  background: #fffaf0;
+  border-color: #f4d58b;
+  color: var(--gg-ink);
+}
+
+.shared-space-button {
+  background: var(--gg-surface);
+  border: 1px solid var(--gg-primary);
+  border-radius: 10px;
+  color: var(--gg-primary-dark);
+  flex: 0 0 auto;
+  font-weight: 700;
+  margin: 0;
+  padding: 10px 14px;
+}
+
+.shared-space-button:hover {
+  background: var(--gg-primary);
+  color: #fff;
 }
 
 .shared-mode-dot {
@@ -623,6 +649,17 @@ li .item-controls .checkbox-container input[type="checkbox"] {
   .button-group.secondary,
   .history-section {
     padding: 13px;
+  }
+
+  .shared-mode-banner,
+  .recent-shared-banner {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .shared-mode-banner .shared-space-button,
+  .recent-shared-banner .shared-space-button {
+    width: 100%;
   }
 
   .footer .info-section {

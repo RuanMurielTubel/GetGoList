@@ -1187,12 +1187,20 @@
     </div>
     
     <div id="shoppingSection" class="section">
+      <div class="recent-shared-banner" id="recentSharedBanner" style="display: none;">
+        <div>
+          <strong>Lista compartilhada dispon&iacute;vel</strong>
+          <small>Voltar para &ldquo;<span id="recentSharedListName"></span>&rdquo;.</small>
+        </div>
+        <button type="button" class="shared-space-button" id="openRecentSharedListButton">Abrir lista compartilhada</button>
+      </div>
       <div class="shared-mode-banner" id="sharedModeBanner" style="display: none;">
         <span class="shared-mode-dot" aria-hidden="true"></span>
         <div>
           <strong>Colaboração em tempo real</strong>
           <small>Você está editando “<span id="sharedModeListName"></span>” com outros colaboradores.</small>
         </div>
+        <button type="button" class="shared-space-button" id="openPrivateListsButton">Minhas listas</button>
       </div>
       <div class="button-group primary">
         <button class="create-list" id="openCreateListDialogButton">Criar Nova Lista</button>        

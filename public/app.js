@@ -628,6 +628,9 @@
       shoppingList = lists[currentListName].items || [];
       listHistory = lists[currentListName].history || [];
       selectedBalanceListName = currentListName;
+      if (sharedListId) {
+        rememberSharedListAccess(currentListName, sharedListId);
+      }
       // Uma lista compartilhada não deve substituir o cache das listas
       // particulares do usuário no dispositivo.
       if (!sharedListId) {
@@ -646,9 +649,49 @@
       applyingRemoteLists = false;
     }
 
+    function rememberSharedListAccess(listName, documentId) {
+      if (!listName || !documentId) {
+        return;
+      }
+      try {
+        localStorage.setItem('recentSharedList', JSON.stringify({
+          id: documentId,
+          name: listName,
+        }));
+      } catch (error) {
+        console.warn('Não foi possível guardar o atalho da lista compartilhada.', error);
+      }
+    }
+
+    function getRecentSharedList() {
+      try {
+        const recent = JSON.parse(localStorage.getItem('recentSharedList') || 'null');
+        if (recent && typeof recent.id === 'string' && recent.id && typeof recent.name === 'string' && recent.name) {
+          return recent;
+        }
+      } catch (error) {
+        console.warn('O atalho da lista compartilhada está inválido.', error);
+      }
+      return null;
+    }
+
+    function openPrivateLists() {
+      window.location.assign('/index.html');
+    }
+
+    function openRecentSharedList() {
+      const recentSharedList = getRecentSharedList();
+      if (recentSharedList) {
+        window.location.assign(`/index.html?sharedList=${encodeURIComponent(recentSharedList.id)}`);
+      }
+    }
+
     function updateSharedModeUi() {
       const sharedBanner = document.getElementById('sharedModeBanner');
       const sharedListName = document.getElementById('sharedModeListName');
+      const recentSharedBanner = document.getElementById('recentSharedBanner');
+      const recentSharedListName = document.getElementById('recentSharedListName');
+      const recentSharedList = getRecentSharedList();
       const listManagementIds = [
         'openCreateListDialogButton',
         'openEditListNamesDialogButton',
@@ -663,6 +706,12 @@
       }
       if (sharedListName) {
         sharedListName.textContent = currentListName;
+      }
+      if (recentSharedBanner) {
+        recentSharedBanner.style.display = !sharedListId && recentSharedList ? 'flex' : 'none';
+      }
+      if (recentSharedListName && recentSharedList) {
+        recentSharedListName.textContent = recentSharedList.name;
       }
       listManagementIds.forEach((id) => {
         const element = document.getElementById(id);
@@ -732,6 +781,10 @@
       initialRemoteSnapshotHandled = true;
       remoteSyncReady = true;
       lastSharedListsSnapshot = cloneSerializable(initialLists);
+      const sharedName = Object.keys(initialLists || {})[0];
+      if (sharedName) {
+        rememberSharedListAccess(sharedName, documentId);
+      }
       const sharedUrl = `${window.location.origin}${window.location.pathname}?sharedList=${documentId}`;
       window.history.replaceState({}, document.title, sharedUrl);
       updateSharedModeUi();
@@ -2912,6 +2965,8 @@
       const closeShareListDialogButton = document.getElementById('closeShareListDialogButton');
       const navigateToSelectedListButton = document.getElementById('navigateToSelectedListButton');
       const closeListNavigationDialogButton = document.getElementById('closeListNavigationDialogButton');
+      const openPrivateListsButton = document.getElementById('openPrivateListsButton');
+      const openRecentSharedListButton = document.getElementById('openRecentSharedListButton');
 
       if (setBalanceButton) {
         setBalanceButton.addEventListener('click', setBalance);
@@ -3051,6 +3106,12 @@
       if (closeListNavigationDialogButton) {
         closeListNavigationDialogButton.addEventListener('click', () => closeDialog('listNavigationDialog'));
       }
+      if (openPrivateListsButton) {
+        openPrivateListsButton.addEventListener('click', openPrivateLists);
+      }
+      if (openRecentSharedListButton) {
+        openRecentSharedListButton.addEventListener('click', openRecentSharedList);
+      }
     }
 
     // Event listener para fechar menu ao clicar fora
@@ -3067,6 +3128,7 @@
     setupDialogOverlayClose();
     setupEventHandlers();
     setupListButtons();
+    updateSharedModeUi();
     updateHistory();
     updateBalance();
     showSection('homeSection'); // Definir a seção inicial para visitante

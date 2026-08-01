@@ -10,6 +10,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
 } from "firebase/auth";
+import { Capacitor } from "@capacitor/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
@@ -59,10 +60,14 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isNativeApp, setIsNativeApp] = useState(false);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     setRedirectTo(searchParams.get('redirect') || '/index.html');
+    setIsNativeApp(
+      Capacitor.isNativePlatform() || searchParams.get("app") === "android",
+    );
   }, []);
 
   useEffect(() => {
@@ -197,7 +202,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="account-page">
+    <main className={`account-page${isNativeApp ? " account-page-app" : ""}`}>
       <section className="account-intro">
         <Link className="brand account-brand" href="/">
           <span className="brand-mark" aria-hidden="true">
@@ -229,6 +234,15 @@ export default function LoginPage() {
       </section>
 
       <section className="account-card" aria-labelledby="account-title">
+        {isNativeApp && (
+          <div className="account-app-brand" aria-label="GetGoList">
+            <span className="brand-mark" aria-hidden="true">
+              G
+            </span>
+            <span>GetGoList</span>
+          </div>
+        )}
+
         <div className="account-tabs" role="tablist" aria-label="Acesso">
           <button
             aria-selected={mode === "login"}

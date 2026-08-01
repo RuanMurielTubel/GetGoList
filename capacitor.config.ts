@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'GetGoList',
   webDir: 'public',
   server: {
-    url: 'https://www.getgolist.com',
+    url: 'https://www.getgolist.com/login?app=android',
     cleartext: false,
     androidScheme: 'https',
   },

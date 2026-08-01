@@ -549,6 +549,47 @@ footer {
   width: calc(100% - 48px);
 }
 
+.account-page-app {
+  align-items: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(8, 127, 140, 0.14), transparent 24rem),
+    #f6fafc;
+  display: flex;
+  justify-content: center;
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    18px
+    calc(24px + env(safe-area-inset-bottom));
+}
+
+.account-page-app .account-intro {
+  display: none;
+}
+
+.account-page-app .account-card {
+  margin: 0;
+  max-width: 430px;
+  padding: 28px;
+  width: 100%;
+}
+
+.account-app-brand {
+  align-items: center;
+  display: flex;
+  font-size: 1.25rem;
+  font-weight: 850;
+  gap: 10px;
+  justify-content: center;
+  letter-spacing: -0.03em;
+  margin-bottom: 26px;
+}
+
+.account-app-brand .brand-mark {
+  border-radius: 11px;
+  height: 40px;
+  width: 40px;
+}
+
 .account-tabs {
   background: var(--surface-soft);
   border-radius: 11px;
@@ -816,6 +857,32 @@ footer {
     margin: 0;
     padding: 38px 22px;
     width: 100%;
+  }
+
+  .account-page-app {
+    padding:
+      calc(18px + env(safe-area-inset-top))
+      16px
+      calc(18px + env(safe-area-inset-bottom));
+  }
+
+  .account-page-app .account-card {
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    box-shadow: 0 20px 60px rgba(16, 35, 63, 0.12);
+    padding: 25px 22px;
+  }
+
+  .account-page-app .account-card-heading {
+    margin: 24px 0 20px;
+  }
+
+  .account-page-app .guest-divider {
+    margin: 20px 0;
+  }
+
+  .account-page-app .account-terms {
+    margin-top: 16px;
   }
 }
 

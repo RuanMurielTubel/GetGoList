@@ -304,7 +304,16 @@ export default function LoginPage() {
             onClick={handleGoogleSignIn}
             disabled={loading}
           >
-            {loading ? 'Aguarde...' : 'Entrar com Google'}
+            {loading ? (
+              'Aguarde...'
+            ) : (
+              <>
+                <span className="google-icon" aria-hidden="true">
+                  G
+                </span>
+                Entrar com Google
+              </>
+            )}
           </button>
         </div>
 

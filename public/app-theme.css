@@ -1405,6 +1405,8 @@ textarea {
   min-height: 66px;
   padding: 0;
   touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -1435,6 +1437,15 @@ textarea {
 
 body.is-sector-dragging {
   cursor: grabbing;
+  overflow-anchor: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body.is-sector-dragging .sector-group,
+body.is-sector-dragging .sector-group * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   user-select: none;
 }
 

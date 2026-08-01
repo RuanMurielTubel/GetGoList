@@ -1799,10 +1799,55 @@
         }
       };
 
-      const finishDrag = () => {
+      const activateDrag = () => {
+        if (dragActive || pointerId === null) return;
+        clearHoldTimer();
+        dragActive = true;
+        section.classList.add('is-dragging');
+        document.body.classList.add('is-sector-dragging');
+        if (window.navigator.vibrate) window.navigator.vibrate(25);
+      };
+
+      const moveDrag = (event) => {
+        if (event.pointerId !== pointerId) return;
+
+        const movement = Math.abs(event.clientY - startY);
+        if (!dragActive && movement > 6) activateDrag();
+        if (!dragActive) return;
+
+        event.preventDefault();
+
+        if (event.clientY < 80) {
+          window.scrollBy(0, -12);
+        } else if (event.clientY > window.innerHeight - 80) {
+          window.scrollBy(0, 12);
+        }
+
+        const siblings = Array.from(list.querySelectorAll('.sector-group:not(.is-dragging)'));
+        const nextSector = siblings.find((candidate) => {
+          const bounds = candidate.getBoundingClientRect();
+          return event.clientY < bounds.top + bounds.height / 2;
+        });
+
+        if (nextSector) {
+          list.insertBefore(section, nextSector);
+        } else {
+          list.appendChild(section);
+        }
+      };
+
+      const removeDocumentListeners = () => {
+        document.removeEventListener('pointermove', moveDrag);
+        document.removeEventListener('pointerup', finishDrag);
+        document.removeEventListener('pointercancel', finishDrag);
+      };
+
+      const finishDrag = (event) => {
+        if (event && event.pointerId !== pointerId) return;
         if (pointerId === null) return;
         pointerId = null;
         clearHoldTimer();
+        removeDocumentListeners();
 
         if (dragActive) {
           const sectorOrder = Array.from(list.querySelectorAll('.sector-group'))
@@ -1819,7 +1864,6 @@
           dragActive = false;
           updateList();
         }
-
       };
 
       handle.addEventListener('contextmenu', (event) => event.preventDefault());
@@ -1830,42 +1874,11 @@
         event.preventDefault();
         startY = event.clientY;
         pointerId = event.pointerId;
-        handle.setPointerCapture?.(pointerId);
+        document.addEventListener('pointermove', moveDrag, { passive: false });
+        document.addEventListener('pointerup', finishDrag);
+        document.addEventListener('pointercancel', finishDrag);
 
-        holdTimer = window.setTimeout(() => {
-          dragActive = true;
-          section.classList.add('is-dragging');
-          document.body.classList.add('is-sector-dragging');
-          if (window.navigator.vibrate) window.navigator.vibrate(25);
-        }, 180);
-      });
-
-      handle.addEventListener('pointermove', (event) => {
-        if (event.pointerId !== pointerId) return;
-
-        if (!dragActive) {
-          if (Math.abs(event.clientY - startY) > 10) clearHoldTimer();
-          return;
-        }
-
-        event.preventDefault();
-        const siblings = Array.from(list.querySelectorAll('.sector-group:not(.is-dragging)'));
-        const nextSector = siblings.find((candidate) => {
-          const bounds = candidate.getBoundingClientRect();
-          return event.clientY < bounds.top + bounds.height / 2;
-        });
-
-        if (nextSector) {
-          list.insertBefore(section, nextSector);
-        } else {
-          list.appendChild(section);
-        }
-      });
-
-      handle.addEventListener('pointerup', finishDrag);
-      handle.addEventListener('pointercancel', finishDrag);
-      handle.addEventListener('lostpointercapture', () => {
-        if (pointerId !== null) finishDrag();
+        holdTimer = window.setTimeout(activateDrag, 140);
       });
     }
 

@@ -16,6 +16,8 @@
     let currentFirebaseUser = null;
     let remoteListReference = null;
     let remoteListUnsubscribe = null;
+    let sharedListId = null;
+    let isSharedListMode = false;
     let remoteSyncReady = false;
     let applyingRemoteLists = false;
     let remoteSaveTimer = null;
@@ -512,6 +514,13 @@
 
           if (!user) {
             remoteListReference = null;
+            if (sharedListId) {
+              updateAccountPanel('Entre para participar da lista compartilhada');
+              const redirectUrl = `${window.location.pathname}${window.location.search}`;
+              window.location.replace(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
+              return;
+            }
+
             updateAccountPanel();
             if (window.location.pathname.endsWith('/index.html')) {
               window.location.replace('/login');
@@ -519,12 +528,17 @@
             return;
           }
 
-          updateAccountPanel("Conta conectada • sincronizando");
-          remoteListReference = firestoreDb
-            .collection('users')
-            .doc(user.uid)
-            .collection('appData')
-            .doc('lists');
+          if (sharedListId) {
+            updateAccountPanel('Conta conectada • lista compartilhada');
+            remoteListReference = firestoreDb.collection('sharedLists').doc(sharedListId);
+          } else {
+            updateAccountPanel('Conta conectada • sincronizando');
+            remoteListReference = firestoreDb
+              .collection('users')
+              .doc(user.uid)
+              .collection('appData')
+              .doc('lists');
+          }
           showSection('shoppingSection');
 
           remoteListUnsubscribe = remoteListReference.onSnapshot((snapshot) => {
@@ -579,6 +593,10 @@
       // Verifica se há uma lista importada na URL
       const urlParams = new URLSearchParams(window.location.search);
       const importList = urlParams.get('importList');
+      sharedListId = urlParams.get('sharedList');
+      if (sharedListId) {
+        isSharedListMode = true;
+      }
       let importedListName = null;
       if (importList) {
         try {
@@ -1793,16 +1811,57 @@
         console.error("Elementos de diálogo de compartilhamento não encontrados");
         return;
       }
+      if (!currentFirebaseUser || !firebaseAuth) {
+        alert('Faça login para compartilhar esta lista e permitir que outras pessoas colaborem.');
+        return;
+      }
+      if (!firestoreDb) {
+        alert('Firebase não está inicializado. Tente recarregar a página.');
+        return;
+      }
+
       shareListName.textContent = currentListName;
       const listData = {
-        name: currentListName,
-        data: lists[currentListName]
+        lists,
+        currentListName,
+        owner: currentFirebaseUser.uid,
+        ownerEmail: currentFirebaseUser.email || '',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      const encodedData = btoa(JSON.stringify(listData));
       const baseUrl = window.location.origin + window.location.pathname;
-      shareLink.value = `${baseUrl}?importList=${encodedData}`;
-      dialog.style.display = 'flex';
-      console.log("Diálogo de compartilhamento aberto com sucesso");
+
+      const finalizeDialog = (docId) => {
+        sharedListId = docId;
+        isSharedListMode = true;
+        const sharedUrl = `${baseUrl}?sharedList=${docId}`;
+        shareLink.value = sharedUrl;
+        dialog.style.display = 'flex';
+        console.log('Diálogo de compartilhamento aberto com sucesso', sharedUrl);
+      };
+
+      if (sharedListId) {
+        const docRef = firestoreDb.collection('sharedLists').doc(sharedListId);
+        docRef.set(listData, { merge: true })
+          .then(() => {
+            remoteListReference = docRef;
+            finalizeDialog(sharedListId);
+          })
+          .catch((error) => {
+            console.error('Erro ao atualizar lista compartilhada:', error);
+            alert('Não foi possível atualizar o compartilhamento da lista. Tente novamente.');
+          });
+      } else {
+        const docRef = firestoreDb.collection('sharedLists').doc();
+        docRef.set({ ...listData, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+          .then(() => {
+            remoteListReference = docRef;
+            finalizeDialog(docRef.id);
+          })
+          .catch((error) => {
+            console.error('Erro ao criar lista compartilhada:', error);
+            alert('Não foi possível criar o compartilhamento da lista. Tente novamente.');
+          });
+      }
     }
 
     function openListNavigationDialog() {

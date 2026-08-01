@@ -22,7 +22,6 @@ O Android Studio precisa estar instalado com o Android SDK 36 e Java 21. O proje
 
 ## Antes da publicação
 
-- Substituir os ícones e a tela de abertura provisórios pela identidade do GetGoList.
 - Configurar a assinatura de produção e guardar o arquivo de chave fora do Git.
 - Adaptar o login Google para o fluxo nativo Android.
 - Configurar links do domínio para abrir listas compartilhadas no aplicativo.

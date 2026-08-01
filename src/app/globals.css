@@ -207,9 +207,12 @@ main {
   height: 24px;
   border-radius: 6px;
   background: #fff;
-  color: #4285f4;
-  font-weight: 700;
-  font-size: 0.85rem;
+}
+
+.button-google .google-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
 }
 
 .privacy-note {

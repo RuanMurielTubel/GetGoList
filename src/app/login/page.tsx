@@ -8,8 +8,10 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
 } from "firebase/auth";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { firebaseAuth } from "@/lib/firebase";
 
@@ -27,6 +29,18 @@ function messageForError(code?: string) {
       "Não foi possível conectar. Verifique sua internet.",
     "auth/operation-not-allowed":
       "O cadastro por e-mail ainda precisa ser ativado no Firebase.",
+    "auth/popup-closed-by-user":
+      "A janela de login foi fechada antes de concluir. Tente novamente.",
+    "auth/cancelled-popup-request":
+      "O login foi cancelado. Tente novamente.",
+    "auth/popup-blocked":
+      "O popup de login foi bloqueado. Permita popups para continuar.",
+    "auth/unauthorized-domain":
+      "Domínio não autorizado no Firebase. Verifique as configurações do console.",
+    "auth/operation-not-supported-in-this-environment":
+      "Este navegador não suporta login com popup. Use outro navegador.",
+    "auth/redirect-cancelled-by-user":
+      "O redirecionamento de login foi cancelado. Tente novamente.",
   };
 
   return (
@@ -36,6 +50,7 @@ function messageForError(code?: string) {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -47,20 +62,38 @@ export default function LoginPage() {
   useEffect(() => {
     return onAuthStateChanged(firebaseAuth, (user) => {
       if (user) {
-        window.location.replace("/index.html");
+        router.replace("/index.html");
       }
     });
-  }, []);
+  }, [router]);
 
   async function handleGoogleSignIn() {
     setFeedback("");
     setLoading(true);
+    const provider = new GoogleAuthProvider();
+
     try {
-      const provider = new GoogleAuthProvider();
       await signInWithPopup(firebaseAuth, provider);
       // onAuthStateChanged cuidará do redirecionamento
     } catch (error) {
-      const code = typeof error === "object" && error && "code" in error ? String((error as { code?: string }).code) : undefined;
+      const errObj = error as { code?: string; message?: string };
+      const code = errObj.code;
+      const isPopupBlocked = code === "auth/popup-blocked";
+
+      if (isPopupBlocked) {
+        try {
+          await signInWithRedirect(firebaseAuth, provider);
+          return;
+        } catch (redirectError) {
+          const redirectErrObj = redirectError as { code?: string };
+          setFeedback(
+            messageForError(redirectErrObj.code) ||
+              "O navegador bloqueou a janela de login. Tente abrir novamente em breve."
+          );
+          return;
+        }
+      }
+
       setFeedback(messageForError(code));
     } finally {
       setLoading(false);

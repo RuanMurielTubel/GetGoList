@@ -36,7 +36,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message.includes("user-not-found")) {
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String(error.code)
+        : "";
+    if (code === "auth/user-not-found" || message.includes("user-not-found")) {
       return NextResponse.json({ ok: true });
     }
     if (message.includes("NOT_CONFIGURED")) {

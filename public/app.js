@@ -1939,7 +1939,12 @@
           })
           .catch((error) => {
             console.error('Erro ao salvar lista compartilhada:', error);
-            alert(`Não foi possível criar o compartilhamento da lista. Erro: ${error.message || error.code || 'desconhecido'}`);
+            const errorMessage = error && (error.message || error.code || error.toString()) ?
+              (error.message || error.code || error.toString()) : 'desconhecido';
+            const errorDetails = error && typeof error === 'object'
+              ? JSON.stringify(error, Object.getOwnPropertyNames(error))
+              : String(error);
+            alert(`Não foi possível criar o compartilhamento da lista. Erro: ${errorMessage}\nDetalhes: ${errorDetails}`);
           });
       };
 

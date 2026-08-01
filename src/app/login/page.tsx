@@ -7,6 +7,7 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
   GoogleAuthProvider,
+  signInWithCredential,
   signInWithPopup,
   signInWithRedirect,
 } from "firebase/auth";
@@ -42,6 +43,8 @@ function messageForError(code?: string) {
       "Este navegador não suporta login com popup. Use outro navegador.",
     "auth/redirect-cancelled-by-user":
       "O redirecionamento de login foi cancelado. Tente novamente.",
+    "auth/native-google-token-missing":
+      "O Google não devolveu a autorização ao aplicativo. Tente novamente.",
   };
 
   return (
@@ -87,6 +90,24 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider();
 
     try {
+      if (Capacitor.isNativePlatform()) {
+        const { FirebaseAuthentication } = await import(
+          "@capacitor-firebase/authentication"
+        );
+        const result = await FirebaseAuthentication.signInWithGoogle({
+          skipNativeAuth: true,
+        });
+        const idToken = result.credential?.idToken;
+
+        if (!idToken) {
+          throw { code: "auth/native-google-token-missing" };
+        }
+
+        const credential = GoogleAuthProvider.credential(idToken);
+        await signInWithCredential(firebaseAuth, credential);
+        return;
+      }
+
       await signInWithPopup(firebaseAuth, provider);
       // onAuthStateChanged cuidará do redirecionamento
     } catch (error) {

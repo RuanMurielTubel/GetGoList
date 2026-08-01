@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   title: "GetGoList | Sua lista de compras",
   description:
     "Organize produtos, quantidades e valores em uma lista de compras simples.",
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png" }],
+    apple: [{ url: "/icon.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({

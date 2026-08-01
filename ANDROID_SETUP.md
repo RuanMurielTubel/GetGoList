@@ -18,7 +18,7 @@ npm run android:sync
 npm run android:open
 ```
 
-O Android Studio precisa estar instalado com o Android SDK 36. O projeto nativo fica na pasta `android`.
+O Android Studio precisa estar instalado com o Android SDK 36 e Java 21. O projeto nativo fica na pasta `android`.
 
 ## Antes da publicação
 

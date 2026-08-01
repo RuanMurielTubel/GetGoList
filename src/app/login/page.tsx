@@ -6,6 +6,8 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
@@ -49,6 +51,21 @@ export default function LoginPage() {
       }
     });
   }, []);
+
+  async function handleGoogleSignIn() {
+    setFeedback("");
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(firebaseAuth, provider);
+      // onAuthStateChanged cuidará do redirecionamento
+    } catch (error) {
+      const code = typeof error === "object" && error && "code" in error ? String((error as { code?: string }).code) : undefined;
+      setFeedback(messageForError(code));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function changeMode(nextMode: Mode) {
     setMode(nextMode);
@@ -280,9 +297,20 @@ export default function LoginPage() {
           <span>ou</span>
         </div>
 
-        <Link className="button button-secondary" href="/index.html">
-          Continuar sem conta
-        </Link>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
+          <button
+            className="button button-google"
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+          >
+            {loading ? 'Aguarde...' : 'Entrar com Google'}
+          </button>
+
+          <Link className="button button-secondary" href="/index.html">
+            Continuar sem conta
+          </Link>
+        </div>
 
         <p className="account-terms">
           Ao criar uma conta, você concorda em usar o GetGoList de forma

@@ -1331,7 +1331,17 @@
       } else {
         console.error(`Seção ${sectionId} não encontrada`);
       }
-      const targetButton = document.querySelector(`.sidebar button[onclick="showSection('${sectionId}')"]`);
+      const sectionButtons = {
+        homeSection: '.home-button',
+        balanceSection: '.balance-button',
+        shoppingSection: '.shopping-button',
+        historySection: '.history-button',
+        divideSection: '.divide-button',
+        profileSection: '.profile-button'
+      };
+      const targetButton = sectionButtons[sectionId]
+        ? document.querySelector(sectionButtons[sectionId])
+        : null;
       if (targetButton) {
         targetButton.classList.add('active');
       }
@@ -1344,6 +1354,16 @@
         profileSection: 'Meu Perfil'
       };
       document.getElementById('mainTitle').textContent = sectionTitles[sectionId] || 'Lista de Compras';
+      const sectionSubtitles = {
+        homeSection: 'Sua rotina de compras em um só lugar.',
+        balanceSection: 'Defina um limite e acompanhe cada gasto.',
+        shoppingSection: 'Organize os itens e compre com tranquilidade.',
+        historySection: 'Consulte compras anteriores e compare períodos.',
+        divideSection: 'Calcule e envie a parte de cada pessoa.',
+        profileSection: 'Personalize sua experiência no GetGoList.'
+      };
+      const subtitle = document.getElementById('homeSubtitle');
+      if (subtitle) subtitle.textContent = sectionSubtitles[sectionId] || '';
       
       // Fecha o menu após selecionar uma opção
       closeMenu();

@@ -1084,6 +1084,10 @@
   
   <!-- Menu lateral -->
   <div class="sidebar" id="sidebar">
+    <a class="sidebar-logo" href="/" aria-label="Página inicial do GetGoList">
+      <span class="sidebar-logo-mark" aria-hidden="true">G</span>
+      <span>GetGoList</span>
+    </a>
     <h2 id="sidebarGreeting">Olá, Visitante</h2>
     <div class="account-panel" id="accountPanel">
       <div class="sidebar-account">
@@ -1099,13 +1103,15 @@
       </div>
       <button id="accountAction">Entrar e sincronizar</button>
     </div>
-    <button class="home-button active"><span>Início</span></button>
-    <button class="balance-button"><span>Saldo</span></button>
-    <button class="shopping-button"><span>Lista de Compras</span></button>
-    <button class="history-button"><span>Histórico</span></button>
-    <button class="divide-button"><span>Divisão</span></button>
-    <button class="share-button"><span>Compartilhar Lista</span></button>
-    <button class="profile-button"><span>Meu Perfil</span></button>
+    <div class="sidebar-section-label">Organização</div>
+    <button type="button" class="home-button active"><span>Início</span></button>
+    <button type="button" class="shopping-button"><span>Lista de Compras</span></button>
+    <button type="button" class="balance-button"><span>Saldo e orçamento</span></button>
+    <button type="button" class="history-button"><span>Histórico</span></button>
+    <div class="sidebar-section-label">Colaboração</div>
+    <button type="button" class="divide-button"><span>Dividir conta</span></button>
+    <button type="button" class="share-button"><span>Compartilhar lista</span></button>
+    <button type="button" class="profile-button"><span>Meu perfil</span></button>
       </div>
   
   <div class="container" id="mainContainer">
@@ -1115,8 +1121,8 @@
         <span id="welcomeGreeting">Olá, Visitante</span>
       </div>
       <div class="app-page-title">
-        <p id="homeSubtitle">Vamos montar sua lista de compras juntos.</p>
         <h1 id="mainTitle">Início</h1>
+        <p id="homeSubtitle">Vamos montar sua lista de compras juntos.</p>
       </div>
     </header>
     
@@ -1252,7 +1258,7 @@
           </select>
           <button id="loadMonthHistoryButton">Carregar</button>
         </div>
-      <div id="comparisonView" class="comparison-section">
+      <div id="historyListView" class="history-list-panel">
         <ul id="historyList"></ul>
       </div>
       

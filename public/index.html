@@ -1197,10 +1197,11 @@
       <div class="shared-mode-banner" id="sharedModeBanner" style="display: none;">
         <span class="shared-mode-dot" aria-hidden="true"></span>
         <div>
-          <strong>Colaboração em tempo real</strong>
-          <small>Você está editando “<span id="sharedModeListName"></span>” com outros colaboradores.</small>
+          <strong id="sharedModeTitle">Colaboração em tempo real</strong>
+          <small id="sharedModeDescription">Você está editando “<span id="sharedModeListName"></span>” com outros colaboradores.</small>
         </div>
         <button type="button" class="shared-space-button" id="openPrivateListsButton">Minhas listas</button>
+        <button type="button" class="finish-sharing-button" id="finishSharingButton">Finalizar compartilhamento</button>
       </div>
       <div class="button-group primary">
         <button class="create-list" id="openCreateListDialogButton">Criar Nova Lista</button>        
@@ -1269,9 +1270,15 @@
       </div>
       <div class="button-group">
         <input type="number" id="dividePeople" placeholder="Número de pessoas" min="1">
+        <select id="paymentMethod" aria-label="Forma de pagamento">
+          <option value="PIX">PIX</option>
+          <option value="Conta bancária">Conta bancária</option>
+        </select>
+        <input type="text" id="paymentDetails" placeholder="Chave PIX ou dados da conta">
         <button class="divide" id="calculateDivisionButton">Calcular</button>
       </div>
       <div class="division-result" id="divisionResult"></div>
+      <div class="division-share-actions" id="divisionShareActions" style="display: none;"></div>
     </div>
 
     <div id="profileSection" class="section">
@@ -1397,6 +1404,17 @@
       <div id="shareErrorMessage" style="display:none; margin-top: 12px; color: #fff; background: #a00; border: 1px solid #f44; padding: 12px; border-radius: 10px; white-space: pre-wrap;"></div>
       <button class="copy-link" id="copyShareLinkButton" disabled>Copiar Link</button>
       <button id="closeShareListDialogButton">Fechar</button>
+    </div>
+  </div>
+
+  <div id="finishSharingDialog" class="dialog">
+    <div class="dialog-content finish-sharing-dialog-content">
+      <h3>Finalizar compartilhamento?</h3>
+      <p>Os colaboradores deixarão de acessar e editar esta lista. Você deseja dividir a conta antes de concluir?</p>
+      <button id="finishAndDivideButton">Sim, dividir a conta</button>
+      <button class="finish-without-division" id="finishWithoutDivisionButton">Não, apenas finalizar</button>
+      <button id="cancelFinishSharingButton">Cancelar</button>
+      <p class="finish-sharing-status" id="finishSharingStatus" aria-live="polite"></p>
     </div>
   </div>
   

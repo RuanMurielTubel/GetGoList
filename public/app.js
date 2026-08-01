@@ -25,6 +25,7 @@
     let lastSharedListsSnapshot = null;
     let pendingShareDocumentReference = null;
     let currentSharedOwnerId = null;
+    let sharedListEnded = false;
 
     const firebaseConfig = {
       apiKey: "AIzaSyApgAliwYTpeIyYgEpeFTw6HrS5Bc-Kc9Q",
@@ -689,6 +690,9 @@
     function updateSharedModeUi() {
       const sharedBanner = document.getElementById('sharedModeBanner');
       const sharedListName = document.getElementById('sharedModeListName');
+      const sharedModeTitle = document.getElementById('sharedModeTitle');
+      const sharedModeDescription = document.getElementById('sharedModeDescription');
+      const finishSharingButton = document.getElementById('finishSharingButton');
       const recentSharedBanner = document.getElementById('recentSharedBanner');
       const recentSharedListName = document.getElementById('recentSharedListName');
       const recentSharedList = getRecentSharedList();
@@ -706,6 +710,20 @@
       }
       if (sharedListName) {
         sharedListName.textContent = currentListName;
+      }
+      if (sharedModeTitle) {
+        sharedModeTitle.textContent = sharedListEnded ? 'Compartilhamento encerrado' : 'Colaboração em tempo real';
+      }
+      if (sharedModeDescription) {
+        sharedModeDescription.innerHTML = sharedListEnded
+          ? `A lista “<span id="sharedModeListName"></span>” agora está acessível apenas para você.`
+          : `Você está editando “<span id="sharedModeListName"></span>” com outros colaboradores.`;
+        const updatedSharedListName = document.getElementById('sharedModeListName');
+        if (updatedSharedListName) updatedSharedListName.textContent = currentListName;
+      }
+      if (finishSharingButton) {
+        const isOwner = currentFirebaseUser && currentSharedOwnerId === currentFirebaseUser.uid;
+        finishSharingButton.style.display = sharedListId && isOwner && !sharedListEnded ? '' : 'none';
       }
       if (recentSharedBanner) {
         recentSharedBanner.style.display = !sharedListId && recentSharedList ? 'flex' : 'none';
@@ -733,6 +751,7 @@
         const remoteData = snapshot.exists ? snapshot.data() : null;
         if (sharedListId && remoteData) {
           currentSharedOwnerId = remoteData.owner || null;
+          sharedListEnded = remoteData.sharingEnded === true;
         }
 
         if (remoteData && remoteData.lists && Object.keys(remoteData.lists).length) {
@@ -765,11 +784,24 @@
         const lastEditorName = remoteData && (remoteData.lastEditedBy || remoteData.lastEditedByEmail);
         updateLastEditedInfo(lastEditorName);
         if (remoteSyncReady) {
-          updateAccountPanel(sharedListId ? 'Conta conectada • colaboração em tempo real' : undefined);
+          updateAccountPanel(sharedListId
+            ? (sharedListEnded ? 'Conta conectada • compartilhamento encerrado' : 'Conta conectada • colaboração em tempo real')
+            : undefined);
         }
       }, (error) => {
         console.error('Não foi possível acompanhar a lista em tempo real.', error);
         remoteSyncReady = false;
+        if (sharedListId && error && error.code === 'permission-denied') {
+          try {
+            const recent = getRecentSharedList();
+            if (recent && recent.id === sharedListId) localStorage.removeItem('recentSharedList');
+          } catch (storageError) {
+            console.warn('Não foi possível remover o atalho encerrado.', storageError);
+          }
+          alert('O compartilhamento desta lista foi finalizado pelo proprietário.');
+          window.location.replace('/index.html');
+          return;
+        }
         updateAccountPanel(sharedListId ? 'Sem acesso a esta lista compartilhada' : 'Conta conectada • sincronização pendente');
       });
     }
@@ -2064,10 +2096,15 @@
     function calculateDivision() {
       const input = document.getElementById('dividePeople');
       const resultDiv = document.getElementById('divisionResult');
-      if (!input || !resultDiv) {
+      const paymentMethod = document.getElementById('paymentMethod');
+      const paymentDetails = document.getElementById('paymentDetails');
+      const shareActions = document.getElementById('divisionShareActions');
+      if (!input || !resultDiv || !paymentMethod || !paymentDetails || !shareActions) {
         console.error("Elemento de entrada ou resultado de divisão não encontrado");
         return;
       }
+      shareActions.style.display = 'none';
+      shareActions.innerHTML = '';
       const numPeople = parseInt(input.value) || 0;
       if (!selectedDivideListName) {
         resultDiv.innerHTML = '<p style="color: red;">Por favor, selecione uma lista.</p>';
@@ -2075,6 +2112,11 @@
       }
       if (numPeople <= 0) {
         resultDiv.innerHTML = '<p style="color: red;">Por favor, insira um número válido de pessoas (maior que 0).</p>';
+        return;
+      }
+      const paymentDescription = paymentDetails.value.trim();
+      if (!paymentDescription) {
+        resultDiv.innerHTML = '<p style="color: red;">Informe a chave PIX ou os dados da conta para pagamento.</p>';
         return;
       }
       if (!lists[selectedDivideListName]) {
@@ -2088,12 +2130,127 @@
         return;
       }
       const perPerson = total / numPeople;
-      resultDiv.innerHTML = `
-        <p>Lista: ${selectedDivideListName}</p>
-        <p>Total: R$ ${total.toFixed(2).replace('.', ',')}</p>
-        <p>Dividido por ${numPeople} pessoas: R$ ${perPerson.toFixed(2).replace('.', ',')} por pessoa</p>
-      `;
+      const formattedTotal = total.toFixed(2).replace('.', ',');
+      const formattedPerPerson = perPerson.toFixed(2).replace('.', ',');
+      resultDiv.innerHTML = '';
+      [
+        `Lista: ${selectedDivideListName}`,
+        `Total: R$ ${formattedTotal}`,
+        `Dividido por ${numPeople} pessoas: R$ ${formattedPerPerson} por pessoa`,
+      ].forEach((line) => {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = line;
+        resultDiv.appendChild(paragraph);
+      });
+      const baseMessage = [
+        `Divisão da lista ${selectedDivideListName}`,
+        `Total da compra: R$ ${formattedTotal}`,
+        `Divisão: ${numPeople} pessoas`,
+        `Valor por pessoa: R$ ${formattedPerPerson}`,
+        `${paymentMethod.value}: ${paymentDescription}`,
+      ].join('\n');
+
+      const title = document.createElement('h3');
+      title.textContent = 'Enviar cobrança';
+      const help = document.createElement('p');
+      help.textContent = 'Escolha uma pessoa para abrir o WhatsApp com a mensagem pronta.';
+      const personActions = document.createElement('div');
+      personActions.className = 'division-person-actions';
+
+      for (let person = 1; person <= numPeople; person += 1) {
+        const link = document.createElement('a');
+        const message = `Olá! Esta é a sua parte da compra.\n\n${baseMessage}`;
+        link.href = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = `Enviar para pessoa ${person}`;
+        personActions.appendChild(link);
+      }
+
+      const copyButton = document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.textContent = 'Copiar mensagem de cobrança';
+      copyButton.addEventListener('click', () => {
+        copyTextToClipboard(baseMessage).then(() => {
+          copyButton.textContent = 'Mensagem copiada!';
+        }).catch(() => {
+          alert('Não foi possível copiar automaticamente. Tente novamente.');
+        });
+      });
+
+      shareActions.appendChild(title);
+      shareActions.appendChild(help);
+      shareActions.appendChild(personActions);
+      shareActions.appendChild(copyButton);
+      shareActions.style.display = 'grid';
       console.log(`Divisão calculada: Total R$ ${total.toFixed(2)} / ${numPeople} = R$ ${perPerson.toFixed(2)} por pessoa`);
+    }
+
+    function copyTextToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text);
+      }
+      const temporaryInput = document.createElement('textarea');
+      temporaryInput.value = text;
+      temporaryInput.style.position = 'fixed';
+      temporaryInput.style.opacity = '0';
+      document.body.appendChild(temporaryInput);
+      temporaryInput.select();
+      const copied = document.execCommand('copy');
+      temporaryInput.remove();
+      return copied ? Promise.resolve() : Promise.reject(new Error('Falha ao copiar'));
+    }
+
+    function showFinishSharingDialog() {
+      if (!sharedListId || !currentFirebaseUser || currentSharedOwnerId !== currentFirebaseUser.uid || sharedListEnded) {
+        return;
+      }
+      const dialog = document.getElementById('finishSharingDialog');
+      const status = document.getElementById('finishSharingStatus');
+      if (status) status.textContent = '';
+      if (dialog) dialog.style.display = 'flex';
+    }
+
+    function finalizeSharing(shouldDivide) {
+      const status = document.getElementById('finishSharingStatus');
+      const finishAndDivideButton = document.getElementById('finishAndDivideButton');
+      const finishWithoutDivisionButton = document.getElementById('finishWithoutDivisionButton');
+      if (!remoteListReference || !currentFirebaseUser || currentSharedOwnerId !== currentFirebaseUser.uid) {
+        if (status) status.textContent = 'Somente o proprietário pode finalizar o compartilhamento.';
+        return;
+      }
+
+      if (status) status.textContent = 'Finalizando o acesso dos colaboradores...';
+      if (finishAndDivideButton) finishAndDivideButton.disabled = true;
+      if (finishWithoutDivisionButton) finishWithoutDivisionButton.disabled = true;
+      const ownerEmail = (currentFirebaseUser.email || '').toLowerCase();
+
+      remoteListReference.update({
+        allowedEmails: ownerEmail ? [ownerEmail] : [],
+        linkAccess: false,
+        sharingEnded: true,
+        endedBy: currentFirebaseUser.uid,
+        endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }).then(() => {
+        sharedListEnded = true;
+        closeDialog('finishSharingDialog');
+        updateSharedModeUi();
+        if (shouldDivide) {
+          selectedDivideListName = currentListName;
+          const selectedListSpan = document.getElementById('selectedDivideList');
+          if (selectedListSpan) selectedListSpan.textContent = currentListName;
+          showSection('divideSection');
+        } else {
+          openPrivateLists();
+        }
+      }).catch((error) => {
+        console.error('Não foi possível finalizar o compartilhamento.', error);
+        if (status) status.textContent = 'Não foi possível finalizar. Verifique sua conexão e tente novamente.';
+      }).finally(() => {
+        if (finishAndDivideButton) finishAndDivideButton.disabled = false;
+        if (finishWithoutDivisionButton) finishWithoutDivisionButton.disabled = false;
+      });
     }
 
     function parseSharedEmails(rawEmails) {
@@ -2331,6 +2488,8 @@
       const metadata = {
         allowedEmails,
         linkAccess: shareLinkToggle.checked,
+        sharingEnded: false,
+        endedAt: null,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       };
       const writePromise = isExistingShare
@@ -2967,6 +3126,10 @@
       const closeListNavigationDialogButton = document.getElementById('closeListNavigationDialogButton');
       const openPrivateListsButton = document.getElementById('openPrivateListsButton');
       const openRecentSharedListButton = document.getElementById('openRecentSharedListButton');
+      const finishSharingButton = document.getElementById('finishSharingButton');
+      const finishAndDivideButton = document.getElementById('finishAndDivideButton');
+      const finishWithoutDivisionButton = document.getElementById('finishWithoutDivisionButton');
+      const cancelFinishSharingButton = document.getElementById('cancelFinishSharingButton');
 
       if (setBalanceButton) {
         setBalanceButton.addEventListener('click', setBalance);
@@ -3111,6 +3274,18 @@
       }
       if (openRecentSharedListButton) {
         openRecentSharedListButton.addEventListener('click', openRecentSharedList);
+      }
+      if (finishSharingButton) {
+        finishSharingButton.addEventListener('click', showFinishSharingDialog);
+      }
+      if (finishAndDivideButton) {
+        finishAndDivideButton.addEventListener('click', () => finalizeSharing(true));
+      }
+      if (finishWithoutDivisionButton) {
+        finishWithoutDivisionButton.addEventListener('click', () => finalizeSharing(false));
+      }
+      if (cancelFinishSharingButton) {
+        cancelFinishSharingButton.addEventListener('click', () => closeDialog('finishSharingDialog'));
       }
     }
 

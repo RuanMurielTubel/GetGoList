@@ -397,6 +397,72 @@ button.select-all:hover {
   color: #fff;
 }
 
+.finish-sharing-button {
+  background: #fff4f4;
+  border: 1px solid #d96060;
+  border-radius: 10px;
+  color: #a62d2d;
+  flex: 0 0 auto;
+  font-weight: 700;
+  margin: 0;
+  padding: 10px 14px;
+}
+
+.finish-sharing-button:hover,
+.finish-without-division:hover {
+  background: #b33a3a;
+  color: #fff;
+}
+
+.finish-sharing-dialog-content p {
+  line-height: 1.55;
+}
+
+.finish-without-division {
+  background: #fff4f4;
+  color: #a62d2d;
+}
+
+.finish-sharing-status {
+  color: var(--gg-muted);
+  min-height: 20px;
+}
+
+.division-share-actions {
+  background: var(--gg-surface);
+  border: 1px solid var(--gg-line);
+  border-radius: 14px;
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 16px;
+}
+
+.division-share-actions h3,
+.division-share-actions p {
+  margin: 0;
+}
+
+.division-person-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.division-person-actions a {
+  background: #22a06b;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 700;
+  padding: 11px 12px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.division-person-actions a:hover {
+  background: #187a51;
+}
+
 .shared-mode-dot {
   background: #22a06b;
   border: 4px solid rgba(34, 160, 107, .16);
@@ -658,7 +724,8 @@ li .item-controls .checkbox-container input[type="checkbox"] {
   }
 
   .shared-mode-banner .shared-space-button,
-  .recent-shared-banner .shared-space-button {
+  .recent-shared-banner .shared-space-button,
+  .shared-mode-banner .finish-sharing-button {
     width: 100%;
   }
 

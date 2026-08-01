@@ -657,6 +657,54 @@
       min-width: 200px;
       margin-right: 15px;
     }
+
+    .sector-group {
+      margin-bottom: 12px;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #f8f9fa;
+    }
+
+    .sector-header {
+      width: 100%;
+      border: none;
+      background: #eef4ff;
+      color: #0d6efd;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .sector-body {
+      padding: 8px 8px 4px;
+    }
+
+    .sector-body.collapsed {
+      display: none;
+    }
+
+    .sector-items {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .sector-items li {
+      margin-bottom: 0;
+    }
+
+    .item-sector-label {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: #6c757d;
+    }
     
     li .checked {
       font-style: italic;
@@ -1094,10 +1142,10 @@
     
     <div id="shoppingSection" class="section">
       <div class="button-group primary">
-        <button class="create-list" id="openCreateListDialogButton">Criar Nova Lista</button>
-        <button class="list-action" id="openDeleteListDialogButton">Excluir Lista</button>
+        <button class="create-list" id="openCreateListDialogButton">Criar Nova Lista</button>        
         <button class="list-action" id="openEditListNamesDialogButton">Editar Nomes</button>
         <button class="list-action" id="openSelectListDialogButton">Escolher Lista</button>
+        <button class="list-action" id="openDeleteListDialogButton">Excluir Lista</button>
       </div>
       
       <div id="listButtons"></div>
@@ -1106,6 +1154,17 @@
         <input type="text" id="itemName" placeholder="Nome do item">
         <input type="text" id="itemPrice" placeholder="Preço unitário (R$)">
         <input type="number" id="itemQuantity" placeholder="Quantidade" min="1" value="1">
+        <input type="text" id="itemSector" placeholder="Setor (opcional)" list="sectorOptions">
+        <datalist id="sectorOptions">
+          <option value="Geral"></option>
+          <option value="Limpeza"></option>
+          <option value="Higiene Pessoal"></option>
+          <option value="Padaria"></option>
+          <option value="Hortifruti"></option>
+          <option value="Açougue"></option>
+          <option value="Bebidas"></option>
+          <option value="Congelados"></option>
+        </datalist>
         <button id="addItemButton">Adicionar</button>
       </div>
       

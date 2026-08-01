@@ -9,6 +9,7 @@
     let allSelected = false;
     let isMenuOpen = false;
     let charts = {};
+    let collapsedSectors = new Set();
     let firebaseAuth = null;
     let firestoreDb = null;
     let firebaseStorage = null;
@@ -24,6 +25,7 @@
       apiKey: "AIzaSyApgAliwYTpeIyYgEpeFTw6HrS5Bc-Kc9Q",
       authDomain: "getgolist.firebaseapp.com",
       projectId: "getgolist",
+      storageBucket: "getgolist.appspot.com",
       appId: "getgolist"
     };
 
@@ -326,6 +328,7 @@
       reader.onload = () => {
         const dataURL = reader.result;
         const currentData = loadLocalProfileData();
+
         saveLocalProfileData({
           ...currentData,
           photoDataUrl: typeof dataURL === 'string' ? dataURL : currentData.photoDataUrl
@@ -333,10 +336,10 @@
         updateProfileSection();
       };
 
+      reader.readAsDataURL(file);
+
       if (currentFirebaseUser && firebaseStorage) {
         uploadProfilePhoto(file);
-      } else {
-        reader.readAsDataURL(file);
       }
     }
 
@@ -598,6 +601,7 @@
             items: Array.isArray(storedList?.items)
               ? storedList.items.map((item) => ({
                   ...item,
+                  sector: item?.sector || 'Geral',
                   checked: Boolean(item && typeof item === 'object' ? item.checked : false)
                 }))
               : [],
@@ -1093,6 +1097,7 @@
       const itemName = document.getElementById('itemName').value.trim();
       const itemPrice = parsePrice(document.getElementById('itemPrice').value);
       const itemQuantity = parseInt(document.getElementById('itemQuantity').value) || 1;
+      const itemSector = document.getElementById('itemSector').value.trim() || 'Geral';
       const itemTotal = itemPrice * itemQuantity;
 
       if (itemName && itemPrice > 0 && itemQuantity > 0) {
@@ -1107,6 +1112,7 @@
           price: itemPrice,
           quantity: itemQuantity,
           total: itemTotal,
+          sector: itemSector,
           date: new Date().toLocaleDateString(),
           checked: false
         };
@@ -1127,6 +1133,7 @@
         document.getElementById('itemName').value = '';
         document.getElementById('itemPrice').value = '';
         document.getElementById('itemQuantity').value = '1';
+        document.getElementById('itemSector').value = '';
       } else {
         alert('Por favor, insira um nome, preço e quantidade válidos.');
       }
@@ -1150,6 +1157,7 @@
       const itemName = li.querySelector('.edit-name').value.trim();
       const itemPrice = parsePrice(li.querySelector('.edit-price').value);
       const itemQuantity = parseInt(li.querySelector('.edit-quantity').value) || 1;
+      const itemSector = li.querySelector('.edit-sector').value.trim() || 'Geral';
       const itemTotal = itemPrice * itemQuantity;
 
       if (itemName && itemPrice > 0 && itemQuantity > 0) {
@@ -1167,6 +1175,7 @@
           price: itemPrice,
           quantity: itemQuantity,
           total: itemTotal,
+          sector: itemSector,
           date: new Date().toLocaleDateString(),
           checked: oldItem.checked
         };
@@ -1322,50 +1331,103 @@
         console.error("Elemento de lista de compras não encontrado");
         return;
       }
+
       list.innerHTML = '';
-      shoppingList.forEach((item, index) => {
-        const li = document.createElement('li');
-        li.id = `item-${index}`;
-        if (editingIndex === index) {
-          li.classList.add('editing');
-          li.innerHTML = `
-            <input type="text" class="edit-name" value="${item.name}">
-            <input type="text" class="edit-price" value="${item.price.toFixed(2).replace('.', ',')}" oninput="formatPrice(this)">
-            <input type="number" class="edit-quantity" value="${item.quantity}" min="1">
-            <button onclick="saveEdit(${index})">Salvar</button>
-            <button onclick="cancelEdit(${index})">Cancelar</button>
-          `;
-        } else {
-          li.innerHTML = `
-            <div class="item-info">
-              <span class="${item.checked ? 'checked' : ''}">${item.name} - ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}</span>
-            </div>
-            <div class="item-controls">
-              <div class="checkbox-container">
-                <input type="checkbox" name="listItem" id="list-item-${index}" value="${index}" ${item.checked ? 'checked' : ''}>
-              </div>
-              <div class="action-buttons">
-                <button class="edit" onclick="editItem(${index})">Editar</button>
-                <button onclick="removeItem(${index})">Remover</button>
-              </div>
-            </div>
-          `;
-          const checkbox = li.querySelector(`#list-item-${index}`);
-          if (checkbox) {
-            checkbox.addEventListener('change', () => {
-              shoppingList[index].checked = checkbox.checked;
-              try {
-                saveLists();
-                console.log(`Item ${index} marcado como ${checkbox.checked ? 'checked' : 'unchecked'}`);
-              } catch (e) {
-                console.error("Erro ao salvar listas no localStorage:", e);
-              }
-              updateList();
-            });
-          }
+
+      const groupedItems = shoppingList.reduce((groups, item, index) => {
+        const sectorName = item?.sector && item.sector.trim() ? item.sector.trim() : 'Geral';
+        if (!groups[sectorName]) {
+          groups[sectorName] = [];
         }
-        list.appendChild(li);
+        groups[sectorName].push({ item, index });
+        return groups;
+      }, {});
+
+      const sectorNames = Object.keys(groupedItems).sort((first, second) => {
+        if (first === 'Geral') return -1;
+        if (second === 'Geral') return 1;
+        return first.localeCompare(second, 'pt-BR');
       });
+
+      sectorNames.forEach((sectorName) => {
+        const sectorItems = groupedItems[sectorName];
+        const section = document.createElement('section');
+        section.className = 'sector-group';
+
+        const header = document.createElement('button');
+        header.type = 'button';
+        header.className = 'sector-header';
+        header.innerHTML = `<span>${sectorName}</span><span>${sectorItems.length} item${sectorItems.length === 1 ? '' : 's'}</span>`;
+        header.addEventListener('click', () => {
+          if (collapsedSectors.has(sectorName)) {
+            collapsedSectors.delete(sectorName);
+          } else {
+            collapsedSectors.add(sectorName);
+          }
+          updateList();
+        });
+
+        const body = document.createElement('div');
+        body.className = 'sector-body';
+        if (collapsedSectors.has(sectorName)) {
+          body.classList.add('collapsed');
+        }
+
+        const ul = document.createElement('ul');
+        ul.className = 'sector-items';
+
+        sectorItems.forEach(({ item, index }) => {
+          const li = document.createElement('li');
+          li.id = `item-${index}`;
+          if (editingIndex === index) {
+            li.classList.add('editing');
+            li.innerHTML = `
+              <input type="text" class="edit-name" value="${item.name}">
+              <input type="text" class="edit-price" value="${item.price.toFixed(2).replace('.', ',')}" oninput="formatPrice(this)">
+              <input type="number" class="edit-quantity" value="${item.quantity}" min="1">
+              <input type="text" class="edit-sector" value="${item?.sector && item.sector.trim() ? item.sector : 'Geral'}" placeholder="Setor">
+              <button onclick="saveEdit(${index})">Salvar</button>
+              <button onclick="cancelEdit(${index})">Cancelar</button>
+            `;
+          } else {
+            li.innerHTML = `
+              <div class="item-info">
+                <span class="${item.checked ? 'checked' : ''}">${item.name} - ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}</span>
+                <small class="item-sector-label">Setor: ${item?.sector && item.sector.trim() ? item.sector : 'Geral'}</small>
+              </div>
+              <div class="item-controls">
+                <div class="checkbox-container">
+                  <input type="checkbox" name="listItem" id="list-item-${index}" value="${index}" ${item.checked ? 'checked' : ''}>
+                </div>
+                <div class="action-buttons">
+                  <button class="edit" onclick="editItem(${index})">Editar</button>
+                  <button onclick="removeItem(${index})">Remover</button>
+                </div>
+              </div>
+            `;
+            const checkbox = li.querySelector(`#list-item-${index}`);
+            if (checkbox) {
+              checkbox.addEventListener('change', () => {
+                shoppingList[index].checked = checkbox.checked;
+                try {
+                  saveLists();
+                  console.log(`Item ${index} marcado como ${checkbox.checked ? 'checked' : 'unchecked'}`);
+                } catch (e) {
+                  console.error("Erro ao salvar listas no localStorage:", e);
+                }
+                updateList();
+              });
+            }
+          }
+          ul.appendChild(li);
+        });
+
+        body.appendChild(ul);
+        section.appendChild(header);
+        section.appendChild(body);
+        list.appendChild(section);
+      });
+
       const selectAllButton = document.querySelector('.select-all');
       if (selectAllButton) {
         selectAllButton.textContent = allSelected ? 'Desmarcar Todos' : 'Selecionar Todos';

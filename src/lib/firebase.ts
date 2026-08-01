@@ -9,6 +9,8 @@ const firebaseConfig = {
   authDomain:
     process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "getgolist.firebaseapp.com",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "getgolist",
+  storageBucket:
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? "getgolist.appspot.com",
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? "getgolist",
 };
 

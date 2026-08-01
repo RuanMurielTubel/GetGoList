@@ -29,6 +29,17 @@
       appId: "getgolist"
     };
 
+    const predefinedSectors = [
+      'Geral',
+      'Limpeza',
+      'Higiene Pessoal',
+      'Padaria',
+      'Hortifruti',
+      'Açougue',
+      'Bebidas',
+      'Congelados'
+    ];
+
     function saveLists(options = {}) {
       try {
         localStorage.setItem('lists', JSON.stringify(lists));
@@ -637,6 +648,7 @@
       updateFooter();
       updateDashboard();
       updateTargetListSelect();
+      populateSectorSelect();
 
       // Limpa parâmetro de importação da URL
       if (importList) {
@@ -647,6 +659,18 @@
     function updateDashboard() {
       updateStats();
       updateCharts();
+    }
+
+    function populateSectorSelect() {
+      const select = document.getElementById('itemSector');
+      if (!select) return;
+      select.innerHTML = '';
+      predefinedSectors.forEach((s) => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        select.appendChild(opt);
+      });
     }
 
     function updateStats() {
@@ -1157,7 +1181,8 @@
       const itemName = li.querySelector('.edit-name').value.trim();
       const itemPrice = parsePrice(li.querySelector('.edit-price').value);
       const itemQuantity = parseInt(li.querySelector('.edit-quantity').value) || 1;
-      const itemSector = li.querySelector('.edit-sector').value.trim() || 'Geral';
+      const sectorEl = li.querySelector('.edit-sector');
+      const itemSector = sectorEl ? (sectorEl.value || 'Geral') : 'Geral';
       const itemTotal = itemPrice * itemQuantity;
 
       if (itemName && itemPrice > 0 && itemQuantity > 0) {
@@ -1385,7 +1410,9 @@
               <input type="text" class="edit-name" value="${item.name}">
               <input type="text" class="edit-price" value="${item.price.toFixed(2).replace('.', ',')}" oninput="formatPrice(this)">
               <input type="number" class="edit-quantity" value="${item.quantity}" min="1">
-              <input type="text" class="edit-sector" list="sectorOptions" value="${item?.sector && item.sector.trim() ? item.sector : 'Geral'}" placeholder="Setor">
+              <select class="edit-sector">
+                ${predefinedSectors.map(s => `<option value=\"${s}\" ${ (item?.sector && item.sector.trim() ? item.sector : 'Geral') === s ? 'selected' : '' }> ${s} </option>`).join('')}
+              </select>
               <button onclick="saveEdit(${index})">Salvar</button>
               <button onclick="cancelEdit(${index})">Cancelar</button>
             `;

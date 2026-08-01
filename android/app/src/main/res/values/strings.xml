@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GetGoList</string>
+    <string name="title_activity_main">GetGoList</string>
+    <string name="package_name">com.getgolist.app</string>
+    <string name="custom_url_scheme">com.getgolist.app</string>
+</resources>

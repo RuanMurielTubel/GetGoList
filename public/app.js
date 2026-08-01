@@ -1,7 +1,6 @@
     let lists = {};
     let currentListName = "Lista 1";
     let selectedDivideListName = "";
-    let selectedBalanceListName = "";
     let shoppingList = [];
     let listHistory = [];
     let editingIndex = null;
@@ -632,7 +631,6 @@
           : Object.keys(lists)[0];
       shoppingList = lists[currentListName].items || [];
       listHistory = lists[currentListName].history || [];
-      selectedBalanceListName = currentListName;
       if (sharedListId && !sharedListEnded) {
         rememberSharedListAccess(currentListName, sharedListId);
       }
@@ -729,7 +727,6 @@
         'openEditListNamesDialogButton',
         'openSelectListDialogButton',
         'openDeleteListDialogButton',
-        'openBalanceListButton',
         'openDivideListButton',
       ];
 
@@ -1049,7 +1046,6 @@
 
       shoppingList = lists[currentListName].items;
       listHistory = lists[currentListName].history;
-      selectedBalanceListName = currentListName;
 
       // Salva listas no localStorage
       try {
@@ -1410,7 +1406,6 @@
       }
       const sectionButtons = {
         homeSection: '.home-button',
-        balanceSection: '.balance-button',
         shoppingSection: '.shopping-button',
         historySection: '.history-button',
         divideSection: '.divide-button',
@@ -1424,8 +1419,7 @@
       }
       const sectionTitles = {
         homeSection: 'Início',
-        balanceSection: 'Saldo',
-        shoppingSection: 'Lista de Compras',
+        shoppingSection: 'Listas',
         historySection: 'Histórico',
         divideSection: 'Divisão',
         profileSection: 'Meu Perfil'
@@ -1433,8 +1427,7 @@
       document.getElementById('mainTitle').textContent = sectionTitles[sectionId] || 'Lista de Compras';
       const sectionSubtitles = {
         homeSection: 'Sua rotina de compras em um só lugar.',
-        balanceSection: 'Defina um limite e acompanhe cada gasto.',
-        shoppingSection: 'Organize os itens e compre com tranquilidade.',
+        shoppingSection: 'Organize os itens e acompanhe o orçamento de cada lista.',
         historySection: 'Consulte compras anteriores e compare períodos.',
         divideSection: 'Calcule e envie a parte de cada pessoa.',
         profileSection: 'Personalize sua experiência no GetGoList.'
@@ -1465,9 +1458,6 @@
         document.getElementById('divisionResult').innerHTML = '';
         updateDivideListSelect();
       }
-      if (sectionId === 'balanceSection') {
-        document.getElementById('selectedBalanceList').textContent = selectedBalanceListName || 'Nenhuma lista selecionada';
-      }
     }
 
     function formatPrice(input) {
@@ -1484,38 +1474,19 @@
       return parseFloat(value.replace(',', '.')) || 0;
     }
 
-    function openBalanceListDialog() {
-      console.log("Tentando abrir diálogo de seleção de lista para saldo");
-      const dialog = document.getElementById('selectListDialog');
-      if (!dialog) {
-        console.error("Elemento de diálogo 'selectListDialog' não encontrado");
+    function openBudgetDialog() {
+      const dialog = document.getElementById('budgetDialog');
+      const balanceInput = document.getElementById('balanceInput');
+      const budgetListName = document.getElementById('budgetListName');
+      if (!dialog || !balanceInput || !budgetListName || !lists[currentListName]) {
         return;
       }
-      const options = document.getElementById('selectListOptions');
-      if (!options) {
-        console.error("Elemento de opções de seleção de lista não encontrado");
-        return;
-      }
-      options.innerHTML = '';
-      Object.keys(lists).forEach(listName => {
-        const li = document.createElement('li');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `select-${listName}`;
-        checkbox.name = 'selectList';
-        checkbox.value = listName;
-        if (listName === selectedBalanceListName) {
-          checkbox.checked = true;
-        }
-        const label = document.createElement('label');
-        label.htmlFor = `select-${listName}`;
-        label.textContent = listName;
-        li.appendChild(checkbox);
-        li.appendChild(label);
-        options.appendChild(li);
-      });
+      budgetListName.textContent = currentListName;
+      balanceInput.value = Number(lists[currentListName].initialBalance || 0)
+        .toFixed(2)
+        .replace('.', ',');
       dialog.style.display = 'flex';
-      console.log("Diálogo de seleção de lista para saldo aberto com sucesso");
+      balanceInput.focus();
     }
 
     function setBalance() {
@@ -1524,35 +1495,28 @@
         console.error("Elemento de entrada de saldo não encontrado");
         return;
       }
-      if (!selectedBalanceListName) {
-        alert('Por favor, selecione uma lista para definir o saldo.');
-        return;
-      }
-      if (!lists[selectedBalanceListName]) {
-        console.error(`Lista selecionada ${selectedBalanceListName} não existe`);
-        alert('Erro: A lista selecionada não existe.');
+      if (!lists[currentListName]) {
+        alert('A lista atual não está disponível.');
         return;
       }
       const balanceValue = parsePrice(balanceInput.value);
       if (balanceValue >= 0) {
-        const totalSpent = lists[selectedBalanceListName].items.reduce((sum, item) => sum + item.total, 0);
-        lists[selectedBalanceListName].initialBalance = balanceValue;
-        lists[selectedBalanceListName].balance = balanceValue - totalSpent;
+        const totalSpent = lists[currentListName].items.reduce((sum, item) => sum + item.total, 0);
+        lists[currentListName].initialBalance = balanceValue;
+        lists[currentListName].balance = balanceValue - totalSpent;
         hasShownLowBalanceAlert = false;
         try {
           saveLists();
-          console.log("Saldo inicial atualizado e saldo restante recalculado para:", selectedBalanceListName, lists[selectedBalanceListName]);
+          console.log("Orçamento atualizado para:", currentListName, lists[currentListName]);
         } catch (e) {
           console.error("Erro ao salvar listas no localStorage:", e);
         }
-        if (selectedBalanceListName === currentListName) {
-          updateBalance();
-          updateTotal();
-          updateFooter();
-        }
-        balanceInput.value = '';
+        updateBalance();
+        updateTotal();
+        updateFooter();
+        closeDialog('budgetDialog');
       } else {
-        alert('Por favor, insira um saldo válido.');
+        alert('Por favor, insira um orçamento válido.');
       }
     }
 
@@ -1927,6 +1891,10 @@
       }
       const balance = lists[currentListName].balance;
       const initialBalance = lists[currentListName].initialBalance;
+      const initialBalanceDisplay = document.getElementById('initialBalanceDisplay');
+      if (initialBalanceDisplay) {
+        initialBalanceDisplay.textContent = initialBalance.toFixed(2).replace('.', ',');
+      }
       balanceElement.textContent = balance.toFixed(2).replace('.', ',');
       balanceElement.parentElement.className = 'balance' + (balance < 0 ? ' negative' : '');
       const alertElement = document.getElementById('lowBalanceAlert');
@@ -2856,7 +2824,6 @@
         return;
       }
       currentListName = selectedListName;
-      selectedBalanceListName = selectedListName;
       shoppingList = lists[currentListName].items;
       listHistory = lists[currentListName].history;
       allSelected = false;
@@ -2867,10 +2834,6 @@
       updateFooter();
       updateDashboard();
       setupListButtons();
-      const selectedBalanceListSpan = document.getElementById('selectedBalanceList');
-      if (selectedBalanceListSpan) {
-        selectedBalanceListSpan.textContent = selectedBalanceListName;
-      }
       closeDialog('listNavigationDialog');
       showSection('shoppingSection');
       console.log("Navegado para lista:", currentListName);
@@ -2955,8 +2918,10 @@
       }
       dialog.style.display = 'flex';
       const input = document.getElementById('newListName');
+      const budgetInput = document.getElementById('newListBalance');
       if (input) {
         input.value = '';
+        if (budgetInput) budgetInput.value = '';
         console.log("Diálogo de criação de lista aberto com sucesso");
       } else {
         console.error("Elemento de entrada 'newListName' não encontrado");
@@ -2965,13 +2930,24 @@
 
     function createNewList() {
       const input = document.getElementById('newListName');
-      if (!input) {
+      const budgetInput = document.getElementById('newListBalance');
+      if (!input || !budgetInput) {
         console.error("Elemento de entrada 'newListName' não encontrado");
         return;
       }
       const newName = input.value.trim();
+      const initialBudget = parsePrice(budgetInput.value);
       if (newName && !lists[newName]) {
-        lists[newName] = { items: [], history: [], balance: 0, initialBalance: 0 };
+        lists[newName] = {
+          items: [],
+          history: [],
+          balance: initialBudget,
+          initialBalance: initialBudget,
+        };
+        currentListName = newName;
+        shoppingList = lists[newName].items;
+        listHistory = lists[newName].history;
+        selectedDivideListName = newName;
         try {
           saveLists();
         } catch (e) {
@@ -2979,7 +2955,12 @@
         }
         closeDialog('createListDialog');
         setupListButtons();
+        updateList();
+        updateTotal();
+        updateBalance();
+        updateFooter();
         updateDashboard();
+        showSection('shoppingSection');
         console.log("Nova lista criada:", newName);
       } else if (newName) {
         alert('Nome já existe ou é inválido!');
@@ -3061,13 +3042,11 @@
       }
       let currentWasDeleted = false;
       let divideListWasDeleted = false;
-      let balanceListWasDeleted = false;
       checkboxes.forEach(checkbox => {
         const listName = checkbox.value;
         console.log("Excluindo lista:", listName);
         if (listName === currentListName) currentWasDeleted = true;
         if (listName === selectedDivideListName) divideListWasDeleted = true;
-        if (listName === selectedBalanceListName) balanceListWasDeleted = true;
         clearRememberedSharedListByName(listName);
         delete lists[listName];
       });
@@ -3084,13 +3063,6 @@
         const selectedListSpan = document.getElementById('selectedDivideList');
         if (selectedListSpan) {
           selectedListSpan.textContent = 'Nenhuma lista selecionada';
-        }
-      }
-      if (balanceListWasDeleted) {
-        selectedBalanceListName = currentListName;
-        const selectedListSpan = document.getElementById('selectedBalanceList');
-        if (selectedListSpan) {
-          selectedListSpan.textContent = currentListName;
         }
       }
       shoppingList = lists[currentListName].items;
@@ -3119,13 +3091,11 @@
       }
       let currentWasDeleted = false;
       let divideListWasDeleted = false;
-      let balanceListWasDeleted = false;
       checkboxes.forEach(checkbox => {
         const listName = checkbox.value;
         console.log("Excluindo lista:", listName);
         if (listName === currentListName) currentWasDeleted = true;
         if (listName === selectedDivideListName) divideListWasDeleted = true;
-        if (listName === selectedBalanceListName) balanceListWasDeleted = true;
         clearRememberedSharedListByName(listName);
         delete lists[listName];
       });
@@ -3142,13 +3112,6 @@
         const selectedListSpan = document.getElementById('selectedDivideList');
         if (selectedListSpan) {
           selectedListSpan.textContent = 'Nenhuma lista selecionada';
-        }
-      }
-      if (balanceListWasDeleted) {
-        selectedBalanceListName = currentListName;
-        const selectedListSpan = document.getElementById('selectedBalanceList');
-        if (selectedListSpan) {
-          selectedListSpan.textContent = currentListName;
         }
       }
       shoppingList = lists[currentListName].items;
@@ -3206,7 +3169,6 @@
           newNames[newName] = lists[oldName];
           if (currentListName === oldName) currentListName = newName;
           if (selectedDivideListName === oldName) selectedDivideListName = newName;
-          if (selectedBalanceListName === oldName) selectedBalanceListName = newName;
         } else if (newName && newName !== oldName) {
           hasConflict = true;
         } else {
@@ -3230,10 +3192,6 @@
         const selectedDivideListSpan = document.getElementById('selectedDivideList');
         if (selectedDivideListSpan) {
           selectedDivideListSpan.textContent = selectedDivideListName || 'Nenhuma lista selecionada';
-        }
-        const selectedBalanceListSpan = document.getElementById('selectedBalanceList');
-        if (selectedBalanceListSpan) {
-          selectedBalanceListSpan.textContent = selectedBalanceListName || 'Nenhuma lista selecionada';
         }
         try {
           saveLists();
@@ -3297,7 +3255,6 @@
         return;
       }
       currentListName = selectedListName;
-      selectedBalanceListName = selectedListName;
       shoppingList = lists[currentListName].items;
       listHistory = lists[currentListName].history;
       allSelected = false;
@@ -3308,10 +3265,6 @@
       updateFooter();
       updateDashboard();
       setupListButtons();
-      const selectedBalanceListSpan = document.getElementById('selectedBalanceList');
-      if (selectedBalanceListSpan) {
-        selectedBalanceListSpan.textContent = selectedBalanceListName;
-      }
       closeDialog('selectListDialog');
       showSection('shoppingSection');
       console.log("Lista selecionada:", currentListName);
@@ -3345,6 +3298,7 @@
       const photoFileInput = document.getElementById('photoFileInput');
       const itemPrice = document.getElementById('itemPrice');
       const balanceInput = document.getElementById('balanceInput');
+      const newListBalance = document.getElementById('newListBalance');
 
       if (menuToggle) {
         menuToggle.addEventListener('click', toggleMenu);
@@ -3368,19 +3322,23 @@
           formatPrice(this);
         });
       }
+      if (newListBalance) {
+        newListBalance.addEventListener('input', function () {
+          formatPrice(this);
+        });
+      }
       const setBalanceButton = document.getElementById('setBalanceButton');
       const addItemButton = document.getElementById('addItemButton');
       const triggerPhotoUpload = document.getElementById('triggerPhotoUpload');
       const profileAvatar = document.getElementById('profileAvatar');
       const shareButton = document.querySelector('.share-button');
       const homeButton = document.querySelector('.home-button');
-      const balanceButton = document.querySelector('.balance-button');
       const shoppingButton = document.querySelector('.shopping-button');
       const historyButton = document.querySelector('.history-button');
       const divideButton = document.querySelector('.divide-button');
       const profileButton = document.querySelector('.profile-button');
       const openListNavigationStat = document.getElementById('openListNavigationStat');
-      const openBalanceListButton = document.getElementById('openBalanceListButton');
+      const openBudgetDialogButton = document.getElementById('openBudgetDialogButton');
       const openCreateListDialogButton = document.getElementById('openCreateListDialogButton');
       const openDeleteListDialogButton = document.getElementById('openDeleteListDialogButton');
       const openEditListNamesDialogButton = document.getElementById('openEditListNamesDialogButton');
@@ -3399,6 +3357,7 @@
       const loadCurrentProfileButton = document.getElementById('loadCurrentProfileButton');
       const createNewListButton = document.getElementById('createNewListButton');
       const closeCreateListDialogButton = document.getElementById('closeCreateListDialogButton');
+      const closeBudgetDialogButton = document.getElementById('closeBudgetDialogButton');
       const selectAllDeleteListsButton = document.getElementById('selectAllDeleteListsButton');
       const deleteSelectedListsButton = document.getElementById('deleteSelectedListsButton');
       const closeDeleteListDialogButton = document.getElementById('closeDeleteListDialogButton');
@@ -3440,9 +3399,6 @@
       if (homeButton) {
         homeButton.addEventListener('click', () => showSection('homeSection'));
       }
-      if (balanceButton) {
-        balanceButton.addEventListener('click', () => showSection('balanceSection'));
-      }
       if (shoppingButton) {
         shoppingButton.addEventListener('click', () => showSection('shoppingSection'));
       }
@@ -3458,8 +3414,8 @@
       if (openListNavigationStat) {
         openListNavigationStat.addEventListener('click', openListNavigationDialog);
       }
-      if (openBalanceListButton) {
-        openBalanceListButton.addEventListener('click', openBalanceListDialog);
+      if (openBudgetDialogButton) {
+        openBudgetDialogButton.addEventListener('click', openBudgetDialog);
       }
       if (openCreateListDialogButton) {
         openCreateListDialogButton.addEventListener('click', createNewListDialog);
@@ -3514,6 +3470,9 @@
       }
       if (closeCreateListDialogButton) {
         closeCreateListDialogButton.addEventListener('click', () => closeDialog('createListDialog'));
+      }
+      if (closeBudgetDialogButton) {
+        closeBudgetDialogButton.addEventListener('click', () => closeDialog('budgetDialog'));
       }
       if (selectAllDeleteListsButton) {
         selectAllDeleteListsButton.addEventListener('click', selectAllDeleteLists);

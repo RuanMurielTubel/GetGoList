@@ -876,7 +876,6 @@ textarea:focus-visible {
 
 .sidebar button.home-button::before { content: "\2302"; }
 .sidebar button.shopping-button::before { content: "\2713"; }
-.sidebar button.balance-button::before { content: "R$"; font-size: 10px; }
 .sidebar button.history-button::before { content: "\21BA"; }
 .sidebar button.divide-button::before { content: "\00F7"; font-size: 20px; }
 .sidebar button.share-button::before { content: "\2197"; }
@@ -1003,7 +1002,6 @@ h1#mainTitle {
 }
 
 #shoppingSection > .button-group:not(.primary):not(.secondary),
-#balanceSection > .button-group:not(.primary),
 #divideSection > .button-group:not(.primary) {
   background: var(--gg-surface);
   border: 1px solid var(--gg-line);
@@ -1015,11 +1013,6 @@ h1#mainTitle {
 #shoppingSection > .button-group:not(.primary):not(.secondary) {
   display: grid;
   grid-template-columns: minmax(180px, 2fr) minmax(130px, 1fr) minmax(100px, .7fr) minmax(145px, 1fr) auto;
-}
-
-#balanceSection > .button-group:not(.primary) {
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
 }
 
 #divideSection > .button-group:not(.primary) {
@@ -1051,6 +1044,43 @@ h1#mainTitle {
   background: #ffffff;
   border: 1px solid var(--gg-primary);
   color: var(--gg-primary-dark);
+}
+
+.list-budget-card {
+  align-items: center;
+  background: linear-gradient(135deg, #ffffff 0%, #f4fafb 100%);
+  border: 1px solid var(--gg-line);
+  border-left: 4px solid var(--gg-accent);
+  border-radius: 16px;
+  box-shadow: var(--gg-shadow-sm);
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin: 14px 0;
+  padding: 16px 18px;
+}
+
+.list-budget-summary {
+  display: grid;
+  gap: 3px;
+}
+
+.list-budget-summary small {
+  color: var(--gg-muted);
+  font-weight: 700;
+}
+
+.list-budget-summary > strong {
+  color: var(--gg-primary-dark);
+  font-size: 24px;
+}
+
+.list-budget-summary .balance {
+  background: transparent;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  text-align: left;
 }
 
 .button-group input,
@@ -1360,13 +1390,17 @@ li .item-controls .action-buttons button:last-child {
   }
 
   #shoppingSection > .button-group:not(.primary):not(.secondary),
-  #balanceSection > .button-group:not(.primary),
   #divideSection > .button-group:not(.primary) {
     grid-template-columns: 1fr;
   }
 
   .button-group.primary,
   .button-group.secondary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .list-budget-card {
     align-items: stretch;
     flex-direction: column;
   }

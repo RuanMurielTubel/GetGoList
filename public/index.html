@@ -183,7 +183,6 @@
     }
     
     .sidebar button.home-button::before { content: ""; }
-    .sidebar button.balance-button::before { content: ""; }
     .sidebar button.shopping-button::before { content: ""; }
     .sidebar button.history-button::before { content: ""; }
     .sidebar button.divide-button::before { content: ""; }
@@ -874,7 +873,7 @@
       margin: 8px;
     }
     
-    #selectedDivideList, #selectedBalanceList {
+    #selectedDivideList {
       margin-left: 10px;
       font-size: 14px;
       color: #333;
@@ -1105,8 +1104,7 @@
     </div>
     <div class="sidebar-section-label">Organização</div>
     <button type="button" class="home-button active"><span>Início</span></button>
-    <button type="button" class="shopping-button"><span>Lista de Compras</span></button>
-    <button type="button" class="balance-button"><span>Saldo e orçamento</span></button>
+    <button type="button" class="shopping-button"><span>Listas</span></button>
     <button type="button" class="history-button"><span>Histórico</span></button>
     <div class="sidebar-section-label">Colaboração</div>
     <button type="button" class="divide-button"><span>Dividir conta</span></button>
@@ -1179,19 +1177,6 @@
       </div>
     </div>
 
-    <div id="balanceSection" class="section">
-      <div class="button-group primary">
-        <button class="select-list" id="openBalanceListButton">Escolher Lista</button>
-        <span id="selectedBalanceList">Nenhuma lista selecionada</span>
-      </div>
-      <div class="button-group">
-        <input type="text" id="balanceInput" placeholder="Saldo inicial (R$)">
-        <button id="setBalanceButton">Definir Saldo</button>
-      </div>
-      <div class="balance">Saldo Restante: R$ <span id="balance">0,00</span></div>
-      <div class="alert" id="lowBalanceAlert">Atenção: Seu saldo está baixo! Restam menos de 10% do valor inicial.</div>
-    </div>
-    
     <div id="shoppingSection" class="section">
       <div class="recent-shared-banner" id="recentSharedBanner" style="display: none;">
         <div>
@@ -1217,6 +1202,16 @@
       </div>
       
       <div id="listButtons"></div>
+
+      <div class="list-budget-card">
+        <div class="list-budget-summary">
+          <small>Orçamento desta lista</small>
+          <strong>R$ <span id="initialBalanceDisplay">0,00</span></strong>
+          <span class="balance">Saldo restante: R$ <span id="balance">0,00</span></span>
+        </div>
+        <button type="button" id="openBudgetDialogButton">Alterar orçamento</button>
+      </div>
+      <div class="alert" id="lowBalanceAlert">Atenção: Seu saldo está baixo! Restam menos de 10% do valor inicial.</div>
       
       <div class="button-group">
         <input type="text" id="itemName" placeholder="Nome do item">
@@ -1352,8 +1347,18 @@
     <div class="dialog-content">
       <h3>Criar Nova Lista</h3>
       <input type="text" id="newListName" placeholder="Nome da nova lista">
+      <input type="text" id="newListBalance" placeholder="Orçamento inicial (R$)">
       <button id="createNewListButton">Criar</button>
       <button id="closeCreateListDialogButton">Cancelar</button>
+    </div>
+  </div>
+  <div id="budgetDialog" class="dialog">
+    <div class="dialog-content">
+      <h3>Alterar orçamento</h3>
+      <p>Defina o orçamento da lista “<span id="budgetListName"></span>”.</p>
+      <input type="text" id="balanceInput" placeholder="Orçamento (R$)">
+      <button id="setBalanceButton">Salvar orçamento</button>
+      <button id="closeBudgetDialogButton">Cancelar</button>
     </div>
   </div>
   <div id="deleteListDialog" class="dialog">

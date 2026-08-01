@@ -1595,6 +1595,13 @@
 
     function removeItem(index) {
       const item = shoppingList[index];
+      if (!item) {
+        return;
+      }
+      const itemName = item.name ? ` “${item.name}”` : '';
+      if (!confirm(`Deseja realmente excluir o item${itemName}? Esta ação não pode ser desfeita.`)) {
+        return;
+      }
       lists[currentListName].balance += item.total;
       shoppingList.splice(index, 1);
       try {
@@ -2789,6 +2796,13 @@
         if (confirmDialog) {
           confirmDialog.style.display = 'flex';
         }
+        return;
+      }
+      const selectedListNames = Array.from(checkboxes).map((checkbox) => checkbox.value);
+      const listDescription = selectedListNames.length === 1
+        ? `a lista “${selectedListNames[0]}”`
+        : `as ${selectedListNames.length} listas selecionadas`;
+      if (!confirm(`Deseja realmente excluir ${listDescription}? Esta ação não pode ser desfeita.`)) {
         return;
       }
       let currentWasDeleted = false;

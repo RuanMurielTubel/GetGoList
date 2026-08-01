@@ -71,8 +71,15 @@
 
       window.clearTimeout(remoteSaveTimer);
       remoteSaveTimer = window.setTimeout(() => {
-        const saveOptions = sharedListId ? { merge: true } : {};
-        remoteListReference.set(payload, saveOptions).catch(() => {
+        // Em listas compartilhadas, update substitui o mapa `lists` inteiro.
+        // Usar set(..., { merge: true }) preservava chaves removidas no
+        // Firestore e fazia listas excluídas reaparecerem no próximo snapshot.
+        const remoteSave = sharedListId
+          ? remoteListReference.update(payload)
+          : remoteListReference.set(payload);
+
+        remoteSave.catch((error) => {
+          console.error("Não foi possível sincronizar as listas.", error);
           updateAccountPanel("Conta conectada • sincronização pendente");
         });
       }, 350);
@@ -501,8 +508,12 @@
       shoppingList = lists[currentListName].items || [];
       listHistory = lists[currentListName].history || [];
       selectedBalanceListName = currentListName;
-      clearLocalCache();
-      saveLists({ localOnly: true });
+      // Uma lista compartilhada não deve substituir o cache das listas
+      // particulares do usuário no dispositivo.
+      if (!sharedListId) {
+        clearLocalCache();
+        saveLists({ localOnly: true });
+      }
 
       setupListButtons();
       updateList();
@@ -575,7 +586,13 @@
             const remoteData = snapshot.exists ? snapshot.data() : null;
 
             if (remoteData && remoteData.lists && Object.keys(remoteData.lists).length) {
-              if (!initialRemoteSnapshotHandled) {
+              if (sharedListId) {
+                // O documento compartilhado é a fonte de verdade. Mesclar o
+                // cache particular aqui duplicava listas a cada atualização.
+                applyRemoteLists(remoteData.lists, remoteData.currentListName);
+                initialRemoteSnapshotHandled = true;
+                remoteSyncReady = true;
+              } else if (!initialRemoteSnapshotHandled) {
                 const mergedLists = mergeLocalAndRemoteLists(remoteData.lists, lists);
                 applyRemoteLists(mergedLists, remoteData.currentListName);
                 initialRemoteSnapshotHandled = true;
@@ -622,6 +639,16 @@
         "Lista 1": { items: [], history: [], balance: 0, initialBalance: 0 }
       };
 
+      // Descobre o modo compartilhado antes de consultar o armazenamento
+      // local. Antes, essa informação era lida tarde demais e as listas
+      // particulares acabavam sendo copiadas para o documento compartilhado.
+      const urlParams = new URLSearchParams(window.location.search);
+      const importList = urlParams.get('importList');
+      sharedListId = urlParams.get('sharedList');
+      if (sharedListId) {
+        isSharedListMode = true;
+      }
+
       // Tenta carregar listas do localStorage, mas ignore em modo de lista compartilhada.
       let storedLists = null;
       if (!sharedListId) {
@@ -637,12 +664,6 @@
       }
 
       // Verifica se há uma lista importada na URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const importList = urlParams.get('importList');
-      sharedListId = urlParams.get('sharedList');
-      if (sharedListId) {
-        isSharedListMode = true;
-      }
       let importedListName = null;
       if (importList) {
         try {
@@ -2730,4 +2751,3 @@
     updateHistory();
     updateBalance();
     showSection('homeSection'); // Definir a seção inicial para visitante
-  

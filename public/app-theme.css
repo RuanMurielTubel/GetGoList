@@ -876,6 +876,7 @@ textarea:focus-visible {
 
 .sidebar button.home-button::before { content: "\2302"; }
 .sidebar button.shopping-button::before { content: "\2713"; }
+.sidebar button.products-button::before { content: "\2637"; }
 .sidebar button.history-button::before { content: "\21BA"; }
 .sidebar button.divide-button::before { content: "\00F7"; font-size: 20px; }
 .sidebar button.share-button::before { content: "\2197"; }
@@ -1085,6 +1086,82 @@ h1#mainTitle {
   padding: 18px;
 }
 
+.product-list-context {
+  align-items: center;
+  background: linear-gradient(135deg, var(--gg-primary-dark), var(--gg-primary));
+  border-radius: 18px;
+  box-shadow: var(--gg-shadow);
+  color: #fff;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 20px;
+}
+
+.product-list-context small {
+  color: rgba(255, 255, 255, .78);
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.product-list-context h2 {
+  color: #fff;
+  font-size: 25px;
+  margin: 4px 0 6px;
+}
+
+.product-list-context span {
+  color: rgba(255, 255, 255, .85);
+  font-size: 13px;
+}
+
+.product-list-context button {
+  background: #fff;
+  color: var(--gg-primary-dark);
+  flex: 0 0 auto;
+  font-weight: 800;
+  margin: 0;
+}
+
+.list-next-step-card {
+  align-items: center;
+  background: var(--gg-primary-pale);
+  border: 1px solid #c8e4e7;
+  border-radius: 16px;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding: 18px;
+}
+
+.list-next-step-card small {
+  color: var(--gg-primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.list-next-step-card h3 {
+  color: var(--gg-ink);
+  margin: 4px 0;
+}
+
+.list-next-step-card p {
+  color: var(--gg-muted);
+  margin: 0;
+}
+
+.list-next-step-card button {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
 .list-items-card-heading small,
 .items-section-title small {
   color: var(--gg-primary);
@@ -1100,7 +1177,7 @@ h1#mainTitle {
   margin: 3px 0 12px;
 }
 
-#shoppingSection .item-entry-form {
+#productsSection .item-entry-form {
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -1505,6 +1582,24 @@ li .item-controls .action-buttons button:last-child {
   .list-workspace-toolbar {
     align-items: stretch;
     grid-template-columns: 1fr;
+  }
+
+  .product-list-context {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .list-next-step-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .list-next-step-card button {
+    width: 100%;
+  }
+
+  .product-list-context button {
+    width: 100%;
   }
 
   .list-management-actions {

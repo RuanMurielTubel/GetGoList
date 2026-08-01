@@ -948,7 +948,7 @@
               .collection('appData')
               .doc('lists');
           }
-          showSection('shoppingSection');
+          showSection('productsSection');
           updateSharedModeUi();
           subscribeToRemoteLists();
         });
@@ -1362,6 +1362,10 @@
       const footerListName = document.getElementById('footerListName');
       const footerItemCount = document.getElementById('footerItemCount');
       const footerBalance = document.getElementById('footerBalance');
+      const productListName = document.getElementById('productListName');
+      const productItemCount = document.getElementById('productItemCount');
+      const productBalance = document.getElementById('productBalance');
+      const currentListSelect = document.getElementById('currentListSelect');
       
       if (footerListName && footerItemCount && footerBalance) {
         const balance = lists[currentListName].balance;
@@ -1370,6 +1374,12 @@
         footerListName.textContent = currentListName;
         footerItemCount.textContent = `${itemCount} ${itemCount === 1 ? 'item' : 'itens'}`;
         footerBalance.textContent = `R$ ${balance.toFixed(2).replace('.', ',')}`;
+        if (productListName) productListName.textContent = currentListName;
+        if (productItemCount) productItemCount.textContent = `${itemCount} ${itemCount === 1 ? 'item' : 'itens'}`;
+        if (productBalance) productBalance.textContent = balance.toFixed(2).replace('.', ',');
+        if (currentListSelect?.selectedOptions?.[0]) {
+          currentListSelect.selectedOptions[0].textContent = `${currentListName} (${itemCount} ${itemCount === 1 ? 'item' : 'itens'})`;
+        }
         
         // Remove classes anteriores
         footerBalance.classList.remove('negative', 'positive');
@@ -1386,7 +1396,7 @@
     }
 
     function showSection(sectionId) {
-      if (sectionId === 'shoppingSection' && sharedListId && sharedListEnded) {
+      if ((sectionId === 'shoppingSection' || sectionId === 'productsSection') && sharedListId && sharedListEnded) {
         clearRememberedSharedList(sharedListId);
         openPrivateLists();
         return;
@@ -1406,6 +1416,7 @@
       const sectionButtons = {
         homeSection: '.home-button',
         shoppingSection: '.shopping-button',
+        productsSection: '.products-button',
         historySection: '.history-button',
         divideSection: '.divide-button',
         profileSection: '.profile-button'
@@ -1419,6 +1430,7 @@
       const sectionTitles = {
         homeSection: 'Início',
         shoppingSection: 'Listas',
+        productsSection: 'Produtos',
         historySection: 'Histórico',
         divideSection: 'Divisão',
         profileSection: 'Meu Perfil'
@@ -1426,7 +1438,8 @@
       document.getElementById('mainTitle').textContent = sectionTitles[sectionId] || 'Lista de Compras';
       const sectionSubtitles = {
         homeSection: 'Sua rotina de compras em um só lugar.',
-        shoppingSection: 'Organize os itens e acompanhe o orçamento de cada lista.',
+        shoppingSection: 'Crie, organize e defina o orçamento das suas listas.',
+        productsSection: 'Monte sua compra e acompanhe cada item da lista.',
         historySection: 'Consulte compras anteriores e compare períodos.',
         divideSection: 'Calcule e envie a parte de cada pessoa.',
         profileSection: 'Personalize sua experiência no GetGoList.'
@@ -1445,6 +1458,12 @@
 
       if (sectionId === 'homeSection') {
         updateDashboard();
+      }
+      if (sectionId === 'productsSection') {
+        updateList();
+        updateTotal();
+        updateBalance();
+        updateFooter();
       }
       if (sectionId === 'historySection') {
         updateHistory();
@@ -2834,7 +2853,7 @@
       updateDashboard();
       setupListButtons();
       closeDialog('listNavigationDialog');
-      showSection('shoppingSection');
+      showSection('productsSection');
       console.log("Navegado para lista:", currentListName);
     }
 
@@ -2956,7 +2975,7 @@
         updateBalance();
         updateFooter();
         updateDashboard();
-        showSection('shoppingSection');
+        showSection('productsSection');
         console.log("Nova lista criada:", newName);
       } else if (newName) {
         alert('Nome já existe ou é inválido!');
@@ -3267,11 +3286,14 @@
       const shareButton = document.querySelector('.share-button');
       const homeButton = document.querySelector('.home-button');
       const shoppingButton = document.querySelector('.shopping-button');
+      const productsButton = document.querySelector('.products-button');
       const historyButton = document.querySelector('.history-button');
       const divideButton = document.querySelector('.divide-button');
       const profileButton = document.querySelector('.profile-button');
       const openListNavigationStat = document.getElementById('openListNavigationStat');
       const openBudgetDialogButton = document.getElementById('openBudgetDialogButton');
+      const manageListsButton = document.getElementById('manageListsButton');
+      const openProductsFromListsButton = document.getElementById('openProductsFromListsButton');
       const openCreateListDialogButton = document.getElementById('openCreateListDialogButton');
       const openDeleteListDialogButton = document.getElementById('openDeleteListDialogButton');
       const openEditListNamesDialogButton = document.getElementById('openEditListNamesDialogButton');
@@ -3331,6 +3353,15 @@
       }
       if (shoppingButton) {
         shoppingButton.addEventListener('click', () => showSection('shoppingSection'));
+      }
+      if (productsButton) {
+        productsButton.addEventListener('click', () => showSection('productsSection'));
+      }
+      if (manageListsButton) {
+        manageListsButton.addEventListener('click', () => showSection('shoppingSection'));
+      }
+      if (openProductsFromListsButton) {
+        openProductsFromListsButton.addEventListener('click', () => showSection('productsSection'));
       }
       if (historyButton) {
         historyButton.addEventListener('click', () => showSection('historySection'));

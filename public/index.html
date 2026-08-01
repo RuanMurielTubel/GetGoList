@@ -184,6 +184,7 @@
     
     .sidebar button.home-button::before { content: ""; }
     .sidebar button.shopping-button::before { content: ""; }
+    .sidebar button.products-button::before { content: ""; }
     .sidebar button.history-button::before { content: ""; }
     .sidebar button.divide-button::before { content: ""; }
     .sidebar button.share-button::before { content: ""; }
@@ -1097,6 +1098,7 @@
     <div class="sidebar-section-label">Organização</div>
     <button type="button" class="home-button active"><span>Início</span></button>
     <button type="button" class="shopping-button"><span>Listas</span></button>
+    <button type="button" class="products-button"><span>Produtos</span></button>
     <button type="button" class="history-button"><span>Histórico</span></button>
     <div class="sidebar-section-label">Colaboração</div>
     <button type="button" class="divide-button"><span>Dividir conta</span></button>
@@ -1169,15 +1171,14 @@
       </div>
     </div>
 
-    <div id="shoppingSection" class="section">
-      <div class="recent-shared-banner" id="recentSharedBanner" style="display: none;">
+    <div class="recent-shared-banner" id="recentSharedBanner" style="display: none;">
         <div>
           <strong>Lista compartilhada dispon&iacute;vel</strong>
           <small>Voltar para &ldquo;<span id="recentSharedListName"></span>&rdquo;.</small>
         </div>
         <button type="button" class="shared-space-button" id="openRecentSharedListButton">Abrir lista compartilhada</button>
-      </div>
-      <div class="shared-mode-banner" id="sharedModeBanner" style="display: none;">
+    </div>
+    <div class="shared-mode-banner" id="sharedModeBanner" style="display: none;">
         <span class="shared-mode-dot" aria-hidden="true"></span>
         <div>
           <strong id="sharedModeTitle">Colaboração em tempo real</strong>
@@ -1185,7 +1186,9 @@
         </div>
         <button type="button" class="shared-space-button" id="openPrivateListsButton">Minhas listas</button>
         <button type="button" class="finish-sharing-button" id="finishSharingButton">Finalizar compartilhamento</button>
-      </div>
+    </div>
+
+    <div id="shoppingSection" class="section">
       <div class="list-workspace-toolbar">
         <div class="current-list-control">
           <label for="currentListSelect">Lista atual</label>
@@ -1207,7 +1210,26 @@
         <button type="button" id="openBudgetDialogButton">Alterar orçamento</button>
       </div>
       <div class="alert" id="lowBalanceAlert">Atenção: Seu saldo está baixo! Restam menos de 10% do valor inicial.</div>
-      
+      <div class="list-next-step-card">
+        <div>
+          <small>Próximo passo</small>
+          <h3>Comece a montar sua compra</h3>
+          <p>Adicione e marque os produtos da lista selecionada.</p>
+        </div>
+        <button type="button" id="openProductsFromListsButton">Abrir produtos</button>
+      </div>
+    </div>
+
+    <div id="productsSection" class="section">
+      <div class="product-list-context">
+        <div>
+          <small>Lista em uso</small>
+          <h2 id="productListName">Sua lista</h2>
+          <span><span id="productItemCount">0 itens</span> &middot; Saldo R$ <span id="productBalance">0,00</span></span>
+        </div>
+        <button type="button" id="manageListsButton">Trocar ou gerenciar lista</button>
+      </div>
+
       <div class="list-items-card">
         <div class="list-items-card-heading">
           <small>Adicionar item</small>

@@ -1027,6 +1027,16 @@ h1#mainTitle {
   grid-template-columns: minmax(135px, .65fr) minmax(150px, .8fr) minmax(240px, 1.5fr) auto;
 }
 
+#divisionEmails {
+  grid-column: 1 / -1;
+}
+
+.division-email-button {
+  background: #ffffff;
+  border: 1px solid var(--gg-primary);
+  color: var(--gg-primary-dark);
+}
+
 .button-group input,
 .button-group select,
 .button-group button {

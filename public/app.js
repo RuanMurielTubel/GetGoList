@@ -2125,8 +2125,9 @@
       const resultDiv = document.getElementById('divisionResult');
       const paymentMethod = document.getElementById('paymentMethod');
       const paymentDetails = document.getElementById('paymentDetails');
+      const divisionEmails = document.getElementById('divisionEmails');
       const shareActions = document.getElementById('divisionShareActions');
-      if (!input || !resultDiv || !paymentMethod || !paymentDetails || !shareActions) {
+      if (!input || !resultDiv || !paymentMethod || !paymentDetails || !divisionEmails || !shareActions) {
         console.error("Elemento de entrada ou resultado de divisão não encontrado");
         return;
       }
@@ -2205,10 +2206,32 @@
         });
       });
 
+      const emailButton = document.createElement('button');
+      emailButton.type = 'button';
+      emailButton.className = 'division-email-button';
+      emailButton.textContent = 'Enviar cobranças por e-mail';
+      emailButton.addEventListener('click', () => {
+        const emails = parseSharedEmails(divisionEmails.value);
+        if (!emails.length) {
+          alert('Informe pelo menos um e-mail válido dos participantes.');
+          return;
+        }
+        sendDivisionEmails({
+          emails,
+          listName: selectedDivideListName,
+          total,
+          perPerson,
+          peopleCount: numPeople,
+          paymentMethod: paymentMethod.value,
+          paymentDetails: paymentDescription,
+        }, emailButton);
+      });
+
       shareActions.appendChild(title);
       shareActions.appendChild(help);
       shareActions.appendChild(personActions);
       shareActions.appendChild(copyButton);
+      shareActions.appendChild(emailButton);
       shareActions.style.display = 'grid';
       console.log(`Divisão calculada: Total R$ ${total.toFixed(2)} / ${numPeople} = R$ ${perPerson.toFixed(2)} por pessoa`);
     }
@@ -2288,6 +2311,54 @@
         .split(',')
         .map((email) => email.trim().toLowerCase())
         .filter((email) => email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+    }
+
+    async function authenticatedEmailRequest(endpoint, payload) {
+      if (!currentFirebaseUser) {
+        throw new Error('Faça login para enviar e-mails.');
+      }
+      const token = await currentFirebaseUser.getIdToken();
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(response.status === 503
+          ? 'O envio por e-mail ainda precisa ser configurado.'
+          : 'Não foi possível enviar o e-mail agora.');
+        error.configurationPending = response.status === 503 || result.configurationPending;
+        throw error;
+      }
+      return result;
+    }
+
+    async function sendShareInvitationEmails(listId, listName, emails) {
+      if (!emails.length) return { sent: 0 };
+      return authenticatedEmailRequest('/api/email/share-invite', {
+        listId,
+        listName,
+        emails,
+      });
+    }
+
+    async function sendDivisionEmails(payload, button) {
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Enviando cobranças...';
+      try {
+        const result = await authenticatedEmailRequest('/api/email/division', payload);
+        button.textContent = `${result.sent || payload.emails.length} cobrança(s) enviada(s)!`;
+      } catch (error) {
+        button.textContent = error.configurationPending ? 'E-mail aguardando configuração' : originalText;
+        alert(error.message || 'Não foi possível enviar as cobranças por e-mail.');
+      } finally {
+        button.disabled = false;
+      }
     }
 
     function showShareDialogLegacy() {
@@ -2533,7 +2604,7 @@
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           });
 
-      writePromise.then(() => {
+      writePromise.then(async () => {
         if (!isExistingShare) {
           currentSharedOwnerId = currentFirebaseUser.uid;
           applyRemoteLists(selectedLists, currentListName);
@@ -2546,8 +2617,27 @@
           shareLink.value = `${window.location.origin}${window.location.pathname}?sharedList=${sharedListId}`;
         }
         copyButton.disabled = false;
+        const invitationEmails = allowedEmails.filter((email) => email !== ownerEmail);
+        if (!invitationEmails.length) {
+          saveButton.disabled = false;
+          saveButton.textContent = 'Compartilhamento atualizado';
+          return;
+        }
+        saveButton.textContent = 'Enviando convites...';
+        try {
+          const emailResult = await sendShareInvitationEmails(
+            pendingShareDocumentReference.id,
+            currentListName,
+            invitationEmails,
+          );
+          saveButton.textContent = `${emailResult.sent || invitationEmails.length} convite(s) enviado(s)!`;
+        } catch (emailError) {
+          console.error('O compartilhamento foi salvo, mas os convites não foram enviados.', emailError);
+          saveButton.textContent = emailError.configurationPending
+            ? 'Link pronto • e-mail aguardando configuração'
+            : 'Link pronto • falha no envio por e-mail';
+        }
         saveButton.disabled = false;
-        saveButton.textContent = 'Compartilhamento atualizado';
       }).catch((error) => {
         saveButton.disabled = false;
         saveButton.textContent = isExistingShare ? 'Atualizar compartilhamento' : 'Gerar link colaborativo';

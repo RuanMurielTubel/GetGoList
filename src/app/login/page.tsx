@@ -172,7 +172,16 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await sendPasswordResetEmail(firebaseAuth, email.trim());
+      const response = await fetch("/api/email/password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (response.status === 503) {
+        await sendPasswordResetEmail(firebaseAuth, email.trim());
+      } else if (!response.ok) {
+        throw new Error("PASSWORD_RESET_EMAIL_FAILED");
+      }
       setFeedback(
         "Se houver uma conta com esse e-mail, enviaremos as instruções de recuperação.",
       );

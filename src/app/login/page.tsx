@@ -306,10 +306,6 @@ export default function LoginPage() {
           >
             {loading ? 'Aguarde...' : 'Entrar com Google'}
           </button>
-
-          <Link className="button button-secondary" href="/index.html">
-            Continuar sem conta
-          </Link>
         </div>
 
         <p className="account-terms">

@@ -1881,6 +1881,11 @@
       shareListName.textContent = currentListName;
       shareLinkToggle.checked = true;
       shareEmailInput.value = '';
+      const shareErrorMessage = document.getElementById('shareErrorMessage');
+      if (shareErrorMessage) {
+        shareErrorMessage.style.display = 'none';
+        shareErrorMessage.textContent = '';
+      }
 
       const initializeDialogFields = (docData = {}) => {
         if (Array.isArray(docData.allowedEmails)) {
@@ -1944,7 +1949,14 @@
             const errorDetails = error && typeof error === 'object'
               ? JSON.stringify(error, Object.getOwnPropertyNames(error))
               : String(error);
-            alert(`Não foi possível criar o compartilhamento da lista. Erro: ${errorMessage}\nDetalhes: ${errorDetails}`);
+            const message = `Não foi possível criar o compartilhamento da lista.\nErro: ${errorMessage}\nDetalhes: ${errorDetails}`;
+            const shareErrorMessage = document.getElementById('shareErrorMessage');
+            if (shareErrorMessage) {
+              shareErrorMessage.style.display = 'block';
+              shareErrorMessage.textContent = message;
+            } else {
+              alert(message);
+            }
           });
       };
 

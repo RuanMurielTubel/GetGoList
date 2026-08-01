@@ -28,6 +28,8 @@
     let sharedListEnded = false;
     let currentSharedParticipantEmails = [];
     let sharedParticipantRegistered = false;
+    let finishingSharing = false;
+    let allowEndedSharedDivision = false;
 
     const firebaseConfig = {
       apiKey: "AIzaSyApgAliwYTpeIyYgEpeFTw6HrS5Bc-Kc9Q",
@@ -631,7 +633,7 @@
       shoppingList = lists[currentListName].items || [];
       listHistory = lists[currentListName].history || [];
       selectedBalanceListName = currentListName;
-      if (sharedListId) {
+      if (sharedListId && !sharedListEnded) {
         rememberSharedListAccess(currentListName, sharedListId);
       }
       // Uma lista compartilhada não deve substituir o cache das listas
@@ -679,6 +681,29 @@
       return null;
     }
 
+    function clearRememberedSharedList(documentId) {
+      try {
+        const recent = getRecentSharedList();
+        if (!documentId || !recent || recent.id === documentId) {
+          localStorage.removeItem('recentSharedList');
+        }
+      } catch (error) {
+        console.warn('Não foi possível remover o atalho da lista compartilhada.', error);
+      }
+
+      const recentSharedBanner = document.getElementById('recentSharedBanner');
+      const recentSharedListName = document.getElementById('recentSharedListName');
+      if (recentSharedBanner) recentSharedBanner.style.display = 'none';
+      if (recentSharedListName) recentSharedListName.textContent = '';
+    }
+
+    function clearRememberedSharedListByName(listName) {
+      const recent = getRecentSharedList();
+      if (recent && recent.name === listName) {
+        clearRememberedSharedList(recent.id);
+      }
+    }
+
     function openPrivateLists() {
       window.location.assign('/index.html');
     }
@@ -709,7 +734,7 @@
       ];
 
       if (sharedBanner) {
-        sharedBanner.style.display = sharedListId ? 'flex' : 'none';
+        sharedBanner.style.display = sharedListId && !sharedListEnded ? 'flex' : 'none';
       }
       if (sharedListName) {
         sharedListName.textContent = currentListName;
@@ -777,9 +802,24 @@
 
       remoteListUnsubscribe = remoteListReference.onSnapshot((snapshot) => {
         const remoteData = snapshot.exists ? snapshot.data() : null;
+        if (sharedListId && !snapshot.exists) {
+          clearRememberedSharedList(sharedListId);
+          remoteSyncReady = false;
+          if (!finishingSharing) {
+            window.location.replace('/index.html');
+          }
+          return;
+        }
         if (sharedListId && remoteData) {
           currentSharedOwnerId = remoteData.owner || null;
           sharedListEnded = remoteData.sharingEnded === true;
+          if (sharedListEnded) {
+            clearRememberedSharedList(sharedListId);
+            if (!finishingSharing && !allowEndedSharedDivision) {
+              window.location.replace('/index.html');
+              return;
+            }
+          }
           currentSharedParticipantEmails = Array.isArray(remoteData.participantEmails)
             ? remoteData.participantEmails
                 .map((email) => typeof email === 'string' ? email.trim().toLowerCase() : '')
@@ -827,12 +867,7 @@
         console.error('Não foi possível acompanhar a lista em tempo real.', error);
         remoteSyncReady = false;
         if (sharedListId && error && error.code === 'permission-denied') {
-          try {
-            const recent = getRecentSharedList();
-            if (recent && recent.id === sharedListId) localStorage.removeItem('recentSharedList');
-          } catch (storageError) {
-            console.warn('Não foi possível remover o atalho encerrado.', storageError);
-          }
+          clearRememberedSharedList(sharedListId);
           alert('O compartilhamento desta lista foi finalizado pelo proprietário.');
           window.location.replace('/index.html');
           return;
@@ -1356,6 +1391,11 @@
     }
 
     function showSection(sectionId) {
+      if (sectionId === 'shoppingSection' && sharedListId && sharedListEnded) {
+        clearRememberedSharedList(sharedListId);
+        openPrivateLists();
+        return;
+      }
       document.querySelectorAll('.section').forEach(section => {
         section.classList.remove('active');
       });
@@ -2389,6 +2429,7 @@
       }
 
       if (status) status.textContent = 'Finalizando o acesso dos colaboradores...';
+      finishingSharing = true;
       if (finishAndDivideButton) finishAndDivideButton.disabled = true;
       if (finishWithoutDivisionButton) finishWithoutDivisionButton.disabled = true;
       const ownerEmail = (currentFirebaseUser.email || '').toLowerCase();
@@ -2402,6 +2443,8 @@
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       }).then(() => {
         sharedListEnded = true;
+        allowEndedSharedDivision = shouldDivide;
+        clearRememberedSharedList(sharedListId);
         closeDialog('finishSharingDialog');
         updateSharedModeUi();
         if (shouldDivide) {
@@ -2413,9 +2456,12 @@
           openPrivateLists();
         }
       }).catch((error) => {
+        finishingSharing = false;
+        allowEndedSharedDivision = false;
         console.error('Não foi possível finalizar o compartilhamento.', error);
         if (status) status.textContent = 'Não foi possível finalizar. Verifique sua conexão e tente novamente.';
       }).finally(() => {
+        finishingSharing = false;
         if (finishAndDivideButton) finishAndDivideButton.disabled = false;
         if (finishWithoutDivisionButton) finishWithoutDivisionButton.disabled = false;
       });
@@ -3022,6 +3068,7 @@
         if (listName === currentListName) currentWasDeleted = true;
         if (listName === selectedDivideListName) divideListWasDeleted = true;
         if (listName === selectedBalanceListName) balanceListWasDeleted = true;
+        clearRememberedSharedListByName(listName);
         delete lists[listName];
       });
       if (currentWasDeleted && Object.keys(lists).length > 0) {
@@ -3079,6 +3126,7 @@
         if (listName === currentListName) currentWasDeleted = true;
         if (listName === selectedDivideListName) divideListWasDeleted = true;
         if (listName === selectedBalanceListName) balanceListWasDeleted = true;
+        clearRememberedSharedListByName(listName);
         delete lists[listName];
       });
       if (currentWasDeleted && Object.keys(lists).length > 0) {

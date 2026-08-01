@@ -63,6 +63,9 @@
       const payload = {
         lists: listsPayload,
         currentListName,
+        lastEditedBy: currentFirebaseUser ? (currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList') : 'Anônimo',
+        lastEditedByEmail: currentFirebaseUser ? currentFirebaseUser.email || '' : '',
+        lastEditedAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
 
@@ -588,6 +591,8 @@
               saveLists();
             }
 
+            const lastEditorName = remoteData && (remoteData.lastEditedBy || remoteData.lastEditedByEmail);
+            updateLastEditedInfo(lastEditorName);
             updateAccountPanel();
           }, () => {
             remoteSyncReady = false;
@@ -597,6 +602,18 @@
       } catch (error) {
         console.error("Não foi possível iniciar a sincronização.", error);
         updateAccountPanel("Sincronização indisponível");
+      }
+    }
+
+    function updateLastEditedInfo(lastEditorName) {
+      const lastEditedElement = document.getElementById('lastEditedBy');
+      if (!lastEditedElement) {
+        return;
+      }
+      if (lastEditorName) {
+        lastEditedElement.textContent = `Última alteração: ${lastEditorName}`;
+      } else {
+        lastEditedElement.textContent = 'Última alteração: não registrada';
       }
     }
 
@@ -1831,12 +1848,24 @@
       console.log(`Divisão calculada: Total R$ ${total.toFixed(2)} / ${numPeople} = R$ ${perPerson.toFixed(2)} por pessoa`);
     }
 
+    function parseSharedEmails(rawEmails) {
+      if (!rawEmails || typeof rawEmails !== 'string') {
+        return [];
+      }
+      return rawEmails
+        .split(',')
+        .map((email) => email.trim().toLowerCase())
+        .filter((email) => email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+    }
+
     function showShareDialog() {
       console.log("Tentando abrir diálogo de compartilhamento");
       const dialog = document.getElementById('shareListDialog');
       const shareListName = document.getElementById('shareListName');
+      const shareEmailInput = document.getElementById('shareEmailInput');
+      const shareLinkToggle = document.getElementById('shareLinkToggle');
       const shareLink = document.getElementById('shareLink');
-      if (!dialog || !shareListName || !shareLink) {
+      if (!dialog || !shareListName || !shareEmailInput || !shareLinkToggle || !shareLink) {
         console.error("Elementos de diálogo de compartilhamento não encontrados");
         return;
       }
@@ -1850,46 +1879,83 @@
       }
 
       shareListName.textContent = currentListName;
-      const listData = {
-        lists,
-        currentListName,
-        owner: currentFirebaseUser.uid,
-        ownerEmail: currentFirebaseUser.email || '',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      const baseUrl = window.location.origin + window.location.pathname;
+      shareLinkToggle.checked = true;
+      shareEmailInput.value = '';
 
-      const finalizeDialog = (docId) => {
-        sharedListId = docId;
-        isSharedListMode = true;
-        const sharedUrl = `${baseUrl}?sharedList=${docId}`;
-        shareLink.value = sharedUrl;
-        dialog.style.display = 'flex';
-        console.log('Diálogo de compartilhamento aberto com sucesso', sharedUrl);
+      const initializeDialogFields = (docData = {}) => {
+        if (Array.isArray(docData.allowedEmails)) {
+          const currentUserEmail = (currentFirebaseUser.email || '').toLowerCase();
+          const otherEmails = docData.allowedEmails
+            .map((email) => (typeof email === 'string' ? email.trim().toLowerCase() : ''))
+            .filter((email) => email && email !== currentUserEmail);
+          shareEmailInput.value = otherEmails.join(', ');
+        }
+        shareLinkToggle.checked = docData.linkAccess !== false;
+      };
+
+      const buildAllowedEmails = () => {
+        const currentUserEmail = (currentFirebaseUser.email || '').toLowerCase();
+        const allowedEmails = currentUserEmail ? [currentUserEmail] : [];
+        const extraEmails = parseSharedEmails(shareEmailInput.value);
+        extraEmails.forEach((email) => {
+          if (!allowedEmails.includes(email)) {
+            allowedEmails.push(email);
+          }
+        });
+        return allowedEmails;
+      };
+
+      const createOrUpdateShareDoc = (docRef, merge = false) => {
+        const allowedEmails = buildAllowedEmails();
+        const listData = {
+          lists,
+          currentListName,
+          owner: currentFirebaseUser.uid,
+          ownerEmail: currentFirebaseUser.email || '',
+          allowedEmails,
+          linkAccess: shareLinkToggle.checked,
+          lastEditedBy: currentFirebaseUser ? (currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList') : 'Anônimo',
+          lastEditedByEmail: currentFirebaseUser ? currentFirebaseUser.email || '' : '',
+          lastEditedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        const payload = merge
+          ? { ...listData }
+          : { ...listData, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+
+        docRef.set(payload, { merge })
+          .then(() => {
+            remoteListReference = docRef;
+            const sharedUrl = `${window.location.origin}${window.location.pathname}?sharedList=${docRef.id}`;
+            shareLink.value = sharedUrl;
+            sharedListId = docRef.id;
+            isSharedListMode = true;
+            dialog.style.display = 'flex';
+            console.log('Diálogo de compartilhamento aberto com sucesso', sharedUrl);
+          })
+          .catch((error) => {
+            console.error('Erro ao salvar lista compartilhada:', error);
+            alert('Não foi possível atualizar o compartilhamento da lista. Tente novamente.');
+          });
       };
 
       if (sharedListId) {
         const docRef = firestoreDb.collection('sharedLists').doc(sharedListId);
-        docRef.set(listData, { merge: true })
-          .then(() => {
-            remoteListReference = docRef;
-            finalizeDialog(sharedListId);
+        docRef.get()
+          .then((snapshot) => {
+            if (snapshot.exists) {
+              initializeDialogFields(snapshot.data());
+            }
+            createOrUpdateShareDoc(docRef, true);
           })
           .catch((error) => {
-            console.error('Erro ao atualizar lista compartilhada:', error);
-            alert('Não foi possível atualizar o compartilhamento da lista. Tente novamente.');
+            console.error('Erro ao buscar dados da lista compartilhada:', error);
+            createOrUpdateShareDoc(docRef, true);
           });
       } else {
         const docRef = firestoreDb.collection('sharedLists').doc();
-        docRef.set({ ...listData, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
-          .then(() => {
-            remoteListReference = docRef;
-            finalizeDialog(docRef.id);
-          })
-          .catch((error) => {
-            console.error('Erro ao criar lista compartilhada:', error);
-            alert('Não foi possível criar o compartilhamento da lista. Tente novamente.');
-          });
+        initializeDialogFields({ linkAccess: true });
+        createOrUpdateShareDoc(docRef, false);
       }
     }
 

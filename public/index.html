@@ -1091,6 +1091,7 @@
         <div class="sidebar-account-text">
           <strong id="sidebarName">Visitante</strong>
           <small id="accountEmail">Listas salvas neste dispositivo</small>
+          <small id="lastEditedBy" style="display:block; margin-top:4px; font-size:12px; color: rgba(255,255,255,0.75);">Última alteração: não registrada</small>
         </div>
       </div>
       <div id="syncStatus" style="margin-top: 10px; font-size: 13px; color: rgba(255,255,255,0.78);">
@@ -1368,7 +1369,13 @@
   <div id="shareListDialog" class="dialog">
     <div class="dialog-content">
       <h3>Compartilhar Lista</h3>
-      <p>Link para compartilhar a lista "<span id="shareListName"></span>":</p>
+      <p>Compartilhar a lista "<span id="shareListName"></span>":</p>
+      <label for="shareEmailInput">Convidar por e-mail (separados por vírgula):</label>
+      <input type="text" id="shareEmailInput" placeholder="email1@exemplo.com, email2@exemplo.com">
+      <label class="share-link-toggle">
+        <input type="checkbox" id="shareLinkToggle" checked>
+        Permitir acesso a qualquer pessoa com o link
+      </label>
       <input type="text" id="shareLink" readonly>
       <button class="copy-link" id="copyShareLinkButton">Copiar Link</button>
       <button id="closeShareListDialogButton">Fechar</button>

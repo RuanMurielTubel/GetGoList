@@ -819,14 +819,6 @@
       flex-wrap: wrap;
     }
     
-    #listButtons {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin: 20px 0;
-      flex-wrap: wrap;
-    }
-    
     .dialog {
       display: none;
       position: fixed;
@@ -1194,14 +1186,17 @@
         <button type="button" class="shared-space-button" id="openPrivateListsButton">Minhas listas</button>
         <button type="button" class="finish-sharing-button" id="finishSharingButton">Finalizar compartilhamento</button>
       </div>
-      <div class="button-group primary">
-        <button class="create-list" id="openCreateListDialogButton">Criar Nova Lista</button>        
-        <button class="list-action" id="openEditListNamesDialogButton">Editar Nomes</button>
-        <button class="list-action" id="openSelectListDialogButton">Escolher Lista</button>
-        <button class="list-action" id="openDeleteListDialogButton">Excluir Lista</button>
+      <div class="list-workspace-toolbar">
+        <div class="current-list-control">
+          <label for="currentListSelect">Lista atual</label>
+          <select id="currentListSelect" aria-label="Escolher lista atual"></select>
+        </div>
+        <button class="create-list" id="openCreateListDialogButton">+ Nova lista</button>
+        <div class="list-management-actions" aria-label="A&ccedil;&otilde;es da lista">
+          <button class="list-action" id="openEditListNamesDialogButton">Renomear</button>
+          <button class="list-action danger" id="openDeleteListDialogButton">Excluir</button>
+        </div>
       </div>
-      
-      <div id="listButtons"></div>
 
       <div class="list-budget-card">
         <div class="list-budget-summary">
@@ -1213,16 +1208,25 @@
       </div>
       <div class="alert" id="lowBalanceAlert">Atenção: Seu saldo está baixo! Restam menos de 10% do valor inicial.</div>
       
-      <div class="button-group">
+      <div class="list-items-card">
+        <div class="list-items-card-heading">
+          <small>Adicionar item</small>
+          <h3>O que voc&ecirc; precisa comprar?</h3>
+        </div>
+        <div class="button-group item-entry-form">
         <input type="text" id="itemName" placeholder="Nome do item">
         <input type="text" id="itemPrice" placeholder="Preço unitário (R$)">
         <input type="number" id="itemQuantity" placeholder="Quantidade" min="1" value="1">
         <select id="itemSector"></select>
         <button id="addItemButton">Adicionar</button>
+        </div>
       </div>
       
       <div class="button-group secondary">
-        <h3 style="margin: 0; flex: 1;">Lista de Compras</h3>
+        <div class="items-section-title">
+          <small>Itens da lista</small>
+          <h3 id="currentListHeading" style="margin: 0;">Sua lista</h3>
+        </div>
         <button class="select-all" id="toggleSelectAllButton">Selecionar Todos</button>
         <button class="delete-selected" id="deleteSelectedListItemsButton">Excluir Selecionados</button>
       </div>
@@ -1384,14 +1388,6 @@
       <ul id="editListOptions"></ul>
       <button id="saveListNamesButton">Salvar</button>
       <button id="closeEditListDialogButton">Cancelar</button>
-    </div>
-  </div>
-  <div id="selectListDialog" class="dialog">
-    <div class="dialog-content">
-      <h3>Escolher Lista</h3>
-      <ul id="selectListOptions"></ul>
-      <button id="selectChosenListsButton">Confirmar</button>
-      <button id="closeSelectListDialogButton">Cancelar</button>
     </div>
   </div>
   <div id="divideListDialog" class="dialog">

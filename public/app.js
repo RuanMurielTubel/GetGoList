@@ -725,7 +725,6 @@
       const listManagementIds = [
         'openCreateListDialogButton',
         'openEditListNamesDialogButton',
-        'openSelectListDialogButton',
         'openDeleteListDialogButton',
         'openDivideListButton',
       ];
@@ -2875,38 +2874,35 @@
     }
 
     function setupListButtons() {
-      const listButtons = document.getElementById('listButtons');
-      if (!listButtons) {
-        console.error("Contêiner de botões de lista não encontrado");
-        return;
-      }
-      listButtons.innerHTML = '';
+      const currentListSelect = document.getElementById('currentListSelect');
+      const currentListHeading = document.getElementById('currentListHeading');
+      if (!currentListSelect) return;
+
+      currentListSelect.innerHTML = '';
       Object.keys(lists).forEach(listName => {
-        console.log("Criando botão para:", listName);
-        const button = document.createElement('button');
-        button.className = `list ${listName === currentListName ? 'active' : ''}`;
-        button.textContent = listName;
-        button.onclick = () => {
-          if (!lists[listName]) {
-            console.error(`Lista ${listName} não existe ao trocar`);
-            return;
-          }
-          console.log("Trocando para lista:", listName);
-          currentListName = listName;
-          shoppingList = lists[currentListName].items;
-          listHistory = lists[currentListName].history;
-          allSelected = false;
-          updateList();
-          updateTotal();
-          updateBalance();
-          updateMonthSelect();
-          updateFooter();
-          updateDashboard();
-          setupListButtons();
-          showSection('shoppingSection');
-        };
-        listButtons.appendChild(button);
+        const option = document.createElement('option');
+        option.value = listName;
+        option.textContent = `${listName} (${lists[listName].items.length} itens)`;
+        option.selected = listName === currentListName;
+        currentListSelect.appendChild(option);
       });
+
+      if (currentListHeading) currentListHeading.textContent = currentListName;
+      currentListSelect.onchange = () => {
+        const listName = currentListSelect.value;
+        if (!lists[listName]) return;
+        currentListName = listName;
+        shoppingList = lists[currentListName].items;
+        listHistory = lists[currentListName].history;
+        allSelected = false;
+        updateList();
+        updateTotal();
+        updateBalance();
+        updateMonthSelect();
+        updateFooter();
+        updateDashboard();
+        setupListButtons();
+      };
     }
 
     function createNewListDialog() {
@@ -3207,69 +3203,6 @@
       }
     }
 
-    function selectListDialog() {
-      console.log("Tentando abrir diálogo de seleção de lista");
-      const dialog = document.getElementById('selectListDialog');
-      if (!dialog) {
-        console.error("Elemento de diálogo 'selectListDialog' não encontrado");
-        return;
-      }
-      const options = document.getElementById('selectListOptions');
-      if (!options) {
-        console.error("Elemento de opções de seleção de lista não encontrado");
-        return;
-      }
-      options.innerHTML = '';
-      Object.keys(lists).forEach(listName => {
-        const li = document.createElement('li');
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = `select-${listName}`;
-        checkbox.name = 'selectList';
-        checkbox.value = listName;
-        const label = document.createElement('label');
-        label.htmlFor = `select-${listName}`;
-        label.textContent = listName;
-        li.appendChild(checkbox);
-        li.appendChild(label);
-        options.appendChild(li);
-      });
-      dialog.style.display = 'flex';
-      console.log("Diálogo de seleção de lista aberto com sucesso");
-    }
-
-    function selectChosenLists() {
-      const checkboxes = document.querySelectorAll('input[name="selectList"]:checked');
-      if (checkboxes.length === 0) {
-        alert('Selecione pelo menos uma lista para escolher!');
-        return;
-      }
-      if (checkboxes.length > 1) {
-        alert('Selecione apenas uma lista por vez!');
-        return;
-      }
-      const selectedListName = checkboxes[0].value;
-      if (!lists[selectedListName]) {
-        console.error(`Lista selecionada ${selectedListName} não existe`);
-        alert('Erro: A lista selecionada não existe.');
-        return;
-      }
-      currentListName = selectedListName;
-      shoppingList = lists[currentListName].items;
-      listHistory = lists[currentListName].history;
-      allSelected = false;
-      updateList();
-      updateTotal();
-      updateBalance();
-      updateMonthSelect();
-      updateFooter();
-      updateDashboard();
-      setupListButtons();
-      closeDialog('selectListDialog');
-      showSection('shoppingSection');
-      console.log("Lista selecionada:", currentListName);
-    }
-
     function closeDialog(dialogId) {
       const dialog = document.getElementById(dialogId);
       if (dialog) {
@@ -3342,7 +3275,6 @@
       const openCreateListDialogButton = document.getElementById('openCreateListDialogButton');
       const openDeleteListDialogButton = document.getElementById('openDeleteListDialogButton');
       const openEditListNamesDialogButton = document.getElementById('openEditListNamesDialogButton');
-      const openSelectListDialogButton = document.getElementById('openSelectListDialogButton');
       const toggleSelectAllButton = document.getElementById('toggleSelectAllButton');
       const deleteSelectedListItemsButton = document.getElementById('deleteSelectedListItemsButton');
       const compareWithPreviousMonthButton = document.getElementById('compareWithPreviousMonthButton');
@@ -3365,8 +3297,6 @@
       const closeDeleteAllConfirmDialogButton = document.getElementById('closeDeleteAllConfirmDialogButton');
       const saveListNamesButton = document.getElementById('saveListNamesButton');
       const closeEditListDialogButton = document.getElementById('closeEditListDialogButton');
-      const selectChosenListsButton = document.getElementById('selectChosenListsButton');
-      const closeSelectListDialogButton = document.getElementById('closeSelectListDialogButton');
       const selectDivideListButton = document.getElementById('selectDivideListButton');
       const closeDivideListDialogButton = document.getElementById('closeDivideListDialogButton');
       const copyShareLinkButton = document.getElementById('copyShareLinkButton');
@@ -3425,9 +3355,6 @@
       }
       if (openEditListNamesDialogButton) {
         openEditListNamesDialogButton.addEventListener('click', editListNamesDialog);
-      }
-      if (openSelectListDialogButton) {
-        openSelectListDialogButton.addEventListener('click', selectListDialog);
       }
       if (toggleSelectAllButton) {
         toggleSelectAllButton.addEventListener('click', toggleSelectAll);
@@ -3494,12 +3421,6 @@
       }
       if (closeEditListDialogButton) {
         closeEditListDialogButton.addEventListener('click', () => closeDialog('editListDialog'));
-      }
-      if (selectChosenListsButton) {
-        selectChosenListsButton.addEventListener('click', selectChosenLists);
-      }
-      if (closeSelectListDialogButton) {
-        closeSelectListDialogButton.addEventListener('click', () => closeDialog('selectListDialog'));
       }
       if (selectDivideListButton) {
         selectDivideListButton.addEventListener('click', selectDivideList);

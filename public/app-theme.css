@@ -1010,6 +1010,114 @@ h1#mainTitle {
   padding: 16px;
 }
 
+.list-workspace-toolbar {
+  align-items: end;
+  background: var(--gg-surface);
+  border: 1px solid var(--gg-line);
+  border-radius: 18px;
+  box-shadow: var(--gg-shadow-sm);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  margin: 0 0 14px;
+  padding: 16px;
+}
+
+.current-list-control {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.current-list-control label {
+  color: var(--gg-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+#currentListSelect {
+  color: var(--gg-ink);
+  font-size: 16px;
+  font-weight: 750;
+  margin: 0;
+  width: 100%;
+}
+
+.list-workspace-toolbar > button,
+.list-management-actions button {
+  margin: 0;
+  min-height: 48px;
+}
+
+.list-workspace-toolbar > .create-list {
+  background: var(--gg-primary);
+  font-size: 14px;
+  font-weight: 800;
+  padding-inline: 18px;
+}
+
+.list-management-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.list-management-actions .list-action {
+  background: #f6f9fa;
+  border: 1px solid var(--gg-line);
+  color: var(--gg-ink);
+}
+
+.list-management-actions .list-action.danger {
+  background: var(--gg-danger-pale);
+  border-color: #f3cfd6;
+  color: var(--gg-danger);
+}
+
+.list-items-card {
+  background: var(--gg-surface);
+  border: 1px solid var(--gg-line);
+  border-radius: 18px;
+  box-shadow: var(--gg-shadow-sm);
+  margin: 16px 0;
+  padding: 18px;
+}
+
+.list-items-card-heading small,
+.items-section-title small {
+  color: var(--gg-primary);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.list-items-card-heading h3 {
+  color: var(--gg-ink);
+  font-size: 18px;
+  margin: 3px 0 12px;
+}
+
+#shoppingSection .item-entry-form {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+}
+
+.items-section-title {
+  flex: 1;
+}
+
+.items-section-title h3 {
+  color: var(--gg-ink);
+  font-size: 18px;
+  margin-top: 3px !important;
+}
+
 #shoppingSection > .button-group:not(.primary):not(.secondary) {
   display: grid;
   grid-template-columns: minmax(180px, 2fr) minmax(130px, 1fr) minmax(100px, .7fr) minmax(145px, 1fr) auto;
@@ -1140,17 +1248,6 @@ textarea {
   background: var(--gg-danger-pale);
   border-color: #f3cfd6;
   color: var(--gg-danger);
-}
-
-#listButtons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 14px 0 4px;
-}
-
-#listButtons button {
-  margin: 0;
 }
 
 .sector-group {
@@ -1403,6 +1500,21 @@ li .item-controls .action-buttons button:last-child {
   .list-budget-card {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .list-workspace-toolbar {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .list-management-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .list-management-actions button {
+    max-width: none;
+    width: 100%;
   }
 
   .button-group.primary button,

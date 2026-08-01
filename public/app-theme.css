@@ -1031,6 +1031,22 @@ h1#mainTitle {
   grid-column: 1 / -1;
 }
 
+#divideSection > .button-group.primary label {
+  color: var(--gg-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+#divideListSelect {
+  min-width: min(360px, 100%);
+}
+
+.division-participants-status {
+  color: var(--gg-muted);
+  grid-column: 1 / -1;
+  line-height: 1.45;
+}
+
 .division-email-button {
   background: #ffffff;
   border: 1px solid var(--gg-primary);

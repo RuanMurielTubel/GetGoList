@@ -26,6 +26,8 @@
     let pendingShareDocumentReference = null;
     let currentSharedOwnerId = null;
     let sharedListEnded = false;
+    let currentSharedParticipantEmails = [];
+    let sharedParticipantRegistered = false;
 
     const firebaseConfig = {
       apiKey: "AIzaSyApgAliwYTpeIyYgEpeFTw6HrS5Bc-Kc9Q",
@@ -645,6 +647,7 @@
       updateFooter();
       updateDashboard();
       updateTargetListSelect();
+      updateDivideListSelect();
       updateMonthSelect();
       updateSharedModeUi();
       applyingRemoteLists = false;
@@ -739,6 +742,31 @@
       });
     }
 
+    async function registerSharedListParticipant() {
+      if (!sharedListId || !currentFirebaseUser || sharedParticipantRegistered || sharedListEnded) {
+        return;
+      }
+
+      sharedParticipantRegistered = true;
+      try {
+        const token = await currentFirebaseUser.getIdToken();
+        const response = await fetch('/api/shared-list/access', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ listId: sharedListId }),
+        });
+        if (!response.ok) {
+          throw new Error('Não foi possível registrar o acesso à lista.');
+        }
+      } catch (error) {
+        sharedParticipantRegistered = false;
+        console.warn('Não foi possível registrar o colaborador da lista.', error);
+      }
+    }
+
     function subscribeToRemoteLists() {
       if (!remoteListReference) {
         return;
@@ -752,6 +780,12 @@
         if (sharedListId && remoteData) {
           currentSharedOwnerId = remoteData.owner || null;
           sharedListEnded = remoteData.sharingEnded === true;
+          currentSharedParticipantEmails = Array.isArray(remoteData.participantEmails)
+            ? remoteData.participantEmails
+                .map((email) => typeof email === 'string' ? email.trim().toLowerCase() : '')
+                .filter((email, index, collection) => email && collection.indexOf(email) === index)
+            : [];
+          registerSharedListParticipant();
         }
 
         if (remoteData && remoteData.lists && Object.keys(remoteData.lists).length) {
@@ -788,6 +822,7 @@
             ? (sharedListEnded ? 'Conta conectada • compartilhamento encerrado' : 'Conta conectada • colaboração em tempo real')
             : undefined);
         }
+        updateDivisionParticipants();
       }, (error) => {
         console.error('Não foi possível acompanhar a lista em tempo real.', error);
         remoteSyncReady = false;
@@ -847,6 +882,8 @@
           currentFirebaseUser = user;
           remoteSyncReady = false;
           initialRemoteSnapshotHandled = false;
+          sharedParticipantRegistered = false;
+          currentSharedParticipantEmails = [];
 
           if (remoteListUnsubscribe) {
             remoteListUnsubscribe();
@@ -1386,7 +1423,7 @@
       }
       if (sectionId === 'divideSection') {
         document.getElementById('divisionResult').innerHTML = '';
-        document.getElementById('selectedDivideList').textContent = selectedDivideListName || 'Nenhuma lista selecionada';
+        updateDivideListSelect();
       }
       if (sectionId === 'balanceSection') {
         document.getElementById('selectedBalanceList').textContent = selectedBalanceListName || 'Nenhuma lista selecionada';
@@ -2061,6 +2098,84 @@
       }
     }
 
+    function updateDivisionParticipants(options = {}) {
+      const divisionEmails = document.getElementById('divisionEmails');
+      const dividePeople = document.getElementById('dividePeople');
+      const status = document.getElementById('divisionParticipantsStatus');
+      if (!divisionEmails || !dividePeople || !status) {
+        return;
+      }
+
+      const listChanged = options.listChanged === true
+        || divisionEmails.dataset.listName !== selectedDivideListName;
+      const currentUserEmail = (currentFirebaseUser && currentFirebaseUser.email || '').trim().toLowerCase();
+      const automaticEmails = sharedListId && selectedDivideListName === currentListName
+        ? currentSharedParticipantEmails.filter((email) => email && email !== currentUserEmail)
+        : [];
+      const existingEmails = listChanged ? [] : parseSharedEmails(divisionEmails.value);
+      const combinedEmails = [...automaticEmails, ...existingEmails]
+        .filter((email, index, collection) => email && collection.indexOf(email) === index);
+
+      divisionEmails.dataset.listName = selectedDivideListName;
+      divisionEmails.value = combinedEmails.join(', ');
+
+      if (automaticEmails.length) {
+        status.textContent = `${automaticEmails.length} colaborador(es) que acessaram esta lista foram adicionados automaticamente. Você pode incluir outros e-mails.`;
+        if (listChanged || !dividePeople.value) {
+          dividePeople.value = String(automaticEmails.length + 1);
+        }
+      } else if (sharedListId && selectedDivideListName === currentListName) {
+        status.textContent = 'Ainda não há outros acessos registrados nesta lista. Você pode digitar os e-mails manualmente.';
+      } else {
+        status.textContent = 'Digite os e-mails dos participantes separados por vírgula.';
+      }
+    }
+
+    function updateDivideListSelect() {
+      const select = document.getElementById('divideListSelect');
+      const selectedListSpan = document.getElementById('selectedDivideList');
+      if (!select) {
+        return;
+      }
+
+      const listNames = Object.keys(lists);
+      if (!selectedDivideListName || !lists[selectedDivideListName]) {
+        selectedDivideListName = lists[currentListName] ? currentListName : (listNames[0] || '');
+      }
+
+      select.innerHTML = '';
+      listNames.forEach((listName) => {
+        const option = document.createElement('option');
+        option.value = listName;
+        option.textContent = listName;
+        option.selected = listName === selectedDivideListName;
+        select.appendChild(option);
+      });
+      select.disabled = listNames.length === 0;
+      if (selectedListSpan) {
+        selectedListSpan.textContent = selectedDivideListName || 'Nenhuma lista selecionada';
+      }
+      updateDivisionParticipants();
+    }
+
+    function handleDivideListChange(event) {
+      const selectedListName = event.target.value;
+      if (!lists[selectedListName]) {
+        return;
+      }
+      selectedDivideListName = selectedListName;
+      const selectedListSpan = document.getElementById('selectedDivideList');
+      const result = document.getElementById('divisionResult');
+      const actions = document.getElementById('divisionShareActions');
+      if (selectedListSpan) selectedListSpan.textContent = selectedListName;
+      if (result) result.innerHTML = '';
+      if (actions) {
+        actions.innerHTML = '';
+        actions.style.display = 'none';
+      }
+      updateDivisionParticipants({ listChanged: true });
+    }
+
     function openDivideListDialog() {
       console.log("Tentando abrir diálogo de seleção de lista para divisão");
       const dialog = document.getElementById('divideListDialog');
@@ -2116,6 +2231,9 @@
       if (selectedListSpan) {
         selectedListSpan.textContent = selectedListName;
       }
+      const divideListSelect = document.getElementById('divideListSelect');
+      if (divideListSelect) divideListSelect.value = selectedListName;
+      updateDivisionParticipants({ listChanged: true });
       closeDialog('divideListDialog');
       console.log("Lista selecionada para divisão:", selectedListName);
     }
@@ -3227,6 +3345,7 @@
       const deleteSelectedHistoryItemsButton = document.getElementById('deleteSelectedHistoryItemsButton');
       const loadMonthHistoryButton = document.getElementById('loadMonthHistoryButton');
       const openDivideListButton = document.getElementById('openDivideListButton');
+      const divideListSelect = document.getElementById('divideListSelect');
       const calculateDivisionButton = document.getElementById('calculateDivisionButton');
       const saveProfileEditsButton = document.getElementById('saveProfileEditsButton');
       const loadCurrentProfileButton = document.getElementById('loadCurrentProfileButton');
@@ -3329,6 +3448,9 @@
       }
       if (openDivideListButton) {
         openDivideListButton.addEventListener('click', openDivideListDialog);
+      }
+      if (divideListSelect) {
+        divideListSelect.addEventListener('change', handleDivideListChange);
       }
       if (calculateDivisionButton) {
         calculateDivisionButton.addEventListener('click', calculateDivision);

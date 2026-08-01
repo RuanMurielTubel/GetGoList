@@ -478,6 +478,9 @@
       return {
         items: normalizedItems,
         history: normalizedHistory,
+        sectorOrder: Array.isArray(listData.sectorOrder)
+          ? [...new Set(listData.sectorOrder.map((sector) => String(sector).trim()).filter(Boolean))]
+          : [],
         balance: typeof listData.balance === 'number' ? listData.balance : Number(listData.balance) || 0,
         initialBalance: typeof listData.initialBalance === 'number' ? listData.initialBalance : Number(listData.initialBalance) || 0,
       };
@@ -516,10 +519,13 @@
       const history = mergeSharedCollection(remote.history, baseline.history, desired.history);
       const initialBalanceChanged = desired.initialBalance !== baseline.initialBalance;
       const initialBalance = initialBalanceChanged ? desired.initialBalance : remote.initialBalance;
+      const sectorOrderChanged = JSON.stringify(desired.sectorOrder) !== JSON.stringify(baseline.sectorOrder);
+      const sectorOrder = sectorOrderChanged ? desired.sectorOrder : remote.sectorOrder;
 
       return {
         items,
         history,
+        sectorOrder,
         initialBalance,
         balance: initialBalance - items.reduce((sum, item) => sum + item.total, 0),
       };
@@ -1780,6 +1786,89 @@
       console.log("Dados de comparação limpos com sucesso");
     }
 
+    function bindSectorDragHandle(handle, section, list) {
+      let holdTimer = null;
+      let dragActive = false;
+      let startY = 0;
+      let pointerId = null;
+
+      const clearHoldTimer = () => {
+        if (holdTimer) {
+          window.clearTimeout(holdTimer);
+          holdTimer = null;
+        }
+      };
+
+      const finishDrag = () => {
+        if (pointerId === null) return;
+        pointerId = null;
+        clearHoldTimer();
+
+        if (dragActive) {
+          const sectorOrder = Array.from(list.querySelectorAll('.sector-group'))
+            .map((group) => group.dataset.sectorName)
+            .filter(Boolean);
+
+          if (lists[currentListName]) {
+            lists[currentListName].sectorOrder = sectorOrder;
+            saveLists();
+          }
+
+          section.classList.remove('is-dragging');
+          document.body.classList.remove('is-sector-dragging');
+          dragActive = false;
+          updateList();
+        }
+
+      };
+
+      handle.addEventListener('contextmenu', (event) => event.preventDefault());
+      handle.addEventListener('click', (event) => event.preventDefault());
+      handle.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+        event.preventDefault();
+        startY = event.clientY;
+        pointerId = event.pointerId;
+        handle.setPointerCapture?.(pointerId);
+
+        holdTimer = window.setTimeout(() => {
+          dragActive = true;
+          section.classList.add('is-dragging');
+          document.body.classList.add('is-sector-dragging');
+          if (window.navigator.vibrate) window.navigator.vibrate(25);
+        }, 180);
+      });
+
+      handle.addEventListener('pointermove', (event) => {
+        if (event.pointerId !== pointerId) return;
+
+        if (!dragActive) {
+          if (Math.abs(event.clientY - startY) > 10) clearHoldTimer();
+          return;
+        }
+
+        event.preventDefault();
+        const siblings = Array.from(list.querySelectorAll('.sector-group:not(.is-dragging)'));
+        const nextSector = siblings.find((candidate) => {
+          const bounds = candidate.getBoundingClientRect();
+          return event.clientY < bounds.top + bounds.height / 2;
+        });
+
+        if (nextSector) {
+          list.insertBefore(section, nextSector);
+        } else {
+          list.appendChild(section);
+        }
+      });
+
+      handle.addEventListener('pointerup', finishDrag);
+      handle.addEventListener('pointercancel', finishDrag);
+      handle.addEventListener('lostpointercapture', () => {
+        if (pointerId !== null) finishDrag();
+      });
+    }
+
     function updateList() {
       const list = document.getElementById('shoppingList');
       if (!list) {
@@ -1798,11 +1887,26 @@
         return groups;
       }, {});
 
+      const savedSectorOrder = Array.isArray(lists[currentListName]?.sectorOrder)
+        ? lists[currentListName].sectorOrder
+        : [];
+      const savedOrderPositions = new Map(savedSectorOrder.map((sector, index) => [sector, index]));
       const sectorNames = Object.keys(groupedItems).sort((first, second) => {
+        const firstPosition = savedOrderPositions.has(first) ? savedOrderPositions.get(first) : Number.MAX_SAFE_INTEGER;
+        const secondPosition = savedOrderPositions.has(second) ? savedOrderPositions.get(second) : Number.MAX_SAFE_INTEGER;
+
+        if (firstPosition !== secondPosition) return firstPosition - secondPosition;
         if (first === 'Geral') return -1;
         if (second === 'Geral') return 1;
         return first.localeCompare(second, 'pt-BR');
       });
+
+      if (sectorNames.length > 1) {
+        const reorderHint = document.createElement('li');
+        reorderHint.className = 'sector-reorder-hint';
+        reorderHint.innerHTML = '<span aria-hidden="true">⠿</span><span>Segure e arraste este ícone para organizar os setores.</span>';
+        list.appendChild(reorderHint);
+      }
 
       sectorNames.forEach((sectorName, sectorIndex) => {
         const sectorItems = groupedItems[sectorName];
@@ -1810,6 +1914,10 @@
         const section = document.createElement('section');
         section.className = 'sector-group';
         section.classList.toggle('is-collapsed', isCollapsed);
+        section.dataset.sectorName = sectorName;
+
+        const headerRow = document.createElement('div');
+        headerRow.className = 'sector-header-row';
 
         const header = document.createElement('button');
         header.type = 'button';
@@ -1857,6 +1965,17 @@
           }
           updateList();
         });
+
+        const dragHandle = document.createElement('button');
+        dragHandle.type = 'button';
+        dragHandle.className = 'sector-drag-handle';
+        dragHandle.setAttribute('aria-label', `Segure e arraste para mover o setor ${sectorName}`);
+        dragHandle.title = 'Segure e arraste para ordenar';
+        dragHandle.innerHTML = '<span aria-hidden="true">⠿</span>';
+        bindSectorDragHandle(dragHandle, section, list);
+
+        headerRow.appendChild(header);
+        headerRow.appendChild(dragHandle);
 
         const body = document.createElement('div');
         body.className = 'sector-body';
@@ -1917,7 +2036,7 @@
         });
 
         body.appendChild(ul);
-        section.appendChild(header);
+        section.appendChild(headerRow);
         section.appendChild(body);
         list.appendChild(section);
       });

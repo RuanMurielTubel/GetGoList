@@ -1385,7 +1385,7 @@
               <input type="text" class="edit-name" value="${item.name}">
               <input type="text" class="edit-price" value="${item.price.toFixed(2).replace('.', ',')}" oninput="formatPrice(this)">
               <input type="number" class="edit-quantity" value="${item.quantity}" min="1">
-              <input type="text" class="edit-sector" value="${item?.sector && item.sector.trim() ? item.sector : 'Geral'}" placeholder="Setor">
+              <input type="text" class="edit-sector" list="sectorOptions" value="${item?.sector && item.sector.trim() ? item.sector : 'Geral'}" placeholder="Setor">
               <button onclick="saveEdit(${index})">Salvar</button>
               <button onclick="cancelEdit(${index})">Cancelar</button>
             `;

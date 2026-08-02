@@ -1407,6 +1407,35 @@
       }
     }
 
+    function setCompactNavCollapsed(collapsed, persist = true) {
+      const toggle = document.getElementById('navRailToggle');
+      document.body.classList.toggle('nav-collapsed', collapsed);
+      if (toggle) {
+        const label = collapsed ? 'Expandir menu' : 'Recolher menu';
+        toggle.textContent = collapsed ? '›' : '‹';
+        toggle.title = label;
+        toggle.setAttribute('aria-label', label);
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+      }
+      if (persist) {
+        try {
+          localStorage.setItem('compactNavCollapsed', collapsed ? '1' : '0');
+        } catch (error) {
+          console.warn('Não foi possível salvar a preferência do menu.', error);
+        }
+      }
+    }
+
+    function initializeCompactNav() {
+      let collapsed = false;
+      try {
+        collapsed = localStorage.getItem('compactNavCollapsed') === '1';
+      } catch (error) {
+        console.warn('Não foi possível carregar a preferência do menu.', error);
+      }
+      setCompactNavCollapsed(collapsed, false);
+    }
+
     function updateFooter() {
       const footerListName = document.getElementById('footerListName');
       const footerItemCount = document.getElementById('footerItemCount');
@@ -3457,6 +3486,7 @@
 
     function setupEventHandlers() {
       const menuToggle = document.getElementById('menuToggle');
+      const navRailToggle = document.getElementById('navRailToggle');
       const overlay = document.getElementById('overlay');
       const accountAction = document.getElementById('accountAction');
       const photoFileInput = document.getElementById('photoFileInput');
@@ -3466,6 +3496,11 @@
 
       if (menuToggle) {
         menuToggle.addEventListener('click', toggleMenu);
+      }
+      if (navRailToggle) {
+        navRailToggle.addEventListener('click', () => {
+          setCompactNavCollapsed(!document.body.classList.contains('nav-collapsed'));
+        });
       }
       if (overlay) {
         overlay.addEventListener('click', closeMenu);
@@ -3716,6 +3751,7 @@
     });
 
     initializeLists();
+    initializeCompactNav();
     initializeFirebaseSync();
     setupDialogOverlayClose();
     setupEventHandlers();

@@ -1980,8 +1980,7 @@ h1#mainTitle {
   left: 72px;
   padding: 0;
   position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 72px;
   transition: left .25s ease, background .2s ease;
   width: 24px;
   z-index: 1002;

@@ -1071,12 +1071,7 @@
 </head>
 <body>
   <!-- Botão de menu flutuante -->
-  <button class="menu-toggle" id="menuToggle">☰</button>
-  
-  <!-- Overlay para fechar menu -->
-  <div class="overlay" id="overlay"></div>
-  
-  <!-- Menu lateral -->
+  <!-- Navegação lateral compacta -->
   <div class="sidebar" id="sidebar">
     <a class="sidebar-logo" href="/" aria-label="Página inicial do GetGoList">
       <span class="sidebar-logo-mark" aria-hidden="true">G</span>
@@ -1095,25 +1090,21 @@
       <div id="syncStatus" style="margin-top: 10px; font-size: 13px; color: rgba(255,255,255,0.78);">
         Modo visitante
       </div>
-      <button id="accountAction">Entrar e sincronizar</button>
+      <button id="accountAction" title="Sair da conta" aria-label="Sair da conta">Entrar e sincronizar</button>
     </div>
     <div class="sidebar-section-label">Organização</div>
-    <button type="button" class="home-button active"><span>Início</span></button>
-    <button type="button" class="shopping-button"><span>Listas</span></button>
-    <button type="button" class="products-button"><span>Produtos</span></button>
-    <button type="button" class="history-button"><span>Histórico</span></button>
+    <button type="button" class="home-button active" title="Início" aria-label="Início"><span>Início</span></button>
+    <button type="button" class="shopping-button" title="Listas" aria-label="Listas"><span>Listas</span></button>
+    <button type="button" class="products-button" title="Produtos" aria-label="Produtos"><span>Produtos</span></button>
+    <button type="button" class="history-button" title="Histórico" aria-label="Histórico"><span>Histórico</span></button>
     <div class="sidebar-section-label">Colaboração</div>
-    <button type="button" class="divide-button"><span>Dividir conta</span></button>
-    <button type="button" class="share-button"><span>Compartilhar lista</span></button>
-    <button type="button" class="profile-button"><span>Meu perfil</span></button>
+    <button type="button" class="divide-button" title="Dividir conta" aria-label="Dividir conta"><span>Dividir conta</span></button>
+    <button type="button" class="share-button" title="Compartilhar lista" aria-label="Compartilhar lista"><span>Compartilhar lista</span></button>
+    <button type="button" class="profile-button" title="Meu perfil" aria-label="Meu perfil"><span>Meu perfil</span></button>
       </div>
   
   <div class="container" id="mainContainer">
     <header class="app-heading">
-      <div class="app-brand" aria-label="Bem-vindo a sua lista de compras">
-        <span class="app-brand-mark" aria-hidden="true">G</span>
-        <span id="welcomeGreeting">Olá, Visitante</span>
-      </div>
       <div class="app-page-title">
         <h1 id="mainTitle">Início</h1>
         <p id="homeSubtitle">Vamos montar sua lista de compras juntos.</p>

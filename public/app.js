@@ -122,8 +122,10 @@
         status.textContent = statusMessage || "Conta conectada • sincronizado";
         email.textContent = currentFirebaseUser.email || "Conta GetGoList";
         action.textContent = "Sair da conta";
+        action.title = "Sair da conta";
+        action.setAttribute('aria-label', 'Sair da conta');
         navButtons.forEach((button) => {
-          button.style.display = 'block';
+          button.style.display = 'flex';
         });
         if (sidebarGreeting) {
           sidebarGreeting.style.display = 'block';
@@ -135,6 +137,8 @@
         status.textContent = "Modo visitante";
         email.textContent = "Listas salvas neste dispositivo";
         action.textContent = "Entrar e sincronizar";
+        action.title = "Entrar e sincronizar";
+        action.setAttribute('aria-label', 'Entrar e sincronizar');
         navButtons.forEach((button) => {
           button.style.display = 'none';
         });

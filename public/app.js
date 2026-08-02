@@ -723,6 +723,39 @@
       }
     }
 
+    async function syncSharedListsForAccount() {
+      if (!currentFirebaseUser || sharedListId) {
+        return;
+      }
+
+      try {
+        const token = await currentFirebaseUser.getIdToken();
+        const response = await fetch('/api/shared-list/mine', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error('Não foi possível consultar as listas compartilhadas.');
+        }
+
+        const result = await response.json();
+        const accountSharedLists = Array.isArray(result.lists) ? result.lists : [];
+        const recentSharedList = accountSharedLists.find((list) =>
+          list && typeof list.id === 'string' && list.id && typeof list.name === 'string' && list.name
+        );
+
+        if (recentSharedList) {
+          rememberSharedListAccess(recentSharedList.name, recentSharedList.id);
+        } else {
+          clearRememberedSharedList();
+        }
+        updateSharedModeUi();
+      } catch (error) {
+        console.warn('Não foi possível sincronizar os atalhos compartilhados da conta.', error);
+      }
+    }
+
     function updateSharedModeUi() {
       const sharedBanner = document.getElementById('sharedModeBanner');
       const sharedListName = document.getElementById('sharedModeListName');
@@ -966,6 +999,7 @@
           showSection('productsSection');
           updateSharedModeUi();
           subscribeToRemoteLists();
+          syncSharedListsForAccount();
         });
       } catch (error) {
         console.error("Não foi possível iniciar a sincronização.", error);

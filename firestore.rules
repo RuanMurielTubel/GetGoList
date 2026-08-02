@@ -2,14 +2,19 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function hasVerifiedEmail() {
+      return request.auth != null
+        && request.auth.token.email_verified == true;
+    }
+
     match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null
+      allow read, write: if hasVerifiedEmail()
         && request.auth.uid == userId;
     }
 
     match /sharedLists/{listId} {
       function hasSharedListAccess() {
-        return request.auth != null && (
+        return hasVerifiedEmail() && (
           request.auth.uid == resource.data.owner ||
           (request.auth.token.email != null && request.auth.token.email in resource.data.get('allowedEmails', [])) ||
           resource.data.get('linkAccess', false) == true
@@ -23,12 +28,12 @@ service cloud.firestore {
           && request.resource.data.get('linkAccess', false) == resource.data.get('linkAccess', false);
       }
 
-      allow create: if request.auth != null
+      allow create: if hasVerifiedEmail()
         && request.auth.uid == request.resource.data.owner;
       allow update: if hasSharedListAccess() && (
         request.auth.uid == resource.data.owner || preservesSharingPermissions()
       );
-      allow delete: if request.auth != null
+      allow delete: if hasVerifiedEmail()
         && request.auth.uid == resource.data.owner;
       allow read: if hasSharedListAccess();
     }

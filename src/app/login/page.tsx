@@ -4,6 +4,7 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  signOut,
   signInWithEmailAndPassword,
   updateProfile,
   GoogleAuthProvider,
@@ -17,7 +18,18 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { firebaseAuth } from "@/lib/firebase";
 
-type Mode = "login" | "register";
+type Mode = "login" | "register" | "verify";
+
+function strongPasswordMessage(password: string) {
+  if (password.length < 8) return "A senha precisa ter pelo menos 8 caracteres.";
+  if (!/[a-z]/.test(password)) return "Inclua pelo menos uma letra minúscula.";
+  if (!/[A-Z]/.test(password)) return "Inclua pelo menos uma letra maiúscula.";
+  if (!/\d/.test(password)) return "Inclua pelo menos um número.";
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return "Inclua pelo menos um caractere especial, como !, @, # ou $.";
+  }
+  return "";
+}
 
 function messageForError(code?: string) {
   const messages: Record<string, string> = {
@@ -61,6 +73,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
   const [isNativeApp, setIsNativeApp] = useState(false);
@@ -79,6 +92,12 @@ export default function LoginPage() {
     }
     return onAuthStateChanged(firebaseAuth, (user) => {
       if (user) {
+        if (!user.emailVerified) {
+          setEmail(user.email || "");
+          setMode("verify");
+          setLoading(false);
+          return;
+        }
         router.replace(redirectTo);
       }
     });
@@ -151,8 +170,9 @@ export default function LoginPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setFeedback("A senha precisa ter pelo menos 6 caracteres.");
+    const passwordProblem = mode === "register" ? strongPasswordMessage(password) : "";
+    if (passwordProblem) {
+      setFeedback(passwordProblem);
       return;
     }
 
@@ -171,21 +191,115 @@ export default function LoginPage() {
           password,
         );
         await updateProfile(credential.user, { displayName: name.trim() });
+        setMode("verify");
+        await requestVerificationCode(credential.user, false);
+        setFeedback("Enviamos um código de 6 dígitos para o seu e-mail.");
+        setLoading(false);
       } else {
-        await signInWithEmailAndPassword(
+        const credential = await signInWithEmailAndPassword(
           firebaseAuth,
           email.trim(),
           password,
         );
+        if (!credential.user.emailVerified) {
+          setMode("verify");
+          setFeedback("Confirme seu e-mail. Se precisar, solicite um novo código.");
+          setLoading(false);
+        }
       }
     } catch (error) {
       const code =
         typeof error === "object" && error && "code" in error
           ? String(error.code)
           : undefined;
-      setFeedback(messageForError(code));
+      const controlledMessage =
+        error instanceof Error && !code && error.message.startsWith("Não foi possível")
+          ? error.message
+          : "";
+      setFeedback(controlledMessage || messageForError(code));
       setLoading(false);
     }
+  }
+
+  async function requestVerificationCode(
+    user = firebaseAuth.currentUser,
+    showSuccess = true,
+  ) {
+    if (!user) throw new Error("UNAUTHENTICATED");
+    const token = await user.getIdToken();
+    const response = await fetch("/api/auth/email-code/request", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (result.code === "RESEND_TOO_SOON") {
+        throw new Error("Aguarde um minuto antes de pedir outro código.");
+      }
+      if (result.code === "SEND_LIMIT_REACHED") {
+        throw new Error("Limite de envios atingido. Tente novamente em uma hora.");
+      }
+      throw new Error("Não foi possível enviar o código agora. Tente novamente.");
+    }
+    if (showSuccess) setFeedback("Um novo código foi enviado para o seu e-mail.");
+  }
+
+  async function handleResendCode() {
+    setFeedback("");
+    setLoading(true);
+    try {
+      await requestVerificationCode();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível reenviar o código.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFeedback("");
+    if (!/^\d{6}$/.test(verificationCode)) {
+      setFeedback("Digite os 6 números recebidos por e-mail.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const user = firebaseAuth.currentUser;
+      if (!user) throw new Error("Sua sessão expirou. Entre novamente.");
+      const token = await user.getIdToken();
+      const response = await fetch("/api/auth/email-code/verify", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code: verificationCode }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const messages: Record<string, string> = {
+          INVALID_CODE: "Código incorreto. Confira e tente novamente.",
+          CODE_EXPIRED: "Esse código expirou. Solicite um novo.",
+          TOO_MANY_ATTEMPTS: "Muitas tentativas. Solicite um novo código.",
+        };
+        throw new Error(messages[result.code] || "Não foi possível confirmar o código.");
+      }
+      await user.reload();
+      await user.getIdToken(true);
+      router.replace(redirectTo || "/index.html");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível confirmar o código.");
+      setLoading(false);
+    }
+  }
+
+  async function handleLeaveVerification() {
+    await signOut(firebaseAuth);
+    setMode("login");
+    setVerificationCode("");
+    setFeedback("");
   }
 
   async function handlePasswordReset() {
@@ -264,6 +378,48 @@ export default function LoginPage() {
           </div>
         )}
 
+        {mode === "verify" ? (
+          <div>
+            <div className="account-card-heading">
+              <p className="eyebrow">Proteção da sua conta</p>
+              <h2 id="account-title">Confirme seu e-mail</h2>
+              <p>
+                Enviamos um código de 6 dígitos para <strong>{email}</strong>.
+                Sua conta só será liberada depois da confirmação.
+              </p>
+            </div>
+            <form className="account-form" onSubmit={handleVerifyCode}>
+              <label>
+                Código de confirmação
+                <input
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  maxLength={6}
+                  onChange={(event) =>
+                    setVerificationCode(event.target.value.replace(/\D/g, ""))
+                  }
+                  placeholder="000000"
+                  required
+                  style={{ fontSize: 24, letterSpacing: 8, textAlign: "center" }}
+                  value={verificationCode}
+                />
+              </label>
+              {feedback && (
+                <p className="account-feedback" role="status">{feedback}</p>
+              )}
+              <button className="button button-primary" disabled={loading}>
+                {loading ? "Confirmando..." : "Confirmar e liberar minha conta"}
+              </button>
+            </form>
+            <button className="password-reset" disabled={loading} onClick={handleResendCode} type="button">
+              Reenviar código
+            </button>
+            <button className="password-reset" disabled={loading} onClick={handleLeaveVerification} type="button">
+              Voltar para o login
+            </button>
+          </div>
+        ) : (
+          <>
         <div className="account-tabs" role="tablist" aria-label="Acesso">
           <button
             aria-selected={mode === "login"}
@@ -329,9 +485,9 @@ export default function LoginPage() {
               autoComplete={
                 mode === "login" ? "current-password" : "new-password"
               }
-              minLength={6}
+              minLength={mode === "register" ? 8 : 6}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="Mínimo de 6 caracteres"
+              placeholder={mode === "register" ? "Crie uma senha forte" : "Sua senha"}
               required
               type="password"
               value={password}
@@ -339,11 +495,17 @@ export default function LoginPage() {
           </label>
 
           {mode === "register" && (
+            <p style={{ color: "#5f7185", fontSize: 12, lineHeight: 1.5, margin: "-4px 0 2px" }}>
+              Use 8 ou mais caracteres, com maiúscula, minúscula, número e símbolo.
+            </p>
+          )}
+
+          {mode === "register" && (
             <label>
               Confirme a senha
               <input
                 autoComplete="new-password"
-                minLength={6}
+                minLength={8}
                 onChange={(event) => setConfirmPassword(event.target.value)}
                 placeholder="Digite a senha novamente"
                 required
@@ -413,6 +575,8 @@ export default function LoginPage() {
           responsável. A política de privacidade será publicada antes do
           lançamento público.
         </p>
+          </>
+        )}
       </section>
     </main>
   );

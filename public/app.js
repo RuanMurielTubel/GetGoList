@@ -916,6 +916,11 @@
         });
 
         firebaseAuth.onAuthStateChanged((user) => {
+          if (user && !user.emailVerified) {
+            const redirectUrl = `${window.location.pathname}${window.location.search}`;
+            window.location.replace(`/login?verify=1&redirect=${encodeURIComponent(redirectUrl)}`);
+            return;
+          }
           currentFirebaseUser = user;
           remoteSyncReady = false;
           initialRemoteSnapshotHandled = false;

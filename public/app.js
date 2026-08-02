@@ -31,11 +31,11 @@
     let allowEndedSharedDivision = false;
 
     const firebaseConfig = {
-      apiKey: "AIzaSyApgAliwYTpeIyYgEpeFTw6HrS5Bc-Kc9Q",
+      apiKey: "AIzaSyAFj6YWQfz3dI2motK3qH9xc0UNVF7TzqY",
       authDomain: "getgolist.firebaseapp.com",
       projectId: "getgolist",
-      storageBucket: "getgolist.appspot.com",
-      appId: "getgolist"
+      storageBucket: "getgolist.firebasestorage.app",
+      appId: "1:448077185241:web:f6b41684c7c34d12ecbec8"
     };
 
     const predefinedSectors = [

@@ -1,4 +1,14 @@
-import { adminAuth } from "./firebase-admin";
+import { adminAppCheck, adminAuth } from "./firebase-admin";
+
+export async function verifiedAppRequest(request: Request) {
+  const token = request.headers.get("x-firebase-appcheck") || "";
+  if (!token) throw new Error("APP_CHECK_REQUIRED");
+  try {
+    return await adminAppCheck().verifyToken(token);
+  } catch {
+    throw new Error("APP_CHECK_INVALID");
+  }
+}
 
 export async function authenticatedUser(request: Request) {
   const authorization = request.headers.get("authorization") || "";

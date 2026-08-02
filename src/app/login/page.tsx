@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { firebaseAuth } from "@/lib/firebase";
+import { getAppCheckToken } from "@/lib/app-check";
 
 type Mode = "login" | "register" | "verify";
 
@@ -185,6 +186,7 @@ export default function LoginPage() {
 
     try {
       if (mode === "register") {
+        await getAppCheckToken();
         const credential = await createUserWithEmailAndPassword(
           firebaseAuth,
           email.trim(),
@@ -226,10 +228,16 @@ export default function LoginPage() {
     showSuccess = true,
   ) {
     if (!user) throw new Error("UNAUTHENTICATED");
-    const token = await user.getIdToken();
+    const [token, appCheckToken] = await Promise.all([
+      user.getIdToken(),
+      getAppCheckToken(),
+    ]);
     const response = await fetch("/api/auth/email-code/request", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Firebase-AppCheck": appCheckToken,
+      },
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -268,12 +276,16 @@ export default function LoginPage() {
     try {
       const user = firebaseAuth.currentUser;
       if (!user) throw new Error("Sua sessão expirou. Entre novamente.");
-      const token = await user.getIdToken();
+      const [token, appCheckToken] = await Promise.all([
+        user.getIdToken(),
+        getAppCheckToken(),
+      ]);
       const response = await fetch("/api/auth/email-code/verify", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          "X-Firebase-AppCheck": appCheckToken,
         },
         body: JSON.stringify({ code: verificationCode }),
       });
@@ -312,9 +324,13 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
+      const appCheckToken = await getAppCheckToken();
       const response = await fetch("/api/email/password-reset", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Firebase-AppCheck": appCheckToken,
+        },
         body: JSON.stringify({ email: email.trim() }),
       });
       if (response.status === 503) {

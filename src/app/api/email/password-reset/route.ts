@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { adminAuth } from "@/lib/server/firebase-admin";
 import { escapeHtml, sendGetGoListEmail } from "@/lib/server/email";
 import { requestAddress, withinRateLimit } from "@/lib/server/rate-limit";
+import { verifiedAppRequest } from "@/lib/server/request-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    await verifiedAppRequest(request);
     const body = await request.json();
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -45,6 +47,12 @@ export async function POST(request: Request) {
     }
     if (message.includes("NOT_CONFIGURED")) {
       return NextResponse.json({ ok: false, fallback: true }, { status: 503 });
+    }
+    if (message.startsWith("APP_CHECK_")) {
+      return NextResponse.json(
+        { ok: false, code: "APP_CHECK_FAILED" },
+        { status: 403 },
+      );
     }
     console.error("Falha ao enviar recuperação de senha.", error);
     return NextResponse.json({ ok: false }, { status: 500 });

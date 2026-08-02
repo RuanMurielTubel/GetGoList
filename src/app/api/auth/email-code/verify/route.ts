@@ -4,12 +4,13 @@ import {
   verificationCodeMatches,
 } from "@/lib/server/email-verification";
 import { adminAuth, adminFirestore } from "@/lib/server/firebase-admin";
-import { authenticatedUser } from "@/lib/server/request-auth";
+import { authenticatedUser, verifiedAppRequest } from "@/lib/server/request-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
+    await verifiedAppRequest(request);
     const user = await authenticatedUser(request);
     if (user.email_verified) return NextResponse.json({ ok: true });
 
@@ -53,6 +54,12 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "";
     if (message === "UNAUTHORIZED") {
       return NextResponse.json({ ok: false }, { status: 401 });
+    }
+    if (message.startsWith("APP_CHECK_")) {
+      return NextResponse.json(
+        { ok: false, code: "APP_CHECK_FAILED" },
+        { status: 403 },
+      );
     }
     if (["INVALID_CODE", "CODE_NOT_FOUND"].includes(message)) {
       return NextResponse.json(

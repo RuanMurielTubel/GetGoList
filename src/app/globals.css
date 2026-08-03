@@ -71,16 +71,6 @@ main {
   width: 38px;
 }
 
-.beta-badge {
-  background: #e6f5f6;
-  border: 1px solid #b8e2e6;
-  border-radius: 999px;
-  color: var(--primary-dark);
-  font-size: 0.78rem;
-  font-weight: 700;
-  padding: 7px 12px;
-}
-
 .header-actions {
   align-items: center;
   display: flex;
@@ -721,6 +711,119 @@ footer {
   text-align: center;
 }
 
+.account-terms a,
+footer a {
+  color: var(--primary-dark);
+  font-weight: 750;
+  text-decoration: underline;
+  text-decoration-color: rgba(5, 95, 105, 0.3);
+  text-underline-offset: 3px;
+}
+
+.policy-page {
+  min-height: 100vh;
+  padding-bottom: 72px;
+}
+
+.policy-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: 920px;
+  padding: 26px 28px;
+}
+
+.policy-back {
+  color: var(--primary-dark);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.policy-document {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: 0 24px 80px rgba(16, 35, 63, 0.08);
+  margin: 32px auto 0;
+  max-width: 860px;
+  padding: clamp(28px, 6vw, 68px);
+}
+
+.policy-document h1 {
+  font-size: clamp(2.25rem, 6vw, 4.25rem);
+  letter-spacing: -0.055em;
+  line-height: 1;
+  margin: 0;
+}
+
+.policy-lead {
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.75;
+  margin: 24px 0 0;
+}
+
+.policy-updated {
+  background: #e8f5f6;
+  border-radius: 999px;
+  color: var(--primary-dark);
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 750;
+  margin: 24px 0 8px;
+  padding: 8px 12px;
+}
+
+.policy-document section {
+  border-top: 1px solid var(--line);
+  margin-top: 34px;
+  padding-top: 34px;
+}
+
+.policy-document h2 {
+  font-size: 1.35rem;
+  letter-spacing: -0.025em;
+  margin: 0 0 14px;
+}
+
+.policy-document h3 {
+  font-size: 1rem;
+  margin: 24px 0 8px;
+}
+
+.policy-document p,
+.policy-document li {
+  color: #40536a;
+  line-height: 1.72;
+}
+
+.policy-document p {
+  margin: 0 0 12px;
+}
+
+.policy-document ul {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-left: 22px;
+}
+
+.policy-document strong {
+  color: var(--ink);
+}
+
+.policy-contact {
+  background: var(--surface-soft);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.policy-contact a {
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
 @media (max-width: 860px) {
   .hero {
     gap: 50px;
@@ -772,10 +875,6 @@ footer {
 @media (max-width: 580px) {
   .site-header {
     padding: 20px;
-  }
-
-  .beta-badge {
-    display: none;
   }
 
   .header-login {
@@ -883,6 +982,18 @@ footer {
 
   .account-page-app .account-terms {
     margin-top: 16px;
+  }
+
+  .policy-header {
+    padding: 20px;
+  }
+
+  .policy-document {
+    border-left: 0;
+    border-radius: 0;
+    border-right: 0;
+    margin-top: 12px;
+    padding: 36px 20px;
   }
 }
 

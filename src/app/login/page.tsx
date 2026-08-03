@@ -366,8 +366,7 @@ export default function LoginPage() {
           <p className="eyebrow">Suas listas com você</p>
           <h1>Salve suas compras e continue em qualquer dispositivo.</h1>
           <p>
-            Ao criar uma conta, suas listas locais serão preservadas e
-            preparadas para sincronização segura.
+            Crie sua conta para manter suas listas sincronizadas com segurança.
           </p>
         </div>
 
@@ -379,7 +378,7 @@ export default function LoginPage() {
             <span>✓</span> Acesso em outros aparelhos
           </li>
           <li>
-            <span>✓</span> Base para compartilhamento familiar
+            <span>✓</span> Compartilhamento de listas
           </li>
         </ul>
       </section>
@@ -587,9 +586,8 @@ export default function LoginPage() {
         </div>
 
         <p className="account-terms">
-          Ao criar uma conta, você concorda em usar o GetGoList de forma
-          responsável. A política de privacidade será publicada antes do
-          lançamento público.
+          Ao usar o GetGoList, você declara ciência da nossa{" "}
+          <Link href="/privacidade">Política de Privacidade e Segurança</Link>.
         </p>
           </>
         )}

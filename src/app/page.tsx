@@ -14,9 +14,9 @@ const benefits = [
     icon: "R$",
   },
   {
-    title: "Organize várias compras",
+    title: "Compartilhe e colabore",
     description:
-      "Separe mercado, feira, farmácia ou qualquer outra lista importante.",
+      "Convide pessoas para atualizar itens e valores da mesma lista em tempo real.",
     icon: "≡",
   },
 ];
@@ -39,9 +39,8 @@ export default function Home() {
         </Link>
 
         <nav className="header-actions" aria-label="Acesso">
-          <span className="beta-badge">Versão inicial</span>
           <Link className="header-login" href="/login">
-            Entrar e sincronizar
+            Entrar
           </Link>
         </nav>
       </header>
@@ -51,12 +50,12 @@ export default function Home() {
           <p className="eyebrow">Sua compra começa mais organizada</p>
           <h1>A lista de compras simples para usar de verdade.</h1>
           <p className="hero-description">
-            Monte sua lista, acompanhe os valores e não deixe nenhum item para
-            trás. Você pode experimentar agora, sem cadastro.
+            Monte sua lista, acompanhe os valores e compartilhe compras com
+            quem você quiser, sempre com acesso protegido por login.
           </p>
 
           <div className="hero-actions">
-            <Link className="button button-primary" href="/index.html">
+            <Link className="button button-primary" href="/login">
               Criar minha lista
             </Link>
             <a className="button button-secondary" href="#como-funciona">
@@ -65,7 +64,7 @@ export default function Home() {
           </div>
 
           <p className="privacy-note">
-            Nesta versão, suas listas ficam salvas somente neste dispositivo.
+            Seus dados ficam sincronizados com segurança na sua conta.
           </p>
         </div>
 
@@ -130,10 +129,10 @@ export default function Home() {
       <section className="how-it-works" id="como-funciona">
         <div>
           <p className="eyebrow">Comece em segundos</p>
-          <h2>Sem cadastro e sem configuração complicada</h2>
+          <h2>Organização simples do começo ao fim</h2>
           <p>
-            A sincronização entre celulares e o compartilhamento familiar serão
-            as próximas grandes evoluções do GetGoList.
+            Acesse suas listas em outros dispositivos, colabore em tempo real e
+            divida o valor da compra com os participantes.
           </p>
         </div>
 
@@ -152,14 +151,14 @@ export default function Home() {
           <p className="eyebrow">Pronto para começar?</p>
           <h2>Crie sua primeira lista agora.</h2>
         </div>
-        <Link className="button button-light" href="/index.html">
+        <Link className="button button-light" href="/login">
           Abrir GetGoList
         </Link>
       </section>
 
       <footer>
         <span>© 2026 GetGoList</span>
-        <span>Versão inicial — seus dados permanecem no seu dispositivo.</span>
+        <Link href="/privacidade">Política de Privacidade e Segurança</Link>
       </footer>
     </main>
   );

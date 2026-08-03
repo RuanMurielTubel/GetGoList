@@ -1327,6 +1327,166 @@
       preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    function setPriceSearchStatus(message, isError = false) {
+      const status = document.getElementById('priceSearchStatus');
+      if (!status) return;
+      status.textContent = message || '';
+      status.classList.toggle('error', Boolean(isError));
+    }
+
+    function updatePriceListSuggestions() {
+      const suggestions = document.getElementById('priceListSuggestions');
+      if (!suggestions) return;
+      suggestions.replaceChildren();
+      const names = Array.from(new Set(
+        shoppingList
+          .map((item) => cleanText(item && item.name, 80))
+          .filter(Boolean),
+      )).slice(0, 100);
+      names.forEach((name) => {
+        const option = document.createElement('option');
+        option.value = name;
+        suggestions.appendChild(option);
+      });
+    }
+
+    function onlinePriceLabel(value, currency = 'BRL') {
+      const amount = Number(value);
+      if (!Number.isFinite(amount)) return 'Preço indisponível';
+      try {
+        return new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: currency === 'BRL' ? 'BRL' : currency,
+        }).format(amount);
+      } catch {
+        return `R$ ${amount.toFixed(2).replace('.', ',')}`;
+      }
+    }
+
+    function renderOnlinePriceResults(result) {
+      const grid = document.getElementById('priceResultsGrid');
+      const summary = document.getElementById('priceResultsSummary');
+      if (!grid || !summary) return;
+      grid.replaceChildren();
+      const offers = Array.isArray(result && result.offers) ? result.offers : [];
+
+      if (!offers.length) {
+        summary.hidden = true;
+        setPriceSearchStatus('Nenhuma oferta confiável foi encontrada para esse termo. Tente informar marca, peso ou quantidade.', true);
+        return;
+      }
+
+      summary.hidden = false;
+      const queriedAt = result.queriedAt ? new Date(result.queriedAt) : new Date();
+      summary.textContent = `${offers.length} opções encontradas em ${result.source || 'fonte conectada'} · consulta ${queriedAt.toLocaleString('pt-BR')}`;
+
+      offers.forEach((offer, index) => {
+        const card = document.createElement('article');
+        card.className = 'price-result-card';
+
+        const visual = document.createElement('div');
+        visual.className = 'price-result-visual';
+        if (offer.image) {
+          const image = document.createElement('img');
+          image.src = offer.image;
+          image.alt = '';
+          image.loading = 'lazy';
+          image.referrerPolicy = 'no-referrer';
+          visual.appendChild(image);
+        } else {
+          const placeholder = document.createElement('span');
+          placeholder.textContent = 'G';
+          visual.appendChild(placeholder);
+        }
+        if (index === 0) {
+          const badge = document.createElement('strong');
+          badge.className = 'price-lowest-badge';
+          badge.textContent = 'Menor preço';
+          visual.appendChild(badge);
+        }
+
+        const content = document.createElement('div');
+        content.className = 'price-result-content';
+        const store = document.createElement('small');
+        store.textContent = cleanText(offer.store, 80, result.source || 'Loja online');
+        const title = document.createElement('h3');
+        title.textContent = cleanText(offer.title, 180, 'Produto');
+        const price = document.createElement('strong');
+        price.className = 'price-result-value';
+        price.textContent = onlinePriceLabel(offer.price, offer.currency);
+        const shipping = document.createElement('span');
+        shipping.className = 'price-result-shipping';
+        shipping.textContent = offer.freeShipping ? 'Frete grátis informado pela loja' : 'Consulte o frete para Joinville/SC';
+        const link = document.createElement('a');
+        link.href = offer.link;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer sponsored';
+        link.textContent = 'Ver oferta na loja';
+
+        content.append(store, title, price, shipping, link);
+        card.append(visual, content);
+        grid.appendChild(card);
+      });
+      setPriceSearchStatus('Ofertas ordenadas pelo preço do produto. O frete pode alterar o total final.');
+    }
+
+    async function searchOnlinePrices(event) {
+      if (event) event.preventDefault();
+      const input = document.getElementById('priceSearchQuery');
+      const button = document.getElementById('priceSearchButton');
+      const query = cleanText(input && input.value, 80);
+      if (query.length < 2) {
+        setPriceSearchStatus('Digite o nome de um produto para pesquisar.', true);
+        if (input) input.focus();
+        return;
+      }
+
+      const authenticatedUser = await waitForAuthenticatedUser();
+      if (!authenticatedUser) {
+        setPriceSearchStatus('Entre na sua conta para comparar preços.', true);
+        return;
+      }
+
+      if (button) button.disabled = true;
+      setPriceSearchStatus('Consultando ofertas online…');
+      const grid = document.getElementById('priceResultsGrid');
+      const summary = document.getElementById('priceResultsSummary');
+      if (grid) grid.replaceChildren();
+      if (summary) summary.hidden = true;
+
+      try {
+        const [token, appCheckToken] = await Promise.all([
+          authenticatedUser.getIdToken(),
+          getFirebaseAppCheckToken(),
+        ]);
+        const response = await fetch('/api/prices/search', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'X-Firebase-AppCheck': appCheckToken,
+          },
+          body: JSON.stringify({ query, city: 'Joinville', state: 'SC' }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const messages = {
+            PRICE_PROVIDER_NOT_CONFIGURED: 'O comparador está pronto e aguarda a autorização oficial da primeira fonte de preços.',
+            PRICE_PROVIDER_AUTH_REQUIRED: 'A autorização da fonte de preços precisa ser renovada.',
+            PRICE_SEARCH_LIMIT: 'Muitas pesquisas foram feitas agora. Aguarde alguns minutos.',
+            PRICE_PROVIDER_TIMEOUT: 'A pesquisa demorou demais. Tente novamente.',
+          };
+          throw new Error(messages[result.code] || result.message || 'Não foi possível pesquisar preços agora.');
+        }
+        renderOnlinePriceResults(result);
+      } catch (error) {
+        console.error('Falha ao comparar preços online.', error);
+        setPriceSearchStatus(error instanceof Error ? error.message : 'Não foi possível pesquisar preços agora.', true);
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
     function discardAiListPreview() {
       const preview = document.getElementById('aiListPreview');
       const itemsContainer = document.getElementById('aiPreviewItems');
@@ -2003,6 +2163,7 @@
         managementSection: '.management-button',
         shoppingSection: '.shopping-button',
         productsSection: '.products-button',
+        pricesSection: '.prices-button',
         historySection: '.history-button',
         divideSection: '.divide-button',
         profileSection: '.profile-button'
@@ -2018,6 +2179,7 @@
         managementSection: 'Gestão',
         shoppingSection: 'Listas',
         productsSection: 'Produtos',
+        pricesSection: 'Menores preços',
         historySection: 'Histórico',
         divideSection: 'Divisão',
         profileSection: 'Meu Perfil'
@@ -2028,6 +2190,7 @@
         managementSection: 'Acompanhe seus números e hábitos de compra.',
         shoppingSection: 'Crie, organize e defina o orçamento das suas listas.',
         productsSection: 'Monte sua compra e acompanhe cada item da lista.',
+        pricesSection: 'Compare ofertas online antes de finalizar sua compra.',
         historySection: 'Consulte compras anteriores e compare períodos.',
         divideSection: 'Calcule e envie a parte de cada pessoa.',
         profileSection: 'Personalize sua experiência no GetGoList.'
@@ -2055,6 +2218,9 @@
         updateTotal();
         updateBalance();
         updateFooter();
+      }
+      if (sectionId === 'pricesSection') {
+        updatePriceListSuggestions();
       }
       if (sectionId === 'historySection') {
         updateHistory();
@@ -4266,6 +4432,7 @@
       const managementButton = document.querySelector('.management-button');
       const shoppingButton = document.querySelector('.shopping-button');
       const productsButton = document.querySelector('.products-button');
+      const pricesButton = document.querySelector('.prices-button');
       const historyButton = document.querySelector('.history-button');
       const divideButton = document.querySelector('.divide-button');
       const profileButton = document.querySelector('.profile-button');
@@ -4318,6 +4485,8 @@
       const aiListForm = document.getElementById('aiListForm');
       const createAiListButton = document.getElementById('createAiListButton');
       const discardAiListButton = document.getElementById('discardAiListButton');
+      const priceSearchForm = document.getElementById('priceSearchForm');
+      const openPricesFromHomeButton = document.getElementById('openPricesFromHomeButton');
 
       if (setBalanceButton) {
         setBalanceButton.addEventListener('click', setBalance);
@@ -4374,6 +4543,9 @@
       if (productsButton) {
         productsButton.addEventListener('click', () => showSection('productsSection'));
       }
+      if (pricesButton) {
+        pricesButton.addEventListener('click', () => showSection('pricesSection'));
+      }
       if (manageListsButton) {
         manageListsButton.addEventListener('click', () => showSection('shoppingSection'));
       }
@@ -4408,6 +4580,12 @@
       }
       if (discardAiListButton) {
         discardAiListButton.addEventListener('click', discardAiListPreview);
+      }
+      if (priceSearchForm) {
+        priceSearchForm.addEventListener('submit', searchOnlinePrices);
+      }
+      if (openPricesFromHomeButton) {
+        openPricesFromHomeButton.addEventListener('click', () => showSection('pricesSection'));
       }
       if (openBudgetDialogButton) {
         openBudgetDialogButton.addEventListener('click', openBudgetDialog);

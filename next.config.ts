@@ -37,6 +37,12 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: "/app-theme.css",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
+      {
         source: "/index.html",
         headers: [
           { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },

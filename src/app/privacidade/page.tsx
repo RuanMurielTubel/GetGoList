@@ -46,6 +46,7 @@ export default function PrivacyPage() {
             <li><strong>Divisão de conta:</strong> e-mails dos destinatários, quantidade de participantes, valores e chave PIX ou dados de pagamento informados pelo usuário.</li>
             <li><strong>Segurança e funcionamento:</strong> tokens de autenticação, registros técnicos, informações do dispositivo e sinais usados para prevenir abuso e acessos indevidos.</li>
             <li><strong>Criação com inteligência artificial:</strong> descrição da compra, número de pessoas, orçamento opcional e a sugestão de lista gerada.</li>
+            <li><strong>Comparação de preços:</strong> nome do produto pesquisado, fonte consultada, data da consulta e localização geral usada como referência para disponibilidade ou frete.</li>
             <li><strong>Dados locais:</strong> preferências e cópias temporárias podem ficar armazenadas no navegador ou no aplicativo para melhorar o funcionamento e a continuidade de uso.</li>
           </ul>
           <p>
@@ -64,6 +65,7 @@ export default function PrivacyPage() {
             <li>Enviar confirmação de e-mail, recuperação de senha, convites e divisões de conta.</li>
             <li>Manter o serviço disponível, corrigir falhas, combater fraude e melhorar a segurança.</li>
             <li>Gerar uma sugestão de produtos e setores quando você solicitar a criação de uma lista com inteligência artificial.</li>
+            <li>Consultar e ordenar ofertas de fontes online conectadas quando você solicitar uma comparação de preços.</li>
             <li>Cumprir obrigações legais e atender solicitações legítimas de titulares ou autoridades.</li>
           </ul>
           <p>
@@ -126,6 +128,7 @@ export default function PrivacyPage() {
             <li><strong>Google:</strong> login com Google e mecanismos de proteção como reCAPTCHA e Play Integrity.</li>
             <li><strong>Vercel:</strong> hospedagem e entrega do site e das rotas do sistema.</li>
             <li><strong>Titan/GoDaddy:</strong> envio de mensagens transacionais pelo domínio getgolist.com.</li>
+            <li><strong>Mercado Livre:</strong> primeira fonte prevista para consulta de anúncios e preços online; somente o termo pesquisado é enviado pelo servidor do GetGoList.</li>
           </ul>
           <p>
             Alguns fornecedores podem tratar dados em outros países. Nesses casos,

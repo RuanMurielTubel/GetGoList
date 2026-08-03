@@ -97,6 +97,16 @@
       container.appendChild(initials);
     }
 
+    function firebaseUserPhotoURL(user) {
+      if (!user) return '';
+      const providers = Array.isArray(user.providerData) ? user.providerData : [];
+      const googleProfile = providers.find((provider) =>
+        provider && provider.providerId === 'google.com' && isSafeImageSource(provider.photoURL)
+      );
+      if (googleProfile) return googleProfile.photoURL;
+      return isSafeImageSource(user.photoURL) ? user.photoURL : '';
+    }
+
     async function getFirebaseAppCheckToken() {
       if (!firebaseAppCheck) {
         throw new Error('Proteção do aplicativo indisponível. Recarregue a página.');
@@ -240,7 +250,7 @@
 
       if (currentFirebaseUser) {
           const displayName = localProfileData.displayName || currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList';
-        const photoURL = localProfileData.photoDataUrl || currentFirebaseUser.photoURL || '';
+        const photoURL = localProfileData.photoDataUrl || firebaseUserPhotoURL(currentFirebaseUser);
         const emailValue = currentFirebaseUser.email || 'Sem email';
 
         nameElement.textContent = displayName;

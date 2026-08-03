@@ -1351,7 +1351,17 @@
       setAiListStatus('Organizando quantidades, produtos e setores…');
 
       try {
-        const result = await window.GetGoListAI.generateList({ prompt, people, budget });
+        const [authToken, appCheckToken] = await Promise.all([
+          currentFirebaseUser.getIdToken(),
+          getFirebaseAppCheckToken(),
+        ]);
+        const result = await window.GetGoListAI.generateList({
+          prompt,
+          people,
+          budget,
+          authToken,
+          appCheckToken,
+        });
         const suggestion = normalizedAiSuggestion(result);
         if (!suggestion.items.length) {
           throw new Error('AI_EMPTY_RESULT');
@@ -1360,9 +1370,22 @@
         setAiListStatus('Lista pronta para revisão. Nenhum item foi salvo ainda.');
       } catch (error) {
         console.error('Não foi possível gerar a lista inteligente.', error);
-        const message = error && error.message === 'AI_NOT_CONFIGURED'
+        const errorCode = error && (error.code || error.message);
+        const message = errorCode === 'AI_NOT_CONFIGURED'
           ? 'A inteligência artificial está aguardando a ativação segura no Firebase.'
-          : error && error.message === 'AI_EMPTY_RESULT'
+          : errorCode === 'AI_AUTH_REQUIRED'
+            ? 'Entre novamente na sua conta para montar a lista com IA.'
+          : errorCode === 'AI_DEVICE_NOT_VERIFIED'
+            ? 'Não foi possível validar este dispositivo. Recarregue a tela e tente novamente.'
+          : errorCode === 'AI_ACCESS_BLOCKED'
+            ? 'A conexão segura com a IA está bloqueada. Tente novamente em alguns minutos.'
+          : errorCode === 'AI_MODEL_UNAVAILABLE'
+            ? 'O assistente de listas está temporariamente indisponível.'
+          : errorCode === 'AI_LIMIT_REACHED'
+            ? 'Muitas listas foram solicitadas agora. Aguarde um pouco e tente novamente.'
+          : errorCode === 'AI_NETWORK'
+            ? 'Sem conexão com a IA. Verifique sua internet e tente novamente.'
+          : errorCode === 'AI_EMPTY_RESULT'
             ? 'A IA não conseguiu formar uma lista. Tente descrever a compra de outro jeito.'
             : 'Não foi possível montar a lista agora. Tente novamente em instantes.';
         setAiListStatus(message, true);

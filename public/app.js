@@ -858,6 +858,9 @@
       const recentSharedBanner = document.getElementById('recentSharedBanner');
       const recentSharedListName = document.getElementById('recentSharedListName');
       const recentSharedList = getRecentSharedList();
+      const activeSectionId = document.querySelector('.section.active')?.id || '';
+      const showSharedContext = activeSectionId === 'shoppingSection' || activeSectionId === 'productsSection';
+      const moveSelectedItemsButton = document.getElementById('moveSelectedListItemsButton');
       const listManagementIds = [
         'openCreateListDialogButton',
         'openEditListNamesDialogButton',
@@ -866,7 +869,7 @@
       ];
 
       if (sharedBanner) {
-        sharedBanner.style.display = sharedListId && !sharedListEnded ? 'flex' : 'none';
+        sharedBanner.style.display = showSharedContext && sharedListId && !sharedListEnded ? 'flex' : 'none';
       }
       if (sharedListName) {
         sharedListName.textContent = currentListName;
@@ -886,10 +889,13 @@
         finishSharingButton.style.display = sharedListId && isOwner && !sharedListEnded ? '' : 'none';
       }
       if (recentSharedBanner) {
-        recentSharedBanner.style.display = !sharedListId && recentSharedList ? 'flex' : 'none';
+        recentSharedBanner.style.display = showSharedContext && !sharedListId && recentSharedList ? 'flex' : 'none';
       }
       if (recentSharedListName && recentSharedList) {
         recentSharedListName.textContent = recentSharedList.name;
+      }
+      if (moveSelectedItemsButton) {
+        moveSelectedItemsButton.style.display = sharedListId ? 'none' : '';
       }
       listManagementIds.forEach((id) => {
         const element = document.getElementById(id);
@@ -1278,10 +1284,11 @@
         sectorName,
       ]);
       collapsedSectors.delete(sectorName);
+      closeDialog('createSectorDialog');
+      input.value = '';
       saveLists();
       populateSectorSelect(sectorName);
       updateList();
-      closeDialog('createSectorDialog');
     }
 
     function updateStats() {
@@ -1687,6 +1694,8 @@
         return;
       }
 
+      updateSharedModeUi();
+
       if (sectionId === 'homeSection') {
         updateDashboard();
       }
@@ -1965,6 +1974,107 @@
         updateDashboard();
         console.log("Itens selecionados da lista excluídos com sucesso");
       }
+    }
+
+    function getSelectedListItemIndices() {
+      return Array.from(document.querySelectorAll('input[name="listItem"]:checked'))
+        .map((checkbox) => Number.parseInt(checkbox.value, 10))
+        .filter((index) => Number.isInteger(index) && index >= 0 && index < shoppingList.length);
+    }
+
+    function showMoveItemsError(message = '') {
+      const error = document.getElementById('moveSelectedItemsError');
+      if (!error) return;
+      error.textContent = message;
+      error.style.display = message ? 'block' : 'none';
+    }
+
+    function openMoveSelectedItemsDialog() {
+      const selectedIndices = getSelectedListItemIndices();
+      if (!selectedIndices.length) {
+        alert('Selecione pelo menos um item para mover.');
+        return;
+      }
+      if (sharedListId) {
+        alert('Itens de uma lista compartilhada não podem ser movidos para suas listas privadas.');
+        return;
+      }
+
+      const targetListNames = Object.keys(lists).filter((listName) => listName !== currentListName);
+      if (!targetListNames.length) {
+        alert('Crie outra lista antes de mover os itens.');
+        return;
+      }
+
+      const dialog = document.getElementById('moveSelectedItemsDialog');
+      const count = document.getElementById('moveSelectedItemsCount');
+      const targetSelect = document.getElementById('moveItemsTargetListSelect');
+      if (!dialog || !count || !targetSelect) return;
+
+      count.textContent = `${selectedIndices.length} ${selectedIndices.length === 1 ? 'item' : 'itens'}`;
+      targetSelect.innerHTML = '';
+      targetListNames.forEach((listName) => {
+        const option = document.createElement('option');
+        option.value = listName;
+        option.textContent = `${listName} (${lists[listName].items.length} itens)`;
+        targetSelect.appendChild(option);
+      });
+      showMoveItemsError();
+      dialog.style.display = 'flex';
+    }
+
+    function moveSelectedListItems() {
+      const selectedIndices = getSelectedListItemIndices();
+      const targetSelect = document.getElementById('moveItemsTargetListSelect');
+      const targetListName = safeListName(targetSelect?.value, '');
+      const targetList = lists[targetListName];
+      const sourceList = lists[currentListName];
+
+      if (!selectedIndices.length) {
+        showMoveItemsError('Os itens não estão mais selecionados. Feche esta janela e selecione novamente.');
+        return;
+      }
+      if (!targetList || targetListName === currentListName || !sourceList) {
+        showMoveItemsError('Escolha uma lista de destino válida.');
+        return;
+      }
+      if (targetList.items.length + selectedIndices.length > MAX_ITEMS_PER_LIST) {
+        showMoveItemsError(`A lista de destino ultrapassaria o limite de ${MAX_ITEMS_PER_LIST} itens.`);
+        return;
+      }
+
+      const selectedItems = selectedIndices.map((index) => shoppingList[index]).filter(Boolean);
+      const movedTotal = selectedItems.reduce((sum, item) => sum + boundedNumber(item.total, 0, 1000000000, 0), 0);
+      const budgetWarning = movedTotal > targetList.balance
+        ? `\n\nAtenção: o total ultrapassa o saldo disponível em “${targetListName}” e deixará o saldo negativo.`
+        : '';
+      const itemLabel = selectedItems.length === 1 ? 'este item' : `estes ${selectedItems.length} itens`;
+      if (!confirm(`Mover ${itemLabel} para “${targetListName}”?${budgetWarning}`)) {
+        return;
+      }
+
+      const movedSectors = selectedItems.map((item) => normalizeSectorName(item.sector, 'Geral'));
+      targetList.sectorOrder = uniqueSectorNames([
+        ...(Array.isArray(targetList.sectorOrder) ? targetList.sectorOrder : []),
+        ...movedSectors,
+      ]);
+      targetList.items.push(...selectedItems.map((item) => ({ ...item, checked: false })));
+      sourceList.balance = boundedNumber(sourceList.balance + movedTotal, -1000000000, 1000000000, sourceList.balance);
+      targetList.balance = boundedNumber(targetList.balance - movedTotal, -1000000000, 1000000000, targetList.balance);
+
+      selectedIndices.sort((first, second) => second - first).forEach((index) => {
+        shoppingList.splice(index, 1);
+      });
+      allSelected = false;
+      closeDialog('moveSelectedItemsDialog');
+      saveLists();
+      setupListButtons();
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateFooter();
+      updateDashboard();
+      alert(`${selectedItems.length} ${selectedItems.length === 1 ? 'item movido' : 'itens movidos'} para “${targetListName}”.`);
     }
 
     function clearHistory() {
@@ -3091,9 +3201,11 @@
       const shareEmailInput = document.getElementById('shareEmailInput');
       const shareLinkToggle = document.getElementById('shareLinkToggle');
       const saveButton = document.getElementById('saveShareSettingsButton');
+      const emailButton = document.getElementById('sendShareEmailButton');
       if (shareEmailInput) shareEmailInput.disabled = !isOwner;
       if (shareLinkToggle) shareLinkToggle.disabled = !isOwner;
       if (saveButton) saveButton.style.display = isOwner ? '' : 'none';
+      if (emailButton) emailButton.style.display = isOwner ? '' : 'none';
     }
 
     function showShareDialog() {
@@ -3104,9 +3216,10 @@
       const shareLink = document.getElementById('shareLink');
       const copyButton = document.getElementById('copyShareLinkButton');
       const saveButton = document.getElementById('saveShareSettingsButton');
+      const emailButton = document.getElementById('sendShareEmailButton');
       const shareErrorMessage = document.getElementById('shareErrorMessage');
 
-      if (!dialog || !shareListName || !shareEmailInput || !shareLinkToggle || !shareLink || !copyButton || !saveButton) {
+      if (!dialog || !shareListName || !shareEmailInput || !shareLinkToggle || !shareLink || !copyButton || !saveButton || !emailButton) {
         return;
       }
       if (!currentFirebaseUser || !firebaseAuth) {
@@ -3123,7 +3236,10 @@
       shareLinkToggle.checked = true;
       shareLink.value = '';
       copyButton.disabled = true;
-      saveButton.textContent = sharedListId ? 'Atualizar compartilhamento' : 'Gerar link colaborativo';
+      saveButton.disabled = false;
+      emailButton.disabled = false;
+      saveButton.textContent = sharedListId ? 'Atualizar link' : 'Gerar link';
+      emailButton.textContent = 'Enviar por e-mail';
       configureShareDialogForOwner(!sharedListId || currentSharedOwnerId === currentFirebaseUser.uid);
       if (shareErrorMessage) {
         shareErrorMessage.style.display = 'none';
@@ -3157,21 +3273,48 @@
       }).catch(showShareError);
     }
 
-    function saveShareSettings() {
+    function saveShareSettings(shouldSendInvitations = false) {
       const shareEmailInput = document.getElementById('shareEmailInput');
       const shareLinkToggle = document.getElementById('shareLinkToggle');
       const shareLink = document.getElementById('shareLink');
       const copyButton = document.getElementById('copyShareLinkButton');
       const saveButton = document.getElementById('saveShareSettingsButton');
-      if (!pendingShareDocumentReference || !currentFirebaseUser || !shareEmailInput || !shareLinkToggle || !shareLink || !copyButton || !saveButton) {
+      const emailButton = document.getElementById('sendShareEmailButton');
+      const shareErrorMessage = document.getElementById('shareErrorMessage');
+      if (!pendingShareDocumentReference || !currentFirebaseUser || !shareEmailInput || !shareLinkToggle || !shareLink || !copyButton || !saveButton || !emailButton) {
         return;
       }
 
+      if (shareErrorMessage) {
+        shareErrorMessage.style.display = 'none';
+        shareErrorMessage.textContent = '';
+      }
+
       saveButton.disabled = true;
-      saveButton.textContent = 'Salvando...';
+      emailButton.disabled = true;
       const ownerEmail = (currentFirebaseUser.email || '').toLowerCase();
       const allowedEmails = [ownerEmail, ...parseSharedEmails(shareEmailInput.value)]
         .filter((email, index, collection) => email && collection.indexOf(email) === index);
+      const invitationEmails = allowedEmails.filter((email) => email !== ownerEmail);
+
+      if (invitationEmails.length > 20) {
+        saveButton.disabled = false;
+        emailButton.disabled = false;
+        showShareError(new Error('Você pode convidar no máximo 20 e-mails por lista.'));
+        return;
+      }
+      if (shouldSendInvitations && !invitationEmails.length) {
+        saveButton.disabled = false;
+        emailButton.disabled = false;
+        showShareError(new Error('Digite pelo menos um e-mail válido para enviar o convite.'));
+        return;
+      }
+
+      if (shouldSendInvitations) {
+        emailButton.textContent = 'Preparando envio...';
+      } else {
+        saveButton.textContent = 'Gerando link...';
+      }
 
       const isExistingShare = Boolean(sharedListId);
       const selectedList = normalizeListData(lists[currentListName]);
@@ -3210,30 +3353,33 @@
           shareLink.value = `${window.location.origin}${window.location.pathname}?sharedList=${sharedListId}`;
         }
         copyButton.disabled = false;
-        const invitationEmails = allowedEmails.filter((email) => email !== ownerEmail);
-        if (!invitationEmails.length) {
+        if (!shouldSendInvitations) {
+          saveButton.textContent = isExistingShare ? 'Link atualizado!' : 'Link gerado!';
           saveButton.disabled = false;
-          saveButton.textContent = 'Compartilhamento atualizado';
+          emailButton.disabled = false;
           return;
         }
-        saveButton.textContent = 'Enviando convites...';
+        emailButton.textContent = 'Enviando convites...';
         try {
           const emailResult = await sendShareInvitationEmails(
             pendingShareDocumentReference.id,
             currentListName,
             invitationEmails,
           );
-          saveButton.textContent = `${emailResult.sent || invitationEmails.length} convite(s) enviado(s)!`;
+          emailButton.textContent = `${emailResult.sent || invitationEmails.length} convite(s) enviado(s)!`;
         } catch (emailError) {
           console.error('O compartilhamento foi salvo, mas os convites não foram enviados.', emailError);
-          saveButton.textContent = emailError.configurationPending
-            ? 'Link pronto • e-mail aguardando configuração'
-            : 'Link pronto • falha no envio por e-mail';
+          emailButton.textContent = emailError.configurationPending
+            ? 'E-mail aguardando configuração'
+            : 'Falha no envio por e-mail';
         }
         saveButton.disabled = false;
+        emailButton.disabled = false;
       }).catch((error) => {
         saveButton.disabled = false;
-        saveButton.textContent = isExistingShare ? 'Atualizar compartilhamento' : 'Gerar link colaborativo';
+        emailButton.disabled = false;
+        saveButton.textContent = isExistingShare ? 'Atualizar link' : 'Gerar link';
+        emailButton.textContent = 'Enviar por e-mail';
         showShareError(error);
       });
     }
@@ -3757,7 +3903,10 @@
       const openDeleteListDialogButton = document.getElementById('openDeleteListDialogButton');
       const openEditListNamesDialogButton = document.getElementById('openEditListNamesDialogButton');
       const toggleSelectAllButton = document.getElementById('toggleSelectAllButton');
+      const moveSelectedListItemsButton = document.getElementById('moveSelectedListItemsButton');
       const deleteSelectedListItemsButton = document.getElementById('deleteSelectedListItemsButton');
+      const confirmMoveSelectedItemsButton = document.getElementById('confirmMoveSelectedItemsButton');
+      const closeMoveSelectedItemsDialogButton = document.getElementById('closeMoveSelectedItemsDialogButton');
       const compareWithPreviousMonthButton = document.getElementById('compareWithPreviousMonthButton');
       const clearComparisonButton = document.getElementById('clearComparisonButton');
       const clearHistoryButton = document.getElementById('clearHistoryButton');
@@ -3782,6 +3931,7 @@
       const closeDivideListDialogButton = document.getElementById('closeDivideListDialogButton');
       const copyShareLinkButton = document.getElementById('copyShareLinkButton');
       const saveShareSettingsButton = document.getElementById('saveShareSettingsButton');
+      const sendShareEmailButton = document.getElementById('sendShareEmailButton');
       const closeShareListDialogButton = document.getElementById('closeShareListDialogButton');
       const navigateToSelectedListButton = document.getElementById('navigateToSelectedListButton');
       const closeListNavigationDialogButton = document.getElementById('closeListNavigationDialogButton');
@@ -3877,8 +4027,17 @@
       if (toggleSelectAllButton) {
         toggleSelectAllButton.addEventListener('click', toggleSelectAll);
       }
+      if (moveSelectedListItemsButton) {
+        moveSelectedListItemsButton.addEventListener('click', openMoveSelectedItemsDialog);
+      }
       if (deleteSelectedListItemsButton) {
         deleteSelectedListItemsButton.addEventListener('click', deleteSelectedListItems);
+      }
+      if (confirmMoveSelectedItemsButton) {
+        confirmMoveSelectedItemsButton.addEventListener('click', moveSelectedListItems);
+      }
+      if (closeMoveSelectedItemsDialogButton) {
+        closeMoveSelectedItemsDialogButton.addEventListener('click', () => closeDialog('moveSelectedItemsDialog'));
       }
       if (compareWithPreviousMonthButton) {
         compareWithPreviousMonthButton.addEventListener('click', compareWithPreviousMonth);
@@ -3950,7 +4109,10 @@
         copyShareLinkButton.addEventListener('click', copyShareLink);
       }
       if (saveShareSettingsButton) {
-        saveShareSettingsButton.addEventListener('click', saveShareSettings);
+        saveShareSettingsButton.addEventListener('click', () => saveShareSettings(false));
+      }
+      if (sendShareEmailButton) {
+        sendShareEmailButton.addEventListener('click', () => saveShareSettings(true));
       }
       if (closeShareListDialogButton) {
         closeShareListDialogButton.addEventListener('click', () => closeDialog('shareListDialog'));

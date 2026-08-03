@@ -1246,6 +1246,7 @@
           <h3 id="currentListHeading" style="margin: 0;">Sua lista</h3>
         </div>
         <button class="select-all" id="toggleSelectAllButton">Selecionar Todos</button>
+        <button class="move-selected" id="moveSelectedListItemsButton">Mover selecionados</button>
         <button class="delete-selected" id="deleteSelectedListItemsButton">Excluir Selecionados</button>
       </div>
       
@@ -1401,6 +1402,20 @@
       </div>
     </div>
   </div>
+  <div id="moveSelectedItemsDialog" class="dialog">
+    <div class="dialog-content move-items-dialog-content">
+      <span class="dialog-eyebrow">Organizar listas</span>
+      <h3>Mover itens selecionados</h3>
+      <p><strong id="moveSelectedItemsCount">0 itens</strong> ser&atilde;o movidos da lista atual.</p>
+      <label class="dialog-field" for="moveItemsTargetListSelect">Lista de destino</label>
+      <select id="moveItemsTargetListSelect" aria-label="Escolher lista de destino"></select>
+      <p class="dialog-error" id="moveSelectedItemsError" role="alert" style="display:none"></p>
+      <div class="dialog-actions">
+        <button type="button" id="confirmMoveSelectedItemsButton">Mover itens</button>
+        <button type="button" class="dialog-secondary-button" id="closeMoveSelectedItemsDialogButton">Cancelar</button>
+      </div>
+    </div>
+  </div>
   <div id="createListDialog" class="dialog">
     <div class="dialog-content">
       <h3>Criar Nova Lista</h3>
@@ -1463,7 +1478,10 @@
         <input type="checkbox" id="shareLinkToggle" checked>
         Permitir colaboração para qualquer pessoa autenticada com o link
       </label>
-      <button id="saveShareSettingsButton">Gerar link colaborativo</button>
+      <div class="share-primary-actions">
+        <button type="button" id="saveShareSettingsButton">Gerar link</button>
+        <button type="button" id="sendShareEmailButton">Enviar por e-mail</button>
+      </div>
       <input type="text" id="shareLink" readonly>
       <div id="shareErrorMessage" style="display:none; margin-top: 12px; color: #fff; background: #a00; border: 1px solid #f44; padding: 12px; border-radius: 10px; white-space: pre-wrap;"></div>
       <button class="copy-link" id="copyShareLinkButton" disabled>Copiar Link</button>

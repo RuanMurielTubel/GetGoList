@@ -482,9 +482,35 @@ button.select-all:hover {
 }
 
 #saveShareSettingsButton,
+#sendShareEmailButton,
 #shareLink,
 #copyShareLinkButton {
   width: calc(100% - 16px);
+}
+
+.share-primary-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 8px;
+}
+
+.share-primary-actions #saveShareSettingsButton,
+.share-primary-actions #sendShareEmailButton {
+  margin: 0;
+  width: 100%;
+}
+
+#sendShareEmailButton,
+#moveSelectedListItemsButton {
+  background: var(--gg-primary-pale);
+  border-color: #bddde0;
+  color: var(--gg-primary-dark);
+}
+
+#sendShareEmailButton:hover,
+#moveSelectedListItemsButton:hover {
+  background: #d2ecee;
 }
 
 #copyShareLinkButton:disabled {
@@ -1311,6 +1337,7 @@ textarea {
 #openEditListNamesDialogButton,
 #openSelectListDialogButton,
 #toggleSelectAllButton,
+#moveSelectedListItemsButton,
 #clearComparisonButton,
 #compareWithPreviousMonthButton {
   background: #f6f9fa;
@@ -1832,6 +1859,15 @@ li .item-controls .action-buttons button:last-child {
 
 .create-sector-dialog-content {
   text-align: left;
+}
+
+.move-items-dialog-content {
+  text-align: left;
+}
+
+.move-items-dialog-content #moveItemsTargetListSelect {
+  margin: 8px 0 2px;
+  width: 100%;
 }
 
 .dialog-eyebrow {

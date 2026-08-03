@@ -2331,10 +2331,10 @@
           acceptedSectorKeys.add(sectorKey);
           canonicalSectorByKey.set(sectorKey, sectorName);
         }
-        if (!groups[sectorName]) {
-          groups[sectorName] = [];
+        if (!groupedItems[sectorName]) {
+          groupedItems[sectorName] = [];
         }
-        groups[sectorName].push({ item, index });
+        groupedItems[sectorName].push({ item, index });
       });
 
       const savedSectorOrder = currentSectorOrder;

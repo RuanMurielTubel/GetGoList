@@ -146,6 +146,33 @@
       return result.token;
     }
 
+    async function waitForAuthenticatedUser(timeoutMs = 5000) {
+      if (currentFirebaseUser) return currentFirebaseUser;
+      if (!firebaseAuth) return null;
+      if (firebaseAuth.currentUser) {
+        currentFirebaseUser = firebaseAuth.currentUser;
+        return currentFirebaseUser;
+      }
+
+      return new Promise((resolve) => {
+        let finished = false;
+        let unsubscribe = () => {};
+        const finish = (user) => {
+          if (finished) return;
+          finished = true;
+          window.clearTimeout(timeoutId);
+          unsubscribe();
+          if (user) currentFirebaseUser = user;
+          resolve(user || null);
+        };
+        const timeoutId = window.setTimeout(() => finish(firebaseAuth.currentUser), timeoutMs);
+        unsubscribe = firebaseAuth.onAuthStateChanged(
+          (user) => finish(user),
+          () => finish(null),
+        );
+      });
+    }
+
     function cloneSerializable(value) {
       return JSON.parse(JSON.stringify(value));
     }
@@ -1104,8 +1131,10 @@
             }
 
             updateAccountPanel();
-            if (window.location.pathname.endsWith('/index.html')) {
-              window.location.replace('/login');
+            const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+            if (currentPath === '/' || currentPath.endsWith('/index.html')) {
+              const redirectUrl = `${window.location.pathname}${window.location.search}`;
+              window.location.replace(`/login?redirect=${encodeURIComponent(redirectUrl)}`);
             }
             return;
           }
@@ -1316,7 +1345,8 @@
       const button = document.getElementById('generateAiListButton');
       const prompt = cleanText(promptInput && promptInput.value, 600);
 
-      if (!currentFirebaseUser) {
+      const authenticatedUser = await waitForAuthenticatedUser();
+      if (!authenticatedUser) {
         setAiListStatus('Entre na sua conta para criar listas com a IA.', true);
         return;
       }
@@ -1352,7 +1382,7 @@
 
       try {
         const [authToken, appCheckToken] = await Promise.all([
-          currentFirebaseUser.getIdToken(),
+          authenticatedUser.getIdToken(),
           getFirebaseAppCheckToken(),
         ]);
         const result = await window.GetGoListAI.generateList({

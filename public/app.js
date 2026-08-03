@@ -9,6 +9,7 @@
     let isMenuOpen = false;
     let charts = {};
     let collapsedSectors = new Set();
+    let quickAddSector = null;
     let firebaseAuth = null;
     let firestoreDb = null;
     let firebaseStorage = null;
@@ -1616,18 +1617,14 @@
       }
     }
 
-    function addItem() {
-      const itemName = document.getElementById('itemName').value.trim();
-      const itemPrice = parsePrice(document.getElementById('itemPrice').value);
-      const itemQuantity = parseInt(document.getElementById('itemQuantity').value) || 1;
-      const itemSector = document.getElementById('itemSector').value.trim() || 'Geral';
+    function addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector) {
       const itemTotal = itemPrice * itemQuantity;
 
       if (itemName && itemPrice > 0 && itemQuantity > 0) {
         const currentBalance = lists[currentListName].balance;
         if (currentBalance >= 0 && itemTotal > currentBalance) {
           if (!confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${currentBalance.toFixed(2).replace('.', ',')})`)) {
-            return;
+            return false;
           }
         }
         const item = {
@@ -1654,12 +1651,24 @@
         updateMonthSelect();
         updateFooter();
         updateDashboard();
+        return true;
+      }
+
+      alert('Por favor, insira um nome, preço e quantidade válidos.');
+      return false;
+    }
+
+    function addItem() {
+      const itemName = document.getElementById('itemName').value.trim();
+      const itemPrice = parsePrice(document.getElementById('itemPrice').value);
+      const itemQuantity = parseInt(document.getElementById('itemQuantity').value) || 1;
+      const itemSector = document.getElementById('itemSector').value.trim() || 'Geral';
+
+      if (addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector)) {
         document.getElementById('itemName').value = '';
         document.getElementById('itemPrice').value = '';
         document.getElementById('itemQuantity').value = '1';
         document.getElementById('itemSector').value = '';
-      } else {
-        alert('Por favor, insira um nome, preço e quantidade válidos.');
       }
     }
 
@@ -2059,7 +2068,25 @@
         dragHandle.innerHTML = '<span aria-hidden="true">⠿</span>';
         bindSectorDragHandle(dragHandle, section, list);
 
+        const quickAddButton = document.createElement('button');
+        quickAddButton.type = 'button';
+        quickAddButton.className = 'sector-quick-add-button';
+        quickAddButton.setAttribute('aria-label', `Adicionar produto no setor ${sectorName}`);
+        quickAddButton.title = `Adicionar produto em ${sectorName}`;
+        quickAddButton.textContent = '+';
+        quickAddButton.addEventListener('click', () => {
+          quickAddSector = quickAddSector === sectorName ? null : sectorName;
+          collapsedSectors.delete(sectorName);
+          updateList();
+          if (quickAddSector) {
+            requestAnimationFrame(() => {
+              document.querySelector('.sector-quick-add-form .quick-add-name')?.focus();
+            });
+          }
+        });
+
         headerRow.appendChild(header);
+        headerRow.appendChild(quickAddButton);
         headerRow.appendChild(dragHandle);
 
         const body = document.createElement('div');
@@ -2071,6 +2098,71 @@
 
         const ul = document.createElement('ul');
         ul.className = 'sector-items';
+
+        if (quickAddSector === sectorName) {
+          const quickForm = document.createElement('form');
+          quickForm.className = 'sector-quick-add-form';
+
+          const quickName = document.createElement('input');
+          quickName.type = 'text';
+          quickName.className = 'quick-add-name';
+          quickName.placeholder = 'Nome do produto';
+          quickName.setAttribute('aria-label', `Nome do produto em ${sectorName}`);
+
+          const quickPrice = document.createElement('input');
+          quickPrice.type = 'text';
+          quickPrice.className = 'quick-add-price';
+          quickPrice.placeholder = 'Preço (R$)';
+          quickPrice.setAttribute('aria-label', `Preço do produto em ${sectorName}`);
+          quickPrice.addEventListener('input', function () {
+            formatPrice(this);
+          });
+
+          const quickQuantity = document.createElement('input');
+          quickQuantity.type = 'number';
+          quickQuantity.className = 'quick-add-quantity';
+          quickQuantity.min = '1';
+          quickQuantity.value = '1';
+          quickQuantity.setAttribute('aria-label', `Quantidade do produto em ${sectorName}`);
+
+          const quickActions = document.createElement('div');
+          quickActions.className = 'sector-quick-add-actions';
+
+          const quickSubmit = document.createElement('button');
+          quickSubmit.type = 'submit';
+          quickSubmit.className = 'sector-quick-add-submit';
+          quickSubmit.textContent = 'Adicionar';
+
+          const quickCancel = document.createElement('button');
+          quickCancel.type = 'button';
+          quickCancel.className = 'sector-quick-add-cancel';
+          quickCancel.textContent = 'Cancelar';
+          quickCancel.addEventListener('click', () => {
+            quickAddSector = null;
+            updateList();
+          });
+
+          quickActions.appendChild(quickSubmit);
+          quickActions.appendChild(quickCancel);
+          quickForm.appendChild(quickName);
+          quickForm.appendChild(quickPrice);
+          quickForm.appendChild(quickQuantity);
+          quickForm.appendChild(quickActions);
+          quickForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const nameValue = quickName.value.trim();
+            const priceValue = parsePrice(quickPrice.value);
+            const quantityValue = parseInt(quickQuantity.value) || 1;
+            if (nameValue && priceValue > 0 && quantityValue > 0) {
+              quickAddSector = null;
+            }
+            if (!addItemToCurrentList(nameValue, priceValue, quantityValue, sectorName)) {
+              quickAddSector = sectorName;
+            }
+          });
+
+          body.appendChild(quickForm);
+        }
 
         sectorItems.forEach(({ item, index }) => {
           const li = document.createElement('li');

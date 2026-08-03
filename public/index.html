@@ -1094,6 +1094,7 @@
     </div>
     <div class="sidebar-section-label">Organização</div>
     <button type="button" class="home-button active" title="Início" aria-label="Início"><span>Início</span></button>
+    <button type="button" class="management-button" title="Gestão" aria-label="Gestão"><span>Gestão</span></button>
     <button type="button" class="shopping-button" title="Listas" aria-label="Listas"><span>Listas</span></button>
     <button type="button" class="products-button" title="Produtos" aria-label="Produtos"><span>Produtos</span></button>
     <button type="button" class="history-button" title="Histórico" aria-label="Histórico"><span>Histórico</span></button>
@@ -1112,8 +1113,90 @@
       </div>
     </header>
     
-    <!-- Seção: Início (Dashboard) -->
+    <!-- Seção: Início com criação inteligente -->
     <div id="homeSection" class="section active">
+      <div class="ai-home-grid">
+        <section class="ai-list-creator" aria-labelledby="aiListTitle">
+          <div class="ai-list-hero">
+            <span class="ai-badge"><span aria-hidden="true">✦</span> GetGoList IA</span>
+            <h2 id="aiListTitle">Conte o que você vai fazer. A lista nasce pronta.</h2>
+            <p>Descreva uma compra, evento ou rotina. A IA organiza os itens por setor para você revisar antes de salvar.</p>
+          </div>
+
+          <form id="aiListForm" class="ai-list-form">
+            <label for="aiListPrompt">O que você precisa organizar?</label>
+            <textarea id="aiListPrompt" maxlength="600" rows="4" placeholder="Ex.: churrasco para 12 pessoas, com bebidas sem álcool e acompanhamentos"></textarea>
+            <div class="ai-form-options">
+              <label>
+                Pessoas
+                <input id="aiPeopleCount" type="number" min="1" max="100" value="4" inputmode="numeric">
+              </label>
+              <label>
+                Orçamento opcional
+                <input id="aiBudgetInput" type="text" inputmode="decimal" placeholder="R$ 0,00">
+              </label>
+            </div>
+            <div class="ai-suggestion-chips" aria-label="Exemplos de listas">
+              <button type="button" data-ai-suggestion="Compra semanal equilibrada para uma família">Compra da semana</button>
+              <button type="button" data-ai-suggestion="Churrasco completo com acompanhamentos e bebidas">Churrasco</button>
+              <button type="button" data-ai-suggestion="Festa de aniversário simples com comidas, bebidas e descartáveis">Aniversário</button>
+            </div>
+            <label class="ai-consent">
+              <input id="aiTermsConsent" type="checkbox">
+              <span>Confirmo ter 18 anos ou mais e não incluirei dados pessoais, sensíveis ou confidenciais. O pedido será processado pelo Google Gemini. <a href="/privacidade#inteligencia-artificial">Saiba como tratamos esses dados</a>.</span>
+            </label>
+            <button type="submit" class="ai-generate-button" id="generateAiListButton">
+              <span aria-hidden="true">✦</span>
+              <span>Montar lista com IA</span>
+            </button>
+            <p class="ai-status" id="aiListStatus" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <aside class="offers-card" aria-labelledby="offersTitle">
+          <div class="offers-heading">
+            <span class="offers-icon" aria-hidden="true">%</span>
+            <div>
+              <small>Economize com segurança</small>
+              <h3 id="offersTitle">Ofertas verificadas</h3>
+            </div>
+          </div>
+          <div class="offers-empty-state">
+            <span aria-hidden="true">⌁</span>
+            <strong>Integração em preparação</strong>
+            <p>Só exibiremos promoções recebidas de fontes oficiais, com loja, validade e preço confirmados.</p>
+          </div>
+        </aside>
+      </div>
+
+      <section class="ai-list-preview" id="aiListPreview" aria-labelledby="aiPreviewTitle" hidden>
+        <div class="ai-preview-heading">
+          <div>
+            <small>Revise antes de criar</small>
+            <h3 id="aiPreviewTitle">Sua lista inteligente</h3>
+          </div>
+          <span id="aiPreviewItemCount">0 itens</span>
+        </div>
+        <div class="ai-preview-settings">
+          <label>
+            Nome da lista
+            <input id="aiPreviewListName" type="text" maxlength="80">
+          </label>
+          <label>
+            Orçamento
+            <input id="aiPreviewBudget" type="text" inputmode="decimal" placeholder="R$ 0,00">
+          </label>
+        </div>
+        <div class="ai-preview-items" id="aiPreviewItems"></div>
+        <div class="ai-preview-actions">
+          <button type="button" class="ai-secondary-button" id="discardAiListButton">Descartar</button>
+          <button type="button" class="ai-create-list-button" id="createAiListButton">Criar esta lista</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Seção: Gestão (antigo painel inicial) -->
+    <div id="managementSection" class="section">
       <div class="stats-grid">
         <div class="stat-item clickable-stat" id="openListNavigationStat">
           <div class="stat-value" id="totalLists">0</div>
@@ -1532,6 +1615,7 @@
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-app-check-compat.js"></script>
   <script src="/app.js"></script>
+  <script type="module" src="/ai-list.js"></script>
 
 </body>
 </html>

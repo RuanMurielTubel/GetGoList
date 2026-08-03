@@ -45,6 +45,7 @@ export default function PrivacyPage() {
             <li><strong>Colaboração:</strong> pessoas autorizadas, participantes que acessaram, data do acesso e identificação de quem fez uma alteração.</li>
             <li><strong>Divisão de conta:</strong> e-mails dos destinatários, quantidade de participantes, valores e chave PIX ou dados de pagamento informados pelo usuário.</li>
             <li><strong>Segurança e funcionamento:</strong> tokens de autenticação, registros técnicos, informações do dispositivo e sinais usados para prevenir abuso e acessos indevidos.</li>
+            <li><strong>Criação com inteligência artificial:</strong> descrição da compra, número de pessoas, orçamento opcional e a sugestão de lista gerada.</li>
             <li><strong>Dados locais:</strong> preferências e cópias temporárias podem ficar armazenadas no navegador ou no aplicativo para melhorar o funcionamento e a continuidade de uso.</li>
           </ul>
           <p>
@@ -62,6 +63,7 @@ export default function PrivacyPage() {
             <li>Viabilizar colaboração em tempo real nas listas compartilhadas.</li>
             <li>Enviar confirmação de e-mail, recuperação de senha, convites e divisões de conta.</li>
             <li>Manter o serviço disponível, corrigir falhas, combater fraude e melhorar a segurança.</li>
+            <li>Gerar uma sugestão de produtos e setores quando você solicitar a criação de uma lista com inteligência artificial.</li>
             <li>Cumprir obrigações legais e atender solicitações legítimas de titulares ou autoridades.</li>
           </ul>
           <p>
@@ -87,13 +89,40 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>5. Serviços que apoiam o GetGoList</h2>
+          <h2 id="inteligencia-artificial">5. Criação de listas com inteligência artificial</h2>
+          <p>
+            O recurso GetGoList IA envia ao Google Gemini somente o texto digitado
+            para descrever a compra, o número de pessoas e o orçamento opcional. O
+            nome, e-mail, listas existentes e outros dados da conta não são incluídos
+            automaticamente nesse pedido.
+          </p>
+          <p>
+            No serviço sem custo usado nesta versão, o Google informa em seus{" "}
+            <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">
+              termos da API Gemini
+            </a>{" "}
+            que entradas e respostas podem ser processadas para fornecer, desenvolver
+            e melhorar seus produtos, inclusive com revisão humana sob medidas de proteção. Por isso,
+            não informe nomes de pessoas, endereços, documentos, informações de saúde,
+            dados financeiros, segredos ou qualquer conteúdo pessoal, sensível ou
+            confidencial no campo da IA.
+          </p>
+          <p>
+            O recurso de IA é destinado a maiores de 18 anos. A resposta é apenas uma
+            sugestão: o GetGoList não atribui preços inventados, mostra uma prévia e só
+            salva a lista depois da confirmação do usuário.
+          </p>
+        </section>
+
+        <section>
+          <h2>6. Serviços que apoiam o GetGoList</h2>
           <p>
             Para operar o serviço, os dados podem ser tratados por fornecedores
             contratados, sempre de acordo com a função necessária:
           </p>
           <ul>
             <li><strong>Google Firebase:</strong> autenticação, banco de dados, armazenamento de fotos e proteção do aplicativo.</li>
+            <li><strong>Google Gemini por Firebase AI Logic:</strong> geração das sugestões de listas solicitadas pelo usuário.</li>
             <li><strong>Google:</strong> login com Google e mecanismos de proteção como reCAPTCHA e Play Integrity.</li>
             <li><strong>Vercel:</strong> hospedagem e entrega do site e das rotas do sistema.</li>
             <li><strong>Titan/GoDaddy:</strong> envio de mensagens transacionais pelo domínio getgolist.com.</li>
@@ -107,7 +136,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>6. Armazenamento e exclusão</h2>
+          <h2>7. Armazenamento e exclusão</h2>
           <p>
             Os dados são mantidos enquanto a conta estiver ativa ou pelo período
             necessário para prestar o serviço, proteger direitos e cumprir obrigações
@@ -122,7 +151,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>7. Como protegemos as informações</h2>
+          <h2>8. Como protegemos as informações</h2>
           <ul>
             <li>Acesso às listas condicionado à autenticação e à autorização.</li>
             <li>Confirmação do e-mail e requisitos mínimos de senha forte.</li>
@@ -140,7 +169,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>8. Seus direitos</h2>
+          <h2>9. Seus direitos</h2>
           <p>
             Nos termos da Lei Geral de Proteção de Dados Pessoais (LGPD), você pode
             solicitar confirmação e acesso ao tratamento, correção, anonimização,
@@ -155,16 +184,18 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>9. Crianças e adolescentes</h2>
+          <h2>10. Crianças e adolescentes</h2>
           <p>
             O GetGoList não é direcionado especificamente a crianças. O uso por criança
             ou adolescente deve ocorrer com conhecimento e acompanhamento de seu
             responsável legal, observando o melhor interesse do menor.
+            O recurso de criação de listas com inteligência artificial não está
+            disponível para menores de 18 anos.
           </p>
         </section>
 
         <section>
-          <h2>10. Alterações desta política</h2>
+          <h2>11. Alterações desta política</h2>
           <p>
             Esta política poderá ser atualizada para acompanhar mudanças no produto,
             nos fornecedores ou na legislação. A data da versão vigente estará sempre
@@ -174,7 +205,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>11. Contato</h2>
+          <h2>12. Contato</h2>
           <div className="policy-contact">
             <p>
               Para dúvidas, solicitações sobre seus dados ou comunicação de incidente

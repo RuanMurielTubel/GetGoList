@@ -30,6 +30,8 @@
     let sharedParticipantRegistered = false;
     let finishingSharing = false;
     let allowEndedSharedDivision = false;
+    let aiSuggestedItems = [];
+    let lastAiGenerationAt = 0;
 
     const firebaseConfig = {
       apiKey: "AIzaSyAFj6YWQfz3dI2motK3qH9xc0UNVF7TzqY",
@@ -39,6 +41,10 @@
       appId: "1:448077185241:web:f6b41684c7c34d12ecbec8"
     };
     const recaptchaSiteKey = "6Lf_8nEtAAAAACSA6bpk3s2s9raecd6-iGqIiyxI";
+    window.GetGoListAIConfig = Object.freeze({
+      firebaseConfig: Object.freeze({ ...firebaseConfig }),
+      appCheckSiteKey: recaptchaSiteKey,
+    });
     const MAX_LISTS = 50;
     const MAX_ITEMS_PER_LIST = 500;
     const MAX_HISTORY_PER_LIST = 1000;
@@ -1115,7 +1121,7 @@
               .collection('appData')
               .doc('lists');
           }
-          showSection('productsSection');
+          showSection(sharedListId ? 'productsSection' : 'homeSection');
           updateSharedModeUi();
           subscribeToRemoteLists();
           syncSharedListsForAccount();
@@ -1209,6 +1215,227 @@
     function updateDashboard() {
       updateStats();
       updateCharts();
+    }
+
+    function setAiListStatus(message = '', isError = false) {
+      const status = document.getElementById('aiListStatus');
+      if (!status) return;
+      status.textContent = message;
+      status.classList.toggle('is-error', Boolean(isError));
+    }
+
+    function normalizedAiSuggestion(suggestion) {
+      const source = suggestion && typeof suggestion === 'object' ? suggestion : {};
+      const seenItems = new Set();
+      const items = (Array.isArray(source.items) ? source.items : [])
+        .slice(0, 80)
+        .map((item) => {
+          const itemSource = item && typeof item === 'object' ? item : {};
+          return {
+            name: cleanText(itemSource.name, 120),
+            quantity: boundedNumber(itemSource.quantity, 1, 10000, 1),
+            sector: normalizeSectorName(itemSource.sector, 'Geral'),
+          };
+        })
+        .filter((item) => {
+          const itemKey = `${item.name.toLocaleLowerCase('pt-BR')}|${item.sector.toLocaleLowerCase('pt-BR')}`;
+          if (!item.name || seenItems.has(itemKey)) return false;
+          seenItems.add(itemKey);
+          return true;
+        });
+
+      return {
+        listName: safeListName(source.listName, 'Lista inteligente'),
+        items,
+      };
+    }
+
+    function renderAiListPreview(suggestion) {
+      const preview = document.getElementById('aiListPreview');
+      const nameInput = document.getElementById('aiPreviewListName');
+      const budgetInput = document.getElementById('aiPreviewBudget');
+      const sourceBudget = document.getElementById('aiBudgetInput');
+      const itemsContainer = document.getElementById('aiPreviewItems');
+      const itemCount = document.getElementById('aiPreviewItemCount');
+      if (!preview || !nameInput || !budgetInput || !itemsContainer || !itemCount) return;
+
+      aiSuggestedItems = suggestion.items.slice();
+      nameInput.value = suggestion.listName;
+      budgetInput.value = sourceBudget ? sourceBudget.value : '';
+      itemsContainer.replaceChildren();
+
+      aiSuggestedItems.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = 'ai-preview-item';
+
+        const itemLabel = document.createElement('strong');
+        itemLabel.textContent = `${item.quantity} × ${item.name}`;
+
+        const sectorLabel = document.createElement('small');
+        sectorLabel.textContent = item.sector;
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'ai-preview-remove';
+        removeButton.title = `Retirar ${item.name}`;
+        removeButton.setAttribute('aria-label', `Retirar ${item.name}`);
+        removeButton.textContent = '×';
+        removeButton.addEventListener('click', () => {
+          aiSuggestedItems.splice(index, 1);
+          renderAiListPreview({
+            listName: nameInput.value,
+            items: aiSuggestedItems,
+          });
+        });
+
+        row.append(itemLabel, sectorLabel, removeButton);
+        itemsContainer.appendChild(row);
+      });
+
+      const count = aiSuggestedItems.length;
+      itemCount.textContent = `${count} ${count === 1 ? 'item' : 'itens'}`;
+      preview.hidden = false;
+      preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function discardAiListPreview() {
+      const preview = document.getElementById('aiListPreview');
+      const itemsContainer = document.getElementById('aiPreviewItems');
+      aiSuggestedItems = [];
+      if (itemsContainer) itemsContainer.replaceChildren();
+      if (preview) preview.hidden = true;
+      setAiListStatus('Sugestão descartada. Você pode pedir uma nova lista.');
+    }
+
+    async function generateAiList(event) {
+      if (event) event.preventDefault();
+      const promptInput = document.getElementById('aiListPrompt');
+      const peopleInput = document.getElementById('aiPeopleCount');
+      const budgetInput = document.getElementById('aiBudgetInput');
+      const consentInput = document.getElementById('aiTermsConsent');
+      const button = document.getElementById('generateAiListButton');
+      const prompt = cleanText(promptInput && promptInput.value, 600);
+
+      if (!currentFirebaseUser) {
+        setAiListStatus('Entre na sua conta para criar listas com a IA.', true);
+        return;
+      }
+      if (sharedListId) {
+        setAiListStatus('Volte para “Minhas listas” antes de criar uma lista particular com a IA.', true);
+        return;
+      }
+      if (prompt.length < 8) {
+        setAiListStatus('Descreva um pouco melhor a compra que deseja montar.', true);
+        if (promptInput) promptInput.focus();
+        return;
+      }
+      if (!consentInput || !consentInput.checked) {
+        setAiListStatus('Confirme a idade mínima e o aviso de privacidade para usar a IA.', true);
+        if (consentInput) consentInput.focus();
+        return;
+      }
+      const now = Date.now();
+      if (now - lastAiGenerationAt < 10000) {
+        setAiListStatus('Aguarde alguns segundos antes de pedir outra lista.', true);
+        return;
+      }
+      if (!window.GetGoListAI || typeof window.GetGoListAI.generateList !== 'function') {
+        setAiListStatus('A IA ainda está carregando. Aguarde alguns segundos e tente novamente.', true);
+        return;
+      }
+
+      const people = boundedNumber(peopleInput && peopleInput.value, 1, 100, 4);
+      const budget = parsePrice(budgetInput && budgetInput.value);
+      lastAiGenerationAt = now;
+      if (button) button.disabled = true;
+      setAiListStatus('Organizando quantidades, produtos e setores…');
+
+      try {
+        const result = await window.GetGoListAI.generateList({ prompt, people, budget });
+        const suggestion = normalizedAiSuggestion(result);
+        if (!suggestion.items.length) {
+          throw new Error('AI_EMPTY_RESULT');
+        }
+        renderAiListPreview(suggestion);
+        setAiListStatus('Lista pronta para revisão. Nenhum item foi salvo ainda.');
+      } catch (error) {
+        console.error('Não foi possível gerar a lista inteligente.', error);
+        const message = error && error.message === 'AI_NOT_CONFIGURED'
+          ? 'A inteligência artificial está aguardando a ativação segura no Firebase.'
+          : error && error.message === 'AI_EMPTY_RESULT'
+            ? 'A IA não conseguiu formar uma lista. Tente descrever a compra de outro jeito.'
+            : 'Não foi possível montar a lista agora. Tente novamente em instantes.';
+        setAiListStatus(message, true);
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    function createListFromAiPreview() {
+      const nameInput = document.getElementById('aiPreviewListName');
+      const budgetInput = document.getElementById('aiPreviewBudget');
+      if (!currentFirebaseUser) {
+        setAiListStatus('Entre na sua conta para salvar esta lista.', true);
+        return;
+      }
+      if (sharedListId) {
+        setAiListStatus('Volte para “Minhas listas” antes de salvar esta lista particular.', true);
+        return;
+      }
+      if (Object.keys(lists).length >= MAX_LISTS) {
+        setAiListStatus(`Sua conta atingiu o limite de ${MAX_LISTS} listas.`, true);
+        return;
+      }
+
+      const listName = safeListName(nameInput && nameInput.value, '');
+      const initialBudget = parsePrice(budgetInput && budgetInput.value);
+      if (!listName) {
+        setAiListStatus('Escolha um nome para a lista.', true);
+        if (nameInput) nameInput.focus();
+        return;
+      }
+      if (lists[listName]) {
+        setAiListStatus('Já existe uma lista com esse nome. Escolha outro nome.', true);
+        if (nameInput) nameInput.focus();
+        return;
+      }
+      if (!aiSuggestedItems.length) {
+        setAiListStatus('Mantenha pelo menos um item antes de criar a lista.', true);
+        return;
+      }
+
+      const today = new Date().toLocaleDateString();
+      const newItems = aiSuggestedItems.slice(0, MAX_ITEMS_PER_LIST).map((item) => ({
+        id: createEntityId('item'),
+        name: cleanText(item.name, 120, 'Item'),
+        price: 0,
+        quantity: boundedNumber(item.quantity, 1, 10000, 1),
+        total: 0,
+        sector: normalizeSectorName(item.sector, 'Geral'),
+        date: today,
+        checked: false,
+      }));
+      lists[listName] = {
+        items: newItems,
+        history: [],
+        sectorOrder: uniqueSectorNames(newItems.map((item) => item.sector)),
+        balance: initialBudget,
+        initialBalance: initialBudget,
+      };
+      currentListName = listName;
+      shoppingList = lists[listName].items;
+      listHistory = lists[listName].history;
+      selectedDivideListName = listName;
+      saveLists();
+      setupListButtons();
+      populateSectorSelect();
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateFooter();
+      updateDashboard();
+      discardAiListPreview();
+      showSection('productsSection');
     }
 
     function availableSectorNames() {
@@ -1720,6 +1947,7 @@
       }
       const sectionButtons = {
         homeSection: '.home-button',
+        managementSection: '.management-button',
         shoppingSection: '.shopping-button',
         productsSection: '.products-button',
         historySection: '.history-button',
@@ -1734,6 +1962,7 @@
       }
       const sectionTitles = {
         homeSection: 'Início',
+        managementSection: 'Gestão',
         shoppingSection: 'Listas',
         productsSection: 'Produtos',
         historySection: 'Histórico',
@@ -1742,7 +1971,8 @@
       };
       document.getElementById('mainTitle').textContent = sectionTitles[sectionId] || 'Lista de Compras';
       const sectionSubtitles = {
-        homeSection: 'Sua rotina de compras em um só lugar.',
+        homeSection: 'Crie uma lista completa com a ajuda da inteligência artificial.',
+        managementSection: 'Acompanhe seus números e hábitos de compra.',
         shoppingSection: 'Crie, organize e defina o orçamento das suas listas.',
         productsSection: 'Monte sua compra e acompanhe cada item da lista.',
         historySection: 'Consulte compras anteriores e compare períodos.',
@@ -1763,7 +1993,7 @@
 
       updateSharedModeUi();
 
-      if (sectionId === 'homeSection') {
+      if (sectionId === 'managementSection') {
         updateDashboard();
       }
       if (sectionId === 'productsSection') {
@@ -3925,6 +4155,8 @@
       const itemPrice = document.getElementById('itemPrice');
       const balanceInput = document.getElementById('balanceInput');
       const newListBalance = document.getElementById('newListBalance');
+      const aiBudgetInput = document.getElementById('aiBudgetInput');
+      const aiPreviewBudget = document.getElementById('aiPreviewBudget');
 
       if (menuToggle) {
         menuToggle.addEventListener('click', toggleMenu);
@@ -3958,6 +4190,16 @@
           formatPrice(this);
         });
       }
+      if (aiBudgetInput) {
+        aiBudgetInput.addEventListener('input', function () {
+          formatPrice(this);
+        });
+      }
+      if (aiPreviewBudget) {
+        aiPreviewBudget.addEventListener('input', function () {
+          formatPrice(this);
+        });
+      }
       const setBalanceButton = document.getElementById('setBalanceButton');
       const addItemButton = document.getElementById('addItemButton');
       const itemSectorSelect = document.getElementById('itemSector');
@@ -3968,6 +4210,7 @@
       const profileAvatar = document.getElementById('profileAvatar');
       const shareButton = document.querySelector('.share-button');
       const homeButton = document.querySelector('.home-button');
+      const managementButton = document.querySelector('.management-button');
       const shoppingButton = document.querySelector('.shopping-button');
       const productsButton = document.querySelector('.products-button');
       const historyButton = document.querySelector('.history-button');
@@ -4019,6 +4262,9 @@
       const finishAndDivideButton = document.getElementById('finishAndDivideButton');
       const finishWithoutDivisionButton = document.getElementById('finishWithoutDivisionButton');
       const cancelFinishSharingButton = document.getElementById('cancelFinishSharingButton');
+      const aiListForm = document.getElementById('aiListForm');
+      const createAiListButton = document.getElementById('createAiListButton');
+      const discardAiListButton = document.getElementById('discardAiListButton');
 
       if (setBalanceButton) {
         setBalanceButton.addEventListener('click', setBalance);
@@ -4066,6 +4312,9 @@
       if (homeButton) {
         homeButton.addEventListener('click', () => showSection('homeSection'));
       }
+      if (managementButton) {
+        managementButton.addEventListener('click', () => showSection('managementSection'));
+      }
       if (shoppingButton) {
         shoppingButton.addEventListener('click', () => showSection('shoppingSection'));
       }
@@ -4089,6 +4338,23 @@
       }
       if (openListNavigationStat) {
         openListNavigationStat.addEventListener('click', openListNavigationDialog);
+      }
+      if (aiListForm) {
+        aiListForm.addEventListener('submit', generateAiList);
+      }
+      document.querySelectorAll('[data-ai-suggestion]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const promptInput = document.getElementById('aiListPrompt');
+          if (!promptInput) return;
+          promptInput.value = button.dataset.aiSuggestion || '';
+          promptInput.focus();
+        });
+      });
+      if (createAiListButton) {
+        createAiListButton.addEventListener('click', createListFromAiPreview);
+      }
+      if (discardAiListButton) {
+        discardAiListButton.addEventListener('click', discardAiListPreview);
       }
       if (openBudgetDialogButton) {
         openBudgetDialogButton.addEventListener('click', openBudgetDialog);

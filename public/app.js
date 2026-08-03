@@ -606,14 +606,29 @@
       const remote = normalizeListData(remoteList);
       const baseline = normalizeListData(baselineList);
       const desired = normalizeListData(desiredList);
-      const items = mergeSharedCollection(remote.items, baseline.items, desired.items);
-      const history = mergeSharedCollection(remote.history, baseline.history, desired.history);
+      const mergedItems = mergeSharedCollection(remote.items, baseline.items, desired.items);
+      const mergedHistory = mergeSharedCollection(remote.history, baseline.history, desired.history);
       const initialBalanceChanged = desired.initialBalance !== baseline.initialBalance;
       const initialBalance = initialBalanceChanged ? desired.initialBalance : remote.initialBalance;
       const sectorOrderChanged = JSON.stringify(desired.sectorOrder) !== JSON.stringify(baseline.sectorOrder);
+      const desiredSectorKeys = new Set(desired.sectorOrder.map((sector) => sector.toLocaleLowerCase('pt-BR')));
+      const removedSectorKeys = new Set(
+        baseline.sectorOrder
+          .filter((sector) => !desiredSectorKeys.has(sector.toLocaleLowerCase('pt-BR')))
+          .map((sector) => sector.toLocaleLowerCase('pt-BR'))
+      );
       const sectorOrder = sectorOrderChanged
-        ? uniqueSectorNames([...desired.sectorOrder, ...remote.sectorOrder])
+        ? uniqueSectorNames([
+            ...desired.sectorOrder,
+            ...remote.sectorOrder.filter((sector) => !removedSectorKeys.has(sector.toLocaleLowerCase('pt-BR'))),
+          ])
         : remote.sectorOrder;
+      const moveRemovedSectorToGeneral = (entry) =>
+        removedSectorKeys.has(normalizeSectorName(entry.sector, 'Geral').toLocaleLowerCase('pt-BR'))
+          ? { ...entry, sector: 'Geral' }
+          : entry;
+      const items = mergedItems.map(moveRemovedSectorToGeneral);
+      const history = mergedHistory.map(moveRemovedSectorToGeneral);
 
       return {
         items,
@@ -1208,6 +1223,11 @@
       ]);
     }
 
+    function isPredefinedSectorName(sectorName) {
+      const normalizedKey = normalizeSectorName(sectorName).toLocaleLowerCase('pt-BR');
+      return predefinedSectors.some((sector) => sector.toLocaleLowerCase('pt-BR') === normalizedKey);
+    }
+
     function populateSectorSelect(selectedSector = '') {
       const select = document.getElementById('itemSector');
       if (!select) return;
@@ -1289,6 +1309,53 @@
       saveLists();
       populateSectorSelect(sectorName);
       updateList();
+    }
+
+    function deleteCustomSector(sectorName) {
+      const normalizedSector = normalizeSectorName(sectorName);
+      const currentList = lists[currentListName];
+      if (!normalizedSector || !currentList || isPredefinedSectorName(normalizedSector)) {
+        alert('Os setores padrão do GetGoList não podem ser excluídos.');
+        return;
+      }
+
+      const sectorKey = normalizedSector.toLocaleLowerCase('pt-BR');
+      const affectedItems = currentList.items.filter((item) =>
+        normalizeSectorName(item.sector, 'Geral').toLocaleLowerCase('pt-BR') === sectorKey
+      );
+      const affectedHistory = currentList.history.filter((item) =>
+        normalizeSectorName(item.sector, 'Geral').toLocaleLowerCase('pt-BR') === sectorKey
+      );
+      const affectedCount = affectedItems.length;
+      const migrationMessage = affectedCount === 1
+        ? ' O produto será movido para “Geral”.'
+        : affectedCount > 1
+          ? ` Os ${affectedCount} produtos serão movidos para “Geral”.`
+          : '';
+
+      if (!confirm(`Excluir o setor “${normalizedSector}”?${migrationMessage}`)) {
+        return;
+      }
+
+      affectedItems.forEach((item) => {
+        item.sector = 'Geral';
+      });
+      affectedHistory.forEach((item) => {
+        item.sector = 'Geral';
+      });
+      currentList.sectorOrder = uniqueSectorNames(
+        (Array.isArray(currentList.sectorOrder) ? currentList.sectorOrder : [])
+          .filter((sector) => sector.toLocaleLowerCase('pt-BR') !== sectorKey)
+      );
+      collapsedSectors.delete(normalizedSector);
+      if (quickAddSector === normalizedSector) quickAddSector = null;
+
+      saveLists();
+      populateSectorSelect('Geral');
+      updateList();
+      updateHistory();
+      updateFooter();
+      updateDashboard();
     }
 
     function updateStats() {
@@ -2372,8 +2439,19 @@
           }
         });
 
+        const deleteSectorButton = document.createElement('button');
+        deleteSectorButton.type = 'button';
+        deleteSectorButton.className = 'sector-delete-button';
+        deleteSectorButton.setAttribute('aria-label', `Excluir o setor ${sectorName}`);
+        deleteSectorButton.title = `Excluir setor ${sectorName}`;
+        deleteSectorButton.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13M10 11v5m4-5v5"/></svg>';
+        deleteSectorButton.addEventListener('click', () => deleteCustomSector(sectorName));
+
         headerRow.appendChild(header);
         headerRow.appendChild(quickAddButton);
+        if (!isPredefinedSectorName(sectorName)) {
+          headerRow.appendChild(deleteSectorButton);
+        }
         headerRow.appendChild(dragHandle);
 
         const body = document.createElement('div');

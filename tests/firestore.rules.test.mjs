@@ -159,6 +159,11 @@ test("setores personalizados são colaborativos, mas obedecem aos limites de seg
       "lists.Mercado.sectorOrder": ["Geral", "Pet shop", "Bebidas geladas"],
     }),
   );
+  await assertSucceeds(
+    updateDoc(doc(guest, "sharedLists", listId), {
+      "lists.Mercado.sectorOrder": ["Geral", "Bebidas geladas"],
+    }),
+  );
   await assertFails(
     updateDoc(doc(guest, "sharedLists", listId), {
       "lists.Mercado.sectorOrder": Array.from({ length: 51 }, (_, index) => `Setor ${index}`),

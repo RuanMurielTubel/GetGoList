@@ -13,11 +13,11 @@
     let firebaseAuth = null;
     let firestoreDb = null;
     let firebaseStorage = null;
+    let firebaseAppCheck = null;
     let currentFirebaseUser = null;
     let remoteListReference = null;
     let remoteListUnsubscribe = null;
     let sharedListId = null;
-    let isSharedListMode = false;
     let remoteSyncReady = false;
     let applyingRemoteLists = false;
     let remoteSaveTimer = null;
@@ -38,6 +38,10 @@
       storageBucket: "getgolist.firebasestorage.app",
       appId: "1:448077185241:web:f6b41684c7c34d12ecbec8"
     };
+    const recaptchaSiteKey = "6Lf_8nEtAAAAACSA6bpk3s2s9raecd6-iGqIiyxI";
+    const MAX_LISTS = 50;
+    const MAX_ITEMS_PER_LIST = 500;
+    const MAX_HISTORY_PER_LIST = 1000;
 
     const predefinedSectors = [
       'Geral',
@@ -49,6 +53,60 @@
       'Bebidas',
       'Congelados'
     ];
+
+    function cleanText(value, maximumLength, fallback = '') {
+      const text = typeof value === 'string' || typeof value === 'number'
+        ? String(value)
+        : fallback;
+      return text.replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, maximumLength) || fallback;
+    }
+
+    function boundedNumber(value, minimum, maximum, fallback = 0) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return fallback;
+      return Math.min(maximum, Math.max(minimum, number));
+    }
+
+    function safeListName(value, fallback = 'Lista') {
+      return cleanText(value, 80, fallback);
+    }
+
+    function isSafeImageSource(value) {
+      if (typeof value !== 'string' || value.length > 4096) return false;
+      if (/^data:image\/(png|jpeg);base64,/i.test(value)) return true;
+      try {
+        return new URL(value).protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }
+
+    function setAvatarContent(container, photoURL, initialsText, includeInitialsId = false) {
+      container.replaceChildren();
+      if (isSafeImageSource(photoURL)) {
+        const image = document.createElement('img');
+        image.src = photoURL;
+        image.alt = 'Avatar do perfil';
+        image.referrerPolicy = 'no-referrer';
+        container.appendChild(image);
+        return;
+      }
+      const initials = document.createElement('span');
+      if (includeInitialsId) initials.id = 'profileInitials';
+      initials.textContent = cleanText(initialsText, 2, 'G');
+      container.appendChild(initials);
+    }
+
+    async function getFirebaseAppCheckToken() {
+      if (!firebaseAppCheck) {
+        throw new Error('Proteção do aplicativo indisponível. Recarregue a página.');
+      }
+      const result = await firebaseAppCheck.getToken(false);
+      if (!result || !result.token) {
+        throw new Error('Não foi possível validar este dispositivo.');
+      }
+      return result.token;
+    }
 
     function cloneSerializable(value) {
       return JSON.parse(JSON.stringify(value));
@@ -179,7 +237,6 @@
       }
 
       const localProfileData = loadLocalProfileData();
-      const isDataPhoto = localProfileData.photoDataUrl && localProfileData.photoDataUrl.startsWith('data:image/');
 
       if (currentFirebaseUser) {
           const displayName = localProfileData.displayName || currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList';
@@ -202,19 +259,14 @@
         }
         sidebarName.textContent = displayName;
 
-        if (photoURL) {
-          avatar.innerHTML = `<img src="${photoURL}" alt="Avatar do perfil" />`;
-          sidebarAvatar.innerHTML = `<img src="${photoURL}" alt="Avatar do perfil" />`;
-        } else {
-          const initialsText = displayName
-            .split(' ')
-            .filter(Boolean)
-            .map((word) => word[0].toUpperCase())
-            .slice(0, 2)
-            .join('') || 'GV';
-          avatar.innerHTML = `<span id="profileInitials">${initialsText}</span>`;
-          sidebarAvatar.innerHTML = `<span>${initialsText}</span>`;
-        }
+        const initialsText = displayName
+          .split(' ')
+          .filter(Boolean)
+          .map((word) => word[0].toUpperCase())
+          .slice(0, 2)
+          .join('') || 'G';
+        setAvatarContent(avatar, photoURL, initialsText, true);
+        setAvatarContent(sidebarAvatar, photoURL, initialsText);
       } else {
         const displayName = localProfileData.displayName || 'Visitante';
         const photoURL = localProfileData.photoDataUrl || '';
@@ -226,19 +278,14 @@
         profileBioInput.value = localProfileData.bio || '';
         sidebarName.textContent = displayName;
 
-        if (photoURL) {
-          avatar.innerHTML = `<img src="${photoURL}" alt="Avatar do perfil" />`;
-          sidebarAvatar.innerHTML = `<img src="${photoURL}" alt="Avatar do perfil" />`;
-        } else {
-          const initialsText = displayName
-            .split(' ')
-            .filter(Boolean)
-            .map((word) => word[0].toUpperCase())
-            .slice(0, 2)
-            .join('') || 'GV';
-          avatar.innerHTML = `<span id="profileInitials">${initialsText}</span>`;
-          sidebarAvatar.innerHTML = `<span>${initialsText}</span>`;
-        }
+        const initialsText = displayName
+          .split(' ')
+          .filter(Boolean)
+          .map((word) => word[0].toUpperCase())
+          .slice(0, 2)
+          .join('') || 'G';
+        setAvatarContent(avatar, photoURL, initialsText, true);
+        setAvatarContent(sidebarAvatar, photoURL, initialsText);
 
         const welcomeGreeting = document.getElementById('welcomeGreeting');
         const sidebarGreeting = document.getElementById('sidebarGreeting');
@@ -260,8 +307,8 @@
         return;
       }
 
-      const displayName = displayNameInput.value.trim();
-      const bio = profileBioInput.value.trim();
+      const displayName = cleanText(displayNameInput.value, 80);
+      const bio = cleanText(profileBioInput.value, 300);
 
       if (!displayName && !bio) {
         alert('Informe um nome ou uma bio para atualizar.');
@@ -363,16 +410,17 @@
       }
     }
 
-    function triggerPhotoUpload() {
-      promptPhotoEdit();
-    }
-
     function handlePhotoFileSelect(event) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
 
       if (!file.type.match('image/(jpeg|png)')) {
         alert('Por favor selecione um arquivo PNG ou JPEG.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('A foto deve ter no máximo 5 MB.');
+        event.target.value = '';
         return;
       }
 
@@ -414,7 +462,7 @@
       try {
         const raw = localStorage.getItem('profileData');
         return raw ? JSON.parse(raw) : { displayName: '', photoDataUrl: '', bio: '' };
-      } catch (error) {
+      } catch {
         return { displayName: '', photoDataUrl: '', bio: '' };
       }
     }
@@ -449,32 +497,36 @@
       }
 
       const normalizedItems = Array.isArray(listData.items)
-        ? listData.items.map((item, index) => {
+        ? listData.items.slice(0, MAX_ITEMS_PER_LIST).map((item, index) => {
             const sanitizedItem = item && typeof item === 'object' ? item : {};
+            const price = boundedNumber(sanitizedItem.price, 0, 100000000, 0);
+            const quantity = boundedNumber(sanitizedItem.quantity, 1, 10000, 1);
             return {
-              id: String(sanitizedItem.id || legacyEntityId('item', sanitizedItem, index)),
-              name: String(sanitizedItem.name || ''),
-              price: Number(sanitizedItem.price) || 0,
-              quantity: Number(sanitizedItem.quantity) || 1,
-              total: Number(sanitizedItem.total) || 0,
-              sector: String(sanitizedItem.sector || 'Geral'),
-              date: String(sanitizedItem.date || new Date().toLocaleDateString()),
+              id: cleanText(sanitizedItem.id, 100, legacyEntityId('item', sanitizedItem, index)),
+              name: cleanText(sanitizedItem.name, 120, 'Item'),
+              price,
+              quantity,
+              total: price * quantity,
+              sector: cleanText(sanitizedItem.sector, 80, 'Geral'),
+              date: cleanText(sanitizedItem.date, 20, new Date().toLocaleDateString()),
               checked: Boolean(sanitizedItem.checked),
             };
           })
         : [];
 
       const normalizedHistory = Array.isArray(listData.history)
-        ? listData.history.map((entry, index) => {
+        ? listData.history.slice(0, MAX_HISTORY_PER_LIST).map((entry, index) => {
             const sanitizedEntry = entry && typeof entry === 'object' ? entry : {};
+            const price = boundedNumber(sanitizedEntry.price, 0, 100000000, 0);
+            const quantity = boundedNumber(sanitizedEntry.quantity, 1, 10000, 1);
             return {
-              id: String(sanitizedEntry.id || legacyEntityId('history', sanitizedEntry, index)),
-              name: String(sanitizedEntry.name || ''),
-              price: Number(sanitizedEntry.price) || 0,
-              quantity: Number(sanitizedEntry.quantity) || 1,
-              total: Number(sanitizedEntry.total) || 0,
-              sector: String(sanitizedEntry.sector || 'Geral'),
-              date: String(sanitizedEntry.date || new Date().toLocaleDateString()),
+              id: cleanText(sanitizedEntry.id, 100, legacyEntityId('history', sanitizedEntry, index)),
+              name: cleanText(sanitizedEntry.name, 120, 'Item'),
+              price,
+              quantity,
+              total: price * quantity,
+              sector: cleanText(sanitizedEntry.sector, 80, 'Geral'),
+              date: cleanText(sanitizedEntry.date, 20, new Date().toLocaleDateString()),
               checked: Boolean(sanitizedEntry.checked),
             };
           })
@@ -484,10 +536,10 @@
         items: normalizedItems,
         history: normalizedHistory,
         sectorOrder: Array.isArray(listData.sectorOrder)
-          ? [...new Set(listData.sectorOrder.map((sector) => String(sector).trim()).filter(Boolean))]
+          ? [...new Set(listData.sectorOrder.slice(0, 50).map((sector) => cleanText(sector, 80)).filter(Boolean))]
           : [],
-        balance: typeof listData.balance === 'number' ? listData.balance : Number(listData.balance) || 0,
-        initialBalance: typeof listData.initialBalance === 'number' ? listData.initialBalance : Number(listData.initialBalance) || 0,
+        balance: boundedNumber(listData.balance, -1000000000, 1000000000, 0),
+        initialBalance: boundedNumber(listData.initialBalance, 0, 1000000000, 0),
       };
     }
 
@@ -628,8 +680,8 @@
 
       applyingRemoteLists = true;
       lists = Object.fromEntries(
-        Object.entries(remoteLists).map(([listName, listData]) => [
-          listName,
+        Object.entries(remoteLists).slice(0, MAX_LISTS).map(([listName, listData]) => [
+          safeListName(listName),
           normalizeListData(listData),
         ])
       );
@@ -730,10 +782,14 @@
       }
 
       try {
-        const token = await currentFirebaseUser.getIdToken();
+        const [token, appCheckToken] = await Promise.all([
+          currentFirebaseUser.getIdToken(),
+          getFirebaseAppCheckToken(),
+        ]);
         const response = await fetch('/api/shared-list/mine', {
           headers: {
             'Authorization': `Bearer ${token}`,
+            'X-Firebase-AppCheck': appCheckToken,
           },
         });
         if (!response.ok) {
@@ -814,12 +870,16 @@
 
       sharedParticipantRegistered = true;
       try {
-        const token = await currentFirebaseUser.getIdToken();
+        const [token, appCheckToken] = await Promise.all([
+          currentFirebaseUser.getIdToken(),
+          getFirebaseAppCheckToken(),
+        ]);
         const response = await fetch('/api/shared-list/access', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
+            'X-Firebase-AppCheck': appCheckToken,
           },
           body: JSON.stringify({ listId: sharedListId }),
         });
@@ -919,7 +979,6 @@
     function activateSharedList(docRef, documentId, initialLists) {
       remoteListReference = docRef;
       sharedListId = documentId;
-      isSharedListMode = true;
       initialRemoteSnapshotHandled = true;
       remoteSyncReady = true;
       lastSharedListsSnapshot = cloneSerializable(initialLists);
@@ -949,6 +1008,8 @@
         firebaseAuth = firebase.auth();
         firestoreDb = firebase.firestore();
         firebaseStorage = firebase.storage();
+        firebaseAppCheck = firebase.appCheck();
+        firebaseAppCheck.activate(recaptchaSiteKey, true);
         firestoreDb.enablePersistence({ synchronizeTabs: true }).catch(() => {
           // O app continua funcionando com cache em memória.
         });
@@ -1029,10 +1090,12 @@
       // local. Antes, essa informação era lida tarde demais e as listas
       // particulares acabavam sendo copiadas para o documento compartilhado.
       const urlParams = new URLSearchParams(window.location.search);
-      const importList = urlParams.get('importList');
       sharedListId = urlParams.get('sharedList');
+      if (sharedListId && !/^[A-Za-z0-9]{20}$/.test(sharedListId)) {
+        sharedListId = null;
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
       if (sharedListId) {
-        isSharedListMode = true;
       }
 
       // Tenta carregar listas do localStorage, mas ignore em modo de lista compartilhada.
@@ -1049,45 +1112,20 @@
         }
       }
 
-      // Verifica se há uma lista importada na URL
-      let importedListName = null;
-      if (importList) {
-        try {
-          const decodedData = JSON.parse(atob(importList));
-          if (decodedData && decodedData.name && decodedData.data) {
-            lists[decodedData.name] = {
-              items: decodedData.data.items || [],
-              history: decodedData.data.history || [],
-              balance: decodedData.data.balance || 0,
-              initialBalance: decodedData.data.initialBalance || 0
-            };
-            importedListName = decodedData.name;
-            console.log(`Lista importada: ${decodedData.name}`);
-          } else {
-            console.error("Dados de importação inválidos");
-          }
-        } catch (e) {
-          console.error("Erro ao decodificar dados de importação:", e);
-        }
-      }
-
       // Inicializa listas com base no localStorage ou importação
       if (!storedLists || typeof storedLists !== 'object' || Object.keys(storedLists).length === 0) {
         console.warn("localStorage vazio, corrompido ou inválido. Usando listas padrão ou importada.");
-        lists = importedListName ? lists : defaultLists;
+        lists = defaultLists;
       } else {
         lists = {};
-        Object.keys(storedLists).forEach(listName => {
+        Object.keys(storedLists).slice(0, MAX_LISTS).forEach(listName => {
           const storedList = storedLists[listName];
-          lists[listName] = normalizeListData(storedList);
+          lists[safeListName(listName)] = normalizeListData(storedList);
         });
-        if (importedListName) {
-          lists[importedListName] = lists[importedListName] || defaultLists["Lista 1"];
-        }
       }
 
       // Define a lista atual
-      currentListName = importedListName || Object.keys(lists)[0] || "Lista 1";
+      currentListName = Object.keys(lists)[0] || "Lista 1";
       if (!lists[currentListName]) {
         console.warn(`Lista "${currentListName}" não encontrada. Criando lista padrão.`);
         lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
@@ -1109,10 +1147,6 @@
       updateTargetListSelect();
       populateSectorSelect();
 
-      // Limpa parâmetro de importação da URL
-      if (importList) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
     }
 
     function updateDashboard() {
@@ -1568,7 +1602,7 @@
     }
 
     function parsePrice(value) {
-      return parseFloat(value.replace(',', '.')) || 0;
+      return boundedNumber(parseFloat(String(value).replace(',', '.')), 0, 100000000, 0);
     }
 
     function openBudgetDialog() {
@@ -1618,6 +1652,14 @@
     }
 
     function addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector) {
+      itemName = cleanText(itemName, 120);
+      itemPrice = boundedNumber(itemPrice, 0, 100000000, 0);
+      itemQuantity = boundedNumber(itemQuantity, 1, 10000, 1);
+      itemSector = cleanText(itemSector, 80, 'Geral');
+      if (shoppingList.length >= MAX_ITEMS_PER_LIST) {
+        alert(`Esta lista atingiu o limite de ${MAX_ITEMS_PER_LIST} itens.`);
+        return false;
+      }
       const itemTotal = itemPrice * itemQuantity;
 
       if (itemName && itemPrice > 0 && itemQuantity > 0) {
@@ -1687,11 +1729,11 @@
         console.error(`Elemento item-${index} não encontrado`);
         return;
       }
-      const itemName = li.querySelector('.edit-name').value.trim();
+      const itemName = cleanText(li.querySelector('.edit-name').value, 120);
       const itemPrice = parsePrice(li.querySelector('.edit-price').value);
-      const itemQuantity = parseInt(li.querySelector('.edit-quantity').value) || 1;
+      const itemQuantity = boundedNumber(parseInt(li.querySelector('.edit-quantity').value), 1, 10000, 1);
       const sectorEl = li.querySelector('.edit-sector');
-      const itemSector = sectorEl ? (sectorEl.value || 'Geral') : 'Geral';
+      const itemSector = cleanText(sectorEl ? (sectorEl.value || 'Geral') : 'Geral', 80, 'Geral');
       const itemTotal = itemPrice * itemQuantity;
 
       if (itemName && itemPrice > 0 && itemQuantity > 0) {
@@ -1734,7 +1776,7 @@
       }
     }
 
-    function cancelEdit(index) {
+    function cancelEdit() {
       editingIndex = null;
       updateList();
     }
@@ -1764,7 +1806,7 @@
 
     function toggleSelectAll() {
       allSelected = !allSelected;
-      shoppingList.forEach((item, index) => {
+      shoppingList.forEach((item) => {
         item.checked = allSelected;
       });
       try {
@@ -2106,6 +2148,7 @@
           const quickName = document.createElement('input');
           quickName.type = 'text';
           quickName.className = 'quick-add-name';
+          quickName.maxLength = 120;
           quickName.placeholder = 'Nome do produto';
           quickName.setAttribute('aria-label', `Nome do produto em ${sectorName}`);
 
@@ -2122,6 +2165,7 @@
           quickQuantity.type = 'number';
           quickQuantity.className = 'quick-add-quantity';
           quickQuantity.min = '1';
+          quickQuantity.max = '10000';
           quickQuantity.value = '1';
           quickQuantity.setAttribute('aria-label', `Quantidade do produto em ${sectorName}`);
 
@@ -2169,45 +2213,94 @@
           li.id = `item-${index}`;
           if (editingIndex === index) {
             li.classList.add('editing');
-            li.innerHTML = `
-              <input type="text" class="edit-name" value="${item.name}">
-              <input type="text" class="edit-price" value="${item.price.toFixed(2).replace('.', ',')}" oninput="formatPrice(this)">
-              <input type="number" class="edit-quantity" value="${item.quantity}" min="1">
-              <select class="edit-sector">
-                ${predefinedSectors.map(s => `<option value=\"${s}\" ${ (item?.sector && item.sector.trim() ? item.sector : 'Geral') === s ? 'selected' : '' }> ${s} </option>`).join('')}
-              </select>
-              <button onclick="saveEdit(${index})">Salvar</button>
-              <button onclick="cancelEdit(${index})">Cancelar</button>
-            `;
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.className = 'edit-name';
+            nameInput.maxLength = 120;
+            nameInput.value = item.name;
+
+            const priceInput = document.createElement('input');
+            priceInput.type = 'text';
+            priceInput.className = 'edit-price';
+            priceInput.value = item.price.toFixed(2).replace('.', ',');
+            priceInput.addEventListener('input', () => formatPrice(priceInput));
+
+            const quantityInput = document.createElement('input');
+            quantityInput.type = 'number';
+            quantityInput.className = 'edit-quantity';
+            quantityInput.min = '1';
+            quantityInput.max = '10000';
+            quantityInput.value = String(item.quantity);
+
+            const sectorSelect = document.createElement('select');
+            sectorSelect.className = 'edit-sector';
+            predefinedSectors.forEach((sector) => {
+              const option = document.createElement('option');
+              option.value = sector;
+              option.textContent = sector;
+              option.selected = (item.sector || 'Geral') === sector;
+              sectorSelect.appendChild(option);
+            });
+
+            const saveButton = document.createElement('button');
+            saveButton.type = 'button';
+            saveButton.textContent = 'Salvar';
+            saveButton.addEventListener('click', () => saveEdit(index));
+
+            const cancelButton = document.createElement('button');
+            cancelButton.type = 'button';
+            cancelButton.textContent = 'Cancelar';
+            cancelButton.addEventListener('click', cancelEdit);
+
+            li.append(nameInput, priceInput, quantityInput, sectorSelect, saveButton, cancelButton);
           } else {
-            li.innerHTML = `
-              <div class="item-info">
-                <span class="${item.checked ? 'checked' : ''}">${item.name} - ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}</span>
-                <small class="item-sector-label">Setor: ${item?.sector && item.sector.trim() ? item.sector : 'Geral'}</small>
-              </div>
-              <div class="item-controls">
-                <div class="checkbox-container">
-                  <input type="checkbox" name="listItem" id="list-item-${index}" value="${index}" ${item.checked ? 'checked' : ''}>
-                </div>
-                <div class="action-buttons">
-                  <button class="edit" onclick="editItem(${index})">Editar</button>
-                  <button onclick="removeItem(${index})">Remover</button>
-                </div>
-              </div>
-            `;
-            const checkbox = li.querySelector(`#list-item-${index}`);
-            if (checkbox) {
-              checkbox.addEventListener('change', () => {
-                shoppingList[index].checked = checkbox.checked;
-                try {
-                  saveLists();
-                  console.log(`Item ${index} marcado como ${checkbox.checked ? 'checked' : 'unchecked'}`);
-                } catch (e) {
-                  console.error("Erro ao salvar listas no localStorage:", e);
-                }
-                updateList();
-              });
-            }
+            const itemInfo = document.createElement('div');
+            itemInfo.className = 'item-info';
+            const itemLabel = document.createElement('span');
+            if (item.checked) itemLabel.classList.add('checked');
+            itemLabel.textContent = `${item.name} - ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}`;
+            const sectorLabel = document.createElement('small');
+            sectorLabel.className = 'item-sector-label';
+            sectorLabel.textContent = `Setor: ${item.sector || 'Geral'}`;
+            itemInfo.append(itemLabel, sectorLabel);
+
+            const controls = document.createElement('div');
+            controls.className = 'item-controls';
+            const checkboxContainer = document.createElement('div');
+            checkboxContainer.className = 'checkbox-container';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'listItem';
+            checkbox.id = `list-item-${index}`;
+            checkbox.value = String(index);
+            checkbox.checked = item.checked;
+            checkboxContainer.appendChild(checkbox);
+
+            const actionButtons = document.createElement('div');
+            actionButtons.className = 'action-buttons';
+            const editButton = document.createElement('button');
+            editButton.type = 'button';
+            editButton.className = 'edit';
+            editButton.textContent = 'Editar';
+            editButton.addEventListener('click', () => editItem(index));
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.textContent = 'Remover';
+            removeButton.addEventListener('click', () => removeItem(index));
+            actionButtons.append(editButton, removeButton);
+            controls.append(checkboxContainer, actionButtons);
+            li.append(itemInfo, controls);
+
+            checkbox.addEventListener('change', () => {
+              shoppingList[index].checked = checkbox.checked;
+              try {
+                saveLists();
+                console.log(`Item ${index} marcado como ${checkbox.checked ? 'checked' : 'unchecked'}`);
+              } catch (e) {
+                console.error("Erro ao salvar listas no localStorage:", e);
+              }
+              updateList();
+            });
           }
           ul.appendChild(li);
         });
@@ -2282,10 +2375,15 @@
       listHistory.forEach((item, index) => {
         const li = document.createElement('li');
         li.className = 'history-item';
-        li.innerHTML = `
-          <label for="history-${index}">${item.date}: ${item.name} - ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}</label>
-          <input type="checkbox" name="historyItem" id="history-${index}" value="${index}">
-        `;
+        const label = document.createElement('label');
+        label.htmlFor = `history-${index}`;
+        label.textContent = `${item.date}: ${item.name} - ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}`;
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.name = 'historyItem';
+        checkbox.id = `history-${index}`;
+        checkbox.value = String(index);
+        li.append(label, checkbox);
         historyList.appendChild(li);
       });
       updateMonthSelect();
@@ -2440,12 +2538,7 @@
         if (current.total > 0 || previous.total > 0) {
           const li = document.createElement('li');
           li.className = 'comparison-item';
-          li.innerHTML = `
-            ${name}: 
-            Mês Atual - ${current.quantity} x R$ ${current.price.toFixed(2).replace('.', ',')} = R$ ${current.total.toFixed(2).replace('.', ',')} | 
-            Mês Anterior - ${previous.quantity} x R$ ${previous.price.toFixed(2).replace('.', ',')} = R$ ${previous.total.toFixed(2).replace('.', ',')} | 
-            Diferença - R$ ${(current.total - previous.total).toFixed(2).replace('.', ',')}
-          `;
+          li.textContent = `${name}: Mês Atual - ${current.quantity} x R$ ${current.price.toFixed(2).replace('.', ',')} = R$ ${current.total.toFixed(2).replace('.', ',')} | Mês Anterior - ${previous.quantity} x R$ ${previous.price.toFixed(2).replace('.', ',')} = R$ ${previous.total.toFixed(2).replace('.', ',')} | Diferença - R$ ${(current.total - previous.total).toFixed(2).replace('.', ',')}`;
           comparisonList.appendChild(li);
         }
       });
@@ -2800,12 +2893,16 @@
       if (!currentFirebaseUser) {
         throw new Error('Faça login para enviar e-mails.');
       }
-      const token = await currentFirebaseUser.getIdToken();
+      const [token, appCheckToken] = await Promise.all([
+        currentFirebaseUser.getIdToken(),
+        getFirebaseAppCheckToken(),
+      ]);
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'X-Firebase-AppCheck': appCheckToken,
         },
         body: JSON.stringify(payload),
       });
@@ -2841,128 +2938,6 @@
         alert(error.message || 'Não foi possível enviar as cobranças por e-mail.');
       } finally {
         button.disabled = false;
-      }
-    }
-
-    function showShareDialogLegacy() {
-      console.log("Tentando abrir diálogo de compartilhamento");
-      const dialog = document.getElementById('shareListDialog');
-      const shareListName = document.getElementById('shareListName');
-      const shareEmailInput = document.getElementById('shareEmailInput');
-      const shareLinkToggle = document.getElementById('shareLinkToggle');
-      const shareLink = document.getElementById('shareLink');
-      if (!dialog || !shareListName || !shareEmailInput || !shareLinkToggle || !shareLink) {
-        console.error("Elementos de diálogo de compartilhamento não encontrados");
-        return;
-      }
-      if (!currentFirebaseUser || !firebaseAuth) {
-        alert('Faça login para compartilhar esta lista e permitir que outras pessoas colaborem.');
-        return;
-      }
-      if (!firestoreDb) {
-        alert('Firebase não está inicializado. Tente recarregar a página.');
-        return;
-      }
-
-      shareListName.textContent = currentListName;
-      shareLinkToggle.checked = true;
-      shareEmailInput.value = '';
-      const shareErrorMessage = document.getElementById('shareErrorMessage');
-      if (shareErrorMessage) {
-        shareErrorMessage.style.display = 'none';
-        shareErrorMessage.textContent = '';
-      }
-
-      const initializeDialogFields = (docData = {}) => {
-        if (Array.isArray(docData.allowedEmails)) {
-          const currentUserEmail = (currentFirebaseUser.email || '').toLowerCase();
-          const otherEmails = docData.allowedEmails
-            .map((email) => (typeof email === 'string' ? email.trim().toLowerCase() : ''))
-            .filter((email) => email && email !== currentUserEmail);
-          shareEmailInput.value = otherEmails.join(', ');
-        }
-        shareLinkToggle.checked = docData.linkAccess !== false;
-      };
-
-      const buildAllowedEmails = () => {
-        const currentUserEmail = (currentFirebaseUser.email || '').toLowerCase();
-        const allowedEmails = currentUserEmail ? [currentUserEmail] : [];
-        const extraEmails = parseSharedEmails(shareEmailInput.value);
-        extraEmails.forEach((email) => {
-          if (!allowedEmails.includes(email)) {
-            allowedEmails.push(email);
-          }
-        });
-        return allowedEmails;
-      };
-
-      const createOrUpdateShareDoc = (docRef, merge = false) => {
-        const allowedEmails = buildAllowedEmails();
-        const listData = {
-          lists,
-          currentListName,
-          owner: currentFirebaseUser.uid,
-          ownerEmail: currentFirebaseUser.email || '',
-          allowedEmails,
-          linkAccess: shareLinkToggle.checked,
-          lastEditedBy: currentFirebaseUser ? (currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList') : 'Anônimo',
-          lastEditedByEmail: currentFirebaseUser ? currentFirebaseUser.email || '' : '',
-          lastEditedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        const payload = merge
-          ? { ...listData }
-          : { ...listData, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
-
-        const setPromise = merge
-          ? docRef.set(payload, { merge: true })
-          : docRef.set(payload);
-
-        setPromise
-          .then(() => {
-            remoteListReference = docRef;
-            const sharedUrl = `${window.location.origin}${window.location.pathname}?sharedList=${docRef.id}`;
-            shareLink.value = sharedUrl;
-            sharedListId = docRef.id;
-            isSharedListMode = true;
-            dialog.style.display = 'flex';
-            console.log('Diálogo de compartilhamento aberto com sucesso', sharedUrl);
-          })
-          .catch((error) => {
-            console.error('Erro ao salvar lista compartilhada:', error);
-            const errorMessage = error && (error.message || error.code || error.toString()) ?
-              (error.message || error.code || error.toString()) : 'desconhecido';
-            const errorDetails = error && typeof error === 'object'
-              ? JSON.stringify(error, Object.getOwnPropertyNames(error))
-              : String(error);
-            const message = `Não foi possível criar o compartilhamento da lista.\nErro: ${errorMessage}\nDetalhes: ${errorDetails}`;
-            const shareErrorMessage = document.getElementById('shareErrorMessage');
-            if (shareErrorMessage) {
-              shareErrorMessage.style.display = 'block';
-              shareErrorMessage.textContent = message;
-            } else {
-              alert(message);
-            }
-          });
-      };
-
-      if (sharedListId) {
-        const docRef = firestoreDb.collection('sharedLists').doc(sharedListId);
-        docRef.get()
-          .then((snapshot) => {
-            if (snapshot.exists) {
-              initializeDialogFields(snapshot.data());
-            }
-            createOrUpdateShareDoc(docRef, true);
-          })
-          .catch((error) => {
-            console.error('Erro ao buscar dados da lista compartilhada:', error);
-            createOrUpdateShareDoc(docRef, true);
-          });
-      } else {
-        const docRef = firestoreDb.collection('sharedLists').doc();
-        initializeDialogFields({ linkAccess: true });
-        createOrUpdateShareDoc(docRef, false);
       }
     }
 
@@ -3283,7 +3258,11 @@
         console.error("Elemento de entrada 'newListName' não encontrado");
         return;
       }
-      const newName = input.value.trim();
+      if (Object.keys(lists).length >= MAX_LISTS) {
+        alert(`Você pode manter no máximo ${MAX_LISTS} listas por conta.`);
+        return;
+      }
+      const newName = safeListName(input.value, '');
       const initialBudget = parsePrice(budgetInput.value);
       if (newName && !lists[newName]) {
         lists[newName] = {
@@ -3498,6 +3477,7 @@
         const li = document.createElement('li');
         const input = document.createElement('input');
         input.type = 'text';
+        input.maxLength = 80;
         input.value = listName;
         nameInputs[listName] = input;
         li.appendChild(input);
@@ -3512,7 +3492,7 @@
       const newNames = {};
       let hasConflict = false;
       Object.keys(window.nameInputs).forEach(oldName => {
-        const newName = window.nameInputs[oldName].value.trim();
+        const newName = safeListName(window.nameInputs[oldName].value, '');
         if (newName && !newNames[newName] && newName !== oldName) {
           newNames[newName] = lists[oldName];
           if (currentListName === oldName) currentListName = newName;

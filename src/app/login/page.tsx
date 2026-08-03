@@ -32,6 +32,19 @@ function strongPasswordMessage(password: string) {
   return "";
 }
 
+function safeRedirectPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/index.html";
+  }
+  try {
+    const destination = new URL(value, window.location.origin);
+    if (destination.origin !== window.location.origin) return "/index.html";
+    return `${destination.pathname}${destination.search}${destination.hash}`;
+  } catch {
+    return "/index.html";
+  }
+}
+
 function messageForError(code?: string) {
   const messages: Record<string, string> = {
     "auth/email-already-in-use": "Este e-mail já possui uma conta.",
@@ -80,11 +93,14 @@ export default function LoginPage() {
   const [isNativeApp, setIsNativeApp] = useState(false);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    setRedirectTo(searchParams.get('redirect') || '/index.html');
-    setIsNativeApp(
-      Capacitor.isNativePlatform() || searchParams.get("app") === "android",
-    );
+    const timer = window.setTimeout(() => {
+      const searchParams = new URLSearchParams(window.location.search);
+      setRedirectTo(safeRedirectPath(searchParams.get("redirect")));
+      setIsNativeApp(
+        Capacitor.isNativePlatform() || searchParams.get("app") === "android",
+      );
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {

@@ -1,22 +1,26 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { adminFirestore } from "@/lib/server/firebase-admin";
-import { authenticatedUser } from "@/lib/server/request-auth";
+import {
+  authenticatedVerifiedUser,
+  verifiedAppRequest,
+} from "@/lib/server/request-auth";
 import { withinRateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    const user = await authenticatedUser(request);
+    await verifiedAppRequest(request);
+    const user = await authenticatedVerifiedUser(request);
     const body = await request.json();
     const listId = typeof body.listId === "string" ? body.listId.trim() : "";
     const email = typeof user.email === "string" ? user.email.trim().toLowerCase() : "";
 
-    if (!listId || !email) {
+    if (!/^[A-Za-z0-9]{20}$/.test(listId) || !email) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
-    if (!withinRateLimit(`shared-access:${user.uid}:${listId}`, 6, 15 * 60 * 1000)) {
+    if (!(await withinRateLimit(`shared-access:${user.uid}:${listId}`, 6, 15 * 60 * 1000))) {
       return NextResponse.json({ ok: true });
     }
 
@@ -50,6 +54,9 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "";
     if (message === "UNAUTHORIZED") {
       return NextResponse.json({ ok: false }, { status: 401 });
+    }
+    if (message === "VERIFIED_ACCOUNT_REQUIRED" || message.startsWith("APP_CHECK_")) {
+      return NextResponse.json({ ok: false }, { status: 403 });
     }
     if (message.includes("NOT_CONFIGURED")) {
       return NextResponse.json({ ok: false }, { status: 503 });

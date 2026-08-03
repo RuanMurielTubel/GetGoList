@@ -13,25 +13,44 @@ service cloud.firestore {
     }
 
     match /sharedLists/{listId} {
+      function isOwner() {
+        return hasVerifiedEmail() && request.auth.uid == resource.data.owner;
+      }
+
       function hasSharedListAccess() {
-        return hasVerifiedEmail() && (
-          request.auth.uid == resource.data.owner ||
+        return isOwner() || (
+          hasVerifiedEmail() &&
+          resource.data.get('sharingEnded', false) != true && (
           (request.auth.token.email != null && request.auth.token.email in resource.data.get('allowedEmails', [])) ||
           resource.data.get('linkAccess', false) == true
+          )
         );
       }
 
-      function preservesSharingPermissions() {
+      function preservesOwnerControlledFields() {
         return request.resource.data.owner == resource.data.owner
           && request.resource.data.get('ownerEmail', '') == resource.data.get('ownerEmail', '')
           && request.resource.data.get('allowedEmails', []) == resource.data.get('allowedEmails', [])
-          && request.resource.data.get('linkAccess', false) == resource.data.get('linkAccess', false);
+          && request.resource.data.get('linkAccess', false) == resource.data.get('linkAccess', false)
+          && request.resource.data.get('sharingEnded', false) == resource.data.get('sharingEnded', false)
+          && request.resource.data.get('endedAt', null) == resource.data.get('endedAt', null)
+          && request.resource.data.get('participantEmails', []) == resource.data.get('participantEmails', [])
+          && request.resource.data.get('participants', {}) == resource.data.get('participants', {});
+      }
+
+      function preservesOwnerIdentity() {
+        return request.resource.data.owner == resource.data.owner
+          && request.resource.data.get('ownerEmail', '') == resource.data.get('ownerEmail', '');
       }
 
       allow create: if hasVerifiedEmail()
-        && request.auth.uid == request.resource.data.owner;
-      allow update: if hasSharedListAccess() && (
-        request.auth.uid == resource.data.owner || preservesSharingPermissions()
+        && request.auth.uid == request.resource.data.owner
+        && request.auth.token.email == request.resource.data.get('ownerEmail', '')
+        && request.resource.data.get('sharingEnded', false) == false;
+      allow update: if (
+        isOwner() && preservesOwnerIdentity()
+      ) || (
+        hasSharedListAccess() && preservesOwnerControlledFields()
       );
       allow delete: if hasVerifiedEmail()
         && request.auth.uid == resource.data.owner;

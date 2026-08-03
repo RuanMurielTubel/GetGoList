@@ -1,0 +1,27 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function hasVerifiedEmail() {
+      return request.auth != null
+        && request.auth.token.email_verified == true;
+    }
+
+    match /profilePhotos/{fileName} {
+      function ownsProfilePhoto() {
+        return hasVerifiedEmail()
+          && fileName.matches('^' + request.auth.uid + '\\.(png|jpg)$');
+      }
+
+      allow read: if ownsProfilePhoto();
+      allow write: if ownsProfilePhoto()
+        && request.resource != null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png)');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

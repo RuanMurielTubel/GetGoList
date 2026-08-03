@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { escapeHtml, sendGetGoListEmail } from "@/lib/server/email";
-import { authenticatedUser, normalizedEmails } from "@/lib/server/request-auth";
+import {
+  authenticatedVerifiedUser,
+  normalizedEmails,
+  normalizedText,
+  verifiedAppRequest,
+} from "@/lib/server/request-auth";
 import { withinRateLimit } from "@/lib/server/rate-limit";
 
 export const runtime = "nodejs";
@@ -11,17 +16,18 @@ function money(value: number) {
 
 export async function POST(request: Request) {
   try {
-    const user = await authenticatedUser(request);
+    await verifiedAppRequest(request);
+    const user = await authenticatedVerifiedUser(request);
     const body = await request.json();
     const emails = normalizedEmails(body.emails);
-    const listName = typeof body.listName === "string" ? body.listName.trim().slice(0, 120) : "Compra compartilhada";
-    const paymentMethod = typeof body.paymentMethod === "string" ? body.paymentMethod.trim().slice(0, 50) : "Pagamento";
-    const paymentDetails = typeof body.paymentDetails === "string" ? body.paymentDetails.trim().slice(0, 300) : "";
+    const listName = normalizedText(body.listName, 120, "Compra compartilhada");
+    const paymentMethod = normalizedText(body.paymentMethod, 50, "Pagamento");
+    const paymentDetails = normalizedText(body.paymentDetails, 300);
     const total = Number(body.total);
     const perPerson = Number(body.perPerson);
     const peopleCount = Number(body.peopleCount);
 
-    if (!withinRateLimit(`division:${user.uid}`, 10, 15 * 60 * 1000)) {
+    if (!(await withinRateLimit(`division:${user.uid}`, 10, 15 * 60 * 1000))) {
       return NextResponse.json({ ok: false }, { status: 429 });
     }
 
@@ -29,7 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
 
-    const sender = user.name || user.email || "Uma pessoa";
+    const sender = normalizedText(user.name || user.email, 80, "Uma pessoa");
     await Promise.all(emails.map((email) => sendGetGoListEmail({
       to: email,
       subject: `Sua parte na divisão de ${listName}`,
@@ -43,6 +49,9 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "";
     if (message === "UNAUTHORIZED") {
       return NextResponse.json({ ok: false }, { status: 401 });
+    }
+    if (message === "VERIFIED_ACCOUNT_REQUIRED" || message.startsWith("APP_CHECK_")) {
+      return NextResponse.json({ ok: false }, { status: 403 });
     }
     if (message.includes("NOT_CONFIGURED")) {
       return NextResponse.json({ ok: false, configurationPending: true }, { status: 503 });

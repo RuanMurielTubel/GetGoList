@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ ok: true });
     }
-    if (!withinRateLimit(`reset:${requestAddress(request)}:${email}`, 3, 15 * 60 * 1000)) {
+    if (!(await withinRateLimit(`reset:${requestAddress(request)}:${email}`, 3, 15 * 60 * 1000))) {
       return NextResponse.json({ ok: true });
     }
 

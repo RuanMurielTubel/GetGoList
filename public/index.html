@@ -1230,9 +1230,9 @@
           <h3>O que voc&ecirc; precisa comprar?</h3>
         </div>
         <div class="button-group item-entry-form">
-        <input type="text" id="itemName" placeholder="Nome do item">
+        <input type="text" id="itemName" maxlength="120" placeholder="Nome do item">
         <input type="text" id="itemPrice" placeholder="Preço unitário (R$)">
-        <input type="number" id="itemQuantity" placeholder="Quantidade" min="1" value="1">
+        <input type="number" id="itemQuantity" placeholder="Quantidade" min="1" max="10000" value="1">
         <select id="itemSector"></select>
         <button id="addItemButton">Adicionar</button>
         </div>
@@ -1296,8 +1296,8 @@
           <option value="PIX">PIX</option>
           <option value="Conta bancária">Conta bancária</option>
         </select>
-        <input type="text" id="paymentDetails" placeholder="Chave PIX ou dados da conta">
-        <input type="text" id="divisionEmails" placeholder="E-mails dos participantes, separados por vírgula">
+        <input type="text" id="paymentDetails" maxlength="300" placeholder="Chave PIX ou dados da conta">
+        <input type="text" id="divisionEmails" maxlength="2000" placeholder="E-mails dos participantes, separados por vírgula">
         <small id="divisionParticipantsStatus" class="division-participants-status">Em listas compartilhadas, quem acessar será incluído automaticamente. Você ainda pode digitar outros e-mails.</small>
         <button class="divide" id="calculateDivisionButton">Calcular</button>
       </div>
@@ -1322,7 +1322,7 @@
           <div class="profile-grid">
             <div class="profile-field">
               <label for="displayNameInput">Nome de exibição</label>
-              <input id="displayNameInput" type="text" placeholder="Digite seu nome" />
+              <input id="displayNameInput" type="text" maxlength="80" placeholder="Digite seu nome" />
             </div>
             <div class="profile-field">
               <label for="photoFileInput">Foto do perfil</label>
@@ -1334,7 +1334,7 @@
             </div>
             <div class="profile-field">
               <label for="profileBioInput">Bio (opcional)</label>
-              <textarea id="profileBioInput" placeholder="Fale um pouquinho sobre você"></textarea>
+              <textarea id="profileBioInput" maxlength="300" placeholder="Fale um pouquinho sobre você"></textarea>
             </div>
           </div>
           <div class="profile-stats">
@@ -1366,7 +1366,7 @@
   <div id="createListDialog" class="dialog">
     <div class="dialog-content">
       <h3>Criar Nova Lista</h3>
-      <input type="text" id="newListName" placeholder="Nome da nova lista">
+      <input type="text" id="newListName" maxlength="80" placeholder="Nome da nova lista">
       <input type="text" id="newListBalance" placeholder="Orçamento inicial (R$)">
       <button id="createNewListButton">Criar</button>
       <button id="closeCreateListDialogButton">Cancelar</button>
@@ -1420,7 +1420,7 @@
       <p>Compartilhar a lista "<span id="shareListName"></span>":</p>
       <p class="share-login-note">Quem receber o link precisará entrar com Google ou criar uma conta antes de acessar.</p>
       <label for="shareEmailInput">Opcional: convidar e-mails específicos, separados por vírgula:</label>
-      <input type="text" id="shareEmailInput" placeholder="email1@exemplo.com, email2@exemplo.com">
+      <input type="text" id="shareEmailInput" maxlength="2000" placeholder="email1@exemplo.com, email2@exemplo.com">
       <label class="share-link-toggle">
         <input type="checkbox" id="shareLinkToggle" checked>
         Permitir colaboração para qualquer pessoa autenticada com o link
@@ -1470,10 +1470,11 @@
     </div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/12.16.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-app-check-compat.js"></script>
   <script src="/app.js"></script>
 
 </body>

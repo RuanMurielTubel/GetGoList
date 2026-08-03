@@ -34,8 +34,14 @@ export async function POST(request: Request) {
     const allowedEmails = Array.isArray(data.allowedEmails)
       ? data.allowedEmails.map((value: unknown) => String(value).trim().toLowerCase())
       : [];
+    const participantEmails = Array.isArray(data.participantEmails)
+      ? data.participantEmails.map((value: unknown) => String(value).trim().toLowerCase())
+      : [];
     const isOwner = data.owner === user.uid;
-    const hasAccess = isOwner || allowedEmails.includes(email) || data.linkAccess === true;
+    const hasAccess = isOwner
+      || allowedEmails.includes(email)
+      || participantEmails.includes(email)
+      || data.linkAccess === true;
     if (!hasAccess || (data.sharingEnded === true && !isOwner)) {
       return NextResponse.json({ ok: false }, { status: 403 });
     }

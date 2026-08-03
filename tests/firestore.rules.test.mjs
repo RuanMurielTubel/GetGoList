@@ -120,6 +120,34 @@ test("colaboradores editam conteúdo, mas não controlam permissões", async () 
   );
 });
 
+test("participante registrado mantém acesso até o compartilhamento ser finalizado", async () => {
+  const owner = account("owner-user", "owner@getgolist.com");
+  const guest = account("guest-user", "guest@getgolist.com");
+  const outsider = account("outsider-user", "outsider@getgolist.com");
+  const ownerReference = doc(owner, "sharedLists", listId);
+
+  await assertSucceeds(setDoc(ownerReference, sharedList({
+    allowedEmails: ["owner@getgolist.com"],
+    linkAccess: false,
+    participantEmails: ["guest@getgolist.com"],
+    participants: {
+      "guest-user": {
+        email: "guest@getgolist.com",
+        name: "Convidado",
+        lastAccessAt: "agora",
+      },
+    },
+  })));
+
+  await assertSucceeds(getDoc(doc(guest, "sharedLists", listId)));
+  await assertFails(getDoc(doc(outsider, "sharedLists", listId)));
+  await assertSucceeds(
+    updateDoc(doc(guest, "sharedLists", listId), {
+      "lists.Mercado.sectorOrder": ["Geral", "Bebidas"],
+    }),
+  );
+});
+
 test("setores personalizados são colaborativos, mas obedecem aos limites de segurança", async () => {
   const owner = account("owner-user", "owner@getgolist.com");
   const guest = account("guest-user", "guest@getgolist.com");

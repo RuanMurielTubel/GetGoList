@@ -44,7 +44,13 @@ export async function GET(request: Request) {
         const allowedEmails = Array.isArray(data.allowedEmails)
           ? data.allowedEmails.map((value: unknown) => String(value).trim().toLowerCase())
           : [];
-        const hasAccess = data.owner === user.uid || allowedEmails.includes(email) || data.linkAccess === true;
+        const participantEmails = Array.isArray(data.participantEmails)
+          ? data.participantEmails.map((value: unknown) => String(value).trim().toLowerCase())
+          : [];
+        const hasAccess = data.owner === user.uid
+          || allowedEmails.includes(email)
+          || participantEmails.includes(email)
+          || data.linkAccess === true;
         if (!hasAccess || data.sharingEnded === true) return null;
 
         const listNames = data.lists && typeof data.lists === "object" ? Object.keys(data.lists) : [];

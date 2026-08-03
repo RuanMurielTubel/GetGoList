@@ -22,6 +22,7 @@ service cloud.firestore {
           hasVerifiedEmail() &&
           resource.data.get('sharingEnded', false) != true && (
           (request.auth.token.email != null && request.auth.token.email in resource.data.get('allowedEmails', [])) ||
+          (request.auth.token.email != null && request.auth.token.email in resource.data.get('participantEmails', [])) ||
           resource.data.get('linkAccess', false) == true
           )
         );

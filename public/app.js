@@ -44,6 +44,7 @@
     const MAX_HISTORY_PER_LIST = 1000;
     const MAX_SECTORS_PER_LIST = 50;
     const MAX_SECTOR_NAME_LENGTH = 60;
+    const CREATE_SECTOR_OPTION_VALUE = '__create_sector__';
 
     const predefinedSectors = [
       'Geral',
@@ -1205,16 +1206,24 @@
       const select = document.getElementById('itemSector');
       if (!select) return;
       const previousValue = normalizeSectorName(selectedSector || select.value);
+      const sectorNames = availableSectorNames();
       select.innerHTML = '';
-      availableSectorNames().forEach((sector) => {
+      sectorNames.forEach((sector) => {
         const opt = document.createElement('option');
         opt.value = sector;
         opt.textContent = sector;
         select.appendChild(opt);
       });
-      if (previousValue && availableSectorNames().some((sector) => sector === previousValue)) {
+      const createOption = document.createElement('option');
+      createOption.value = CREATE_SECTOR_OPTION_VALUE;
+      createOption.textContent = '+ Adicionar setor';
+      select.appendChild(createOption);
+      if (previousValue && sectorNames.some((sector) => sector === previousValue)) {
         select.value = previousValue;
+      } else {
+        select.value = sectorNames.includes('Geral') ? 'Geral' : (sectorNames[0] || '');
       }
+      select.dataset.lastSector = select.value;
     }
 
     function openCreateSectorDialog() {
@@ -1820,7 +1829,7 @@
         document.getElementById('itemName').value = '';
         document.getElementById('itemPrice').value = '';
         document.getElementById('itemQuantity').value = '1';
-        document.getElementById('itemSector').value = 'Geral';
+        populateSectorSelect('Geral');
       }
     }
 
@@ -3727,7 +3736,7 @@
       }
       const setBalanceButton = document.getElementById('setBalanceButton');
       const addItemButton = document.getElementById('addItemButton');
-      const openCreateSectorDialogButton = document.getElementById('openCreateSectorDialogButton');
+      const itemSectorSelect = document.getElementById('itemSector');
       const createSectorButton = document.getElementById('createSectorButton');
       const closeCreateSectorDialogButton = document.getElementById('closeCreateSectorDialogButton');
       const newSectorName = document.getElementById('newSectorName');
@@ -3789,8 +3798,19 @@
       if (addItemButton) {
         addItemButton.addEventListener('click', addItem);
       }
-      if (openCreateSectorDialogButton) {
-        openCreateSectorDialogButton.addEventListener('click', openCreateSectorDialog);
+      if (itemSectorSelect) {
+        itemSectorSelect.addEventListener('change', () => {
+          if (itemSectorSelect.value === CREATE_SECTOR_OPTION_VALUE) {
+            const availableSectors = availableSectorNames();
+            const previousSector = normalizeSectorName(itemSectorSelect.dataset.lastSector, 'Geral');
+            itemSectorSelect.value = availableSectors.includes(previousSector)
+              ? previousSector
+              : (availableSectors.includes('Geral') ? 'Geral' : (availableSectors[0] || ''));
+            openCreateSectorDialog();
+            return;
+          }
+          itemSectorSelect.dataset.lastSector = itemSectorSelect.value;
+        });
       }
       if (createSectorButton) {
         createSectorButton.addEventListener('click', createCustomSector);

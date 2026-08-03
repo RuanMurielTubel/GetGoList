@@ -1821,33 +1821,13 @@ li .item-controls .action-buttons button:last-child {
 
 /* Setores personalizados */
 .sector-picker {
-  align-items: stretch;
-  display: flex;
-  gap: 8px;
-  min-width: min(100%, 290px);
+  min-width: min(100%, 190px);
 }
 
 .sector-picker #itemSector {
-  flex: 1 1 150px;
   margin: 5px;
   min-width: 0;
-}
-
-.sector-picker .create-sector-button {
-  background: var(--gg-primary-pale);
-  border: 1px solid #bddde0;
-  color: var(--gg-primary-dark);
-  flex: 0 0 auto;
-  font-size: 12px;
-  font-weight: 800;
-  margin: 5px 0;
-  padding-inline: 13px;
-  white-space: nowrap;
-}
-
-.sector-picker .create-sector-button:hover {
-  background: #d2ecee;
-  transform: none;
+  width: calc(100% - 10px);
 }
 
 .create-sector-dialog-content {
@@ -2262,7 +2242,7 @@ button.profile-avatar:hover {
   }
 
   .sector-picker #itemSector {
-    width: auto !important;
+    width: calc(100% - 10px) !important;
   }
 
   .profile-identity-card {

@@ -33,6 +33,7 @@ function sharedList(overrides = {}) {
       Mercado: {
         items: [],
         history: [],
+        sectorOrder: [],
         balance: 100,
         initialBalance: 100,
       },
@@ -115,6 +116,41 @@ test("colaboradores editam conteúdo, mas não controlam permissões", async () 
   await assertFails(
     updateDoc(doc(guest, "sharedLists", listId), {
       participantEmails: ["attacker@getgolist.com"],
+    }),
+  );
+});
+
+test("setores personalizados são colaborativos, mas obedecem aos limites de segurança", async () => {
+  const owner = account("owner-user", "owner@getgolist.com");
+  const guest = account("guest-user", "guest@getgolist.com");
+  const ownerReference = doc(owner, "sharedLists", listId);
+
+  await assertSucceeds(setDoc(ownerReference, sharedList()));
+  await assertSucceeds(
+    updateDoc(doc(guest, "sharedLists", listId), {
+      "lists.Mercado.sectorOrder": ["Geral", "Pet shop", "Bebidas geladas"],
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(guest, "sharedLists", listId), {
+      "lists.Mercado.sectorOrder": Array.from({ length: 51 }, (_, index) => `Setor ${index}`),
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(guest, "sharedLists", listId), {
+      campoInesperado: "conteúdo não autorizado",
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(guest, "sharedLists", listId), {
+      "lists.Mercado.items": Array.from({ length: 501 }, (_, index) => ({
+        id: `item-${index}`,
+        name: "Item",
+        sector: "Geral",
+        price: 1,
+        quantity: 1,
+        total: 1,
+      })),
     }),
   );
 });

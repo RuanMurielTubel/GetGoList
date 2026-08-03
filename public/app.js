@@ -42,6 +42,8 @@
     const MAX_LISTS = 50;
     const MAX_ITEMS_PER_LIST = 500;
     const MAX_HISTORY_PER_LIST = 1000;
+    const MAX_SECTORS_PER_LIST = 50;
+    const MAX_SECTOR_NAME_LENGTH = 60;
 
     const predefinedSectors = [
       'Geral',
@@ -69,6 +71,25 @@
 
     function safeListName(value, fallback = 'Lista') {
       return cleanText(value, 80, fallback);
+    }
+
+    function normalizeSectorName(value, fallback = '') {
+      return cleanText(value, MAX_SECTOR_NAME_LENGTH, fallback)
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function uniqueSectorNames(values, maximum = MAX_SECTORS_PER_LIST) {
+      const names = [];
+      const normalizedKeys = new Set();
+      (Array.isArray(values) ? values : []).forEach((value) => {
+        const name = normalizeSectorName(value);
+        const key = name.toLocaleLowerCase('pt-BR');
+        if (!name || normalizedKeys.has(key) || names.length >= maximum) return;
+        normalizedKeys.add(key);
+        names.push(name);
+      });
+      return names;
     }
 
     function isSafeImageSource(value) {
@@ -152,8 +173,10 @@
       const payload = {
         lists: listsPayload,
         currentListName,
-        lastEditedBy: currentFirebaseUser ? (currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList') : 'Anônimo',
-        lastEditedByEmail: currentFirebaseUser ? currentFirebaseUser.email || '' : '',
+        lastEditedBy: currentFirebaseUser
+          ? cleanText(currentFirebaseUser.displayName || currentFirebaseUser.email, 80, 'Usuário GetGoList')
+          : 'Anônimo',
+        lastEditedByEmail: currentFirebaseUser ? cleanText(currentFirebaseUser.email, 254) : '',
         lastEditedAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
@@ -517,7 +540,7 @@
               price,
               quantity,
               total: price * quantity,
-              sector: cleanText(sanitizedItem.sector, 80, 'Geral'),
+              sector: normalizeSectorName(sanitizedItem.sector, 'Geral'),
               date: cleanText(sanitizedItem.date, 20, new Date().toLocaleDateString()),
               checked: Boolean(sanitizedItem.checked),
             };
@@ -535,7 +558,7 @@
               price,
               quantity,
               total: price * quantity,
-              sector: cleanText(sanitizedEntry.sector, 80, 'Geral'),
+              sector: normalizeSectorName(sanitizedEntry.sector, 'Geral'),
               date: cleanText(sanitizedEntry.date, 20, new Date().toLocaleDateString()),
               checked: Boolean(sanitizedEntry.checked),
             };
@@ -546,7 +569,7 @@
         items: normalizedItems,
         history: normalizedHistory,
         sectorOrder: Array.isArray(listData.sectorOrder)
-          ? [...new Set(listData.sectorOrder.slice(0, 50).map((sector) => cleanText(sector, 80)).filter(Boolean))]
+          ? uniqueSectorNames(listData.sectorOrder)
           : [],
         balance: boundedNumber(listData.balance, -1000000000, 1000000000, 0),
         initialBalance: boundedNumber(listData.initialBalance, 0, 1000000000, 0),
@@ -587,7 +610,9 @@
       const initialBalanceChanged = desired.initialBalance !== baseline.initialBalance;
       const initialBalance = initialBalanceChanged ? desired.initialBalance : remote.initialBalance;
       const sectorOrderChanged = JSON.stringify(desired.sectorOrder) !== JSON.stringify(baseline.sectorOrder);
-      const sectorOrder = sectorOrderChanged ? desired.sectorOrder : remote.sectorOrder;
+      const sectorOrder = sectorOrderChanged
+        ? uniqueSectorNames([...desired.sectorOrder, ...remote.sectorOrder])
+        : remote.sectorOrder;
 
       return {
         items,
@@ -1164,16 +1189,90 @@
       updateCharts();
     }
 
-    function populateSectorSelect() {
+    function availableSectorNames() {
+      const currentList = lists[currentListName] || {};
+      const itemSectors = Array.isArray(currentList.items)
+        ? currentList.items.map((item) => item && item.sector)
+        : [];
+      return uniqueSectorNames([
+        ...predefinedSectors,
+        ...(Array.isArray(currentList.sectorOrder) ? currentList.sectorOrder : []),
+        ...itemSectors,
+      ]);
+    }
+
+    function populateSectorSelect(selectedSector = '') {
       const select = document.getElementById('itemSector');
       if (!select) return;
+      const previousValue = normalizeSectorName(selectedSector || select.value);
       select.innerHTML = '';
-      predefinedSectors.forEach((s) => {
+      availableSectorNames().forEach((sector) => {
         const opt = document.createElement('option');
-        opt.value = s;
-        opt.textContent = s;
+        opt.value = sector;
+        opt.textContent = sector;
         select.appendChild(opt);
       });
+      if (previousValue && availableSectorNames().some((sector) => sector === previousValue)) {
+        select.value = previousValue;
+      }
+    }
+
+    function openCreateSectorDialog() {
+      const dialog = document.getElementById('createSectorDialog');
+      const input = document.getElementById('newSectorName');
+      const error = document.getElementById('createSectorError');
+      if (!dialog || !input) return;
+      input.value = '';
+      if (error) {
+        error.textContent = '';
+        error.style.display = 'none';
+      }
+      dialog.style.display = 'flex';
+      window.setTimeout(() => input.focus(), 50);
+    }
+
+    function createCustomSector() {
+      const input = document.getElementById('newSectorName');
+      const error = document.getElementById('createSectorError');
+      const currentList = lists[currentListName];
+      if (!input || !currentList) return;
+
+      const sectorName = normalizeSectorName(input.value);
+      const existingSectors = availableSectorNames();
+      const exists = existingSectors.some((sector) =>
+        sector.toLocaleLowerCase('pt-BR') === sectorName.toLocaleLowerCase('pt-BR')
+      );
+      const showError = (message) => {
+        if (error) {
+          error.textContent = message;
+          error.style.display = 'block';
+        } else {
+          alert(message);
+        }
+      };
+
+      if (!sectorName) {
+        showError('Digite um nome para o setor.');
+        return;
+      }
+      if (exists) {
+        showError('Esse setor já existe nesta lista.');
+        return;
+      }
+      if (existingSectors.length >= MAX_SECTORS_PER_LIST) {
+        showError(`Esta lista atingiu o limite de ${MAX_SECTORS_PER_LIST} setores.`);
+        return;
+      }
+
+      currentList.sectorOrder = uniqueSectorNames([
+        ...(Array.isArray(currentList.sectorOrder) ? currentList.sectorOrder : []),
+        sectorName,
+      ]);
+      collapsedSectors.delete(sectorName);
+      saveLists();
+      populateSectorSelect(sectorName);
+      updateList();
+      closeDialog('createSectorDialog');
     }
 
     function updateStats() {
@@ -1583,6 +1682,7 @@
         updateDashboard();
       }
       if (sectionId === 'productsSection') {
+        populateSectorSelect();
         updateList();
         updateTotal();
         updateBalance();
@@ -1665,7 +1765,7 @@
       itemName = cleanText(itemName, 120);
       itemPrice = boundedNumber(itemPrice, 0, 100000000, 0);
       itemQuantity = boundedNumber(itemQuantity, 1, 10000, 1);
-      itemSector = cleanText(itemSector, 80, 'Geral');
+      itemSector = normalizeSectorName(itemSector, 'Geral');
       if (shoppingList.length >= MAX_ITEMS_PER_LIST) {
         alert(`Esta lista atingiu o limite de ${MAX_ITEMS_PER_LIST} itens.`);
         return false;
@@ -1720,7 +1820,7 @@
         document.getElementById('itemName').value = '';
         document.getElementById('itemPrice').value = '';
         document.getElementById('itemQuantity').value = '1';
-        document.getElementById('itemSector').value = '';
+        document.getElementById('itemSector').value = 'Geral';
       }
     }
 
@@ -1743,7 +1843,7 @@
       const itemPrice = parsePrice(li.querySelector('.edit-price').value);
       const itemQuantity = boundedNumber(parseInt(li.querySelector('.edit-quantity').value), 1, 10000, 1);
       const sectorEl = li.querySelector('.edit-sector');
-      const itemSector = cleanText(sectorEl ? (sectorEl.value || 'Geral') : 'Geral', 80, 'Geral');
+      const itemSector = normalizeSectorName(sectorEl ? (sectorEl.value || 'Geral') : 'Geral', 'Geral');
       const itemTotal = itemPrice * itemQuantity;
 
       if (itemName && itemPrice > 0 && itemQuantity > 0) {
@@ -2024,18 +2124,34 @@
 
       list.innerHTML = '';
 
-      const groupedItems = shoppingList.reduce((groups, item, index) => {
-        const sectorName = item?.sector && item.sector.trim() ? item.sector.trim() : 'Geral';
+      const currentSectorOrder = Array.isArray(lists[currentListName]?.sectorOrder)
+        ? uniqueSectorNames(lists[currentListName].sectorOrder)
+        : [];
+      const groupedItems = currentSectorOrder.reduce((groups, sectorName) => {
+        groups[sectorName] = [];
+        return groups;
+      }, {});
+      const acceptedSectorKeys = new Set(currentSectorOrder.map((sector) => sector.toLocaleLowerCase('pt-BR')));
+      const canonicalSectorByKey = new Map(currentSectorOrder.map((sector) => [sector.toLocaleLowerCase('pt-BR'), sector]));
+
+      shoppingList.forEach((item, index) => {
+        let sectorName = normalizeSectorName(item?.sector, 'Geral');
+        const sectorKey = sectorName.toLocaleLowerCase('pt-BR');
+        if (canonicalSectorByKey.has(sectorKey)) {
+          sectorName = canonicalSectorByKey.get(sectorKey);
+        } else if (acceptedSectorKeys.size >= MAX_SECTORS_PER_LIST) {
+          sectorName = 'Geral';
+        } else {
+          acceptedSectorKeys.add(sectorKey);
+          canonicalSectorByKey.set(sectorKey, sectorName);
+        }
         if (!groups[sectorName]) {
           groups[sectorName] = [];
         }
         groups[sectorName].push({ item, index });
-        return groups;
-      }, {});
+      });
 
-      const savedSectorOrder = Array.isArray(lists[currentListName]?.sectorOrder)
-        ? lists[currentListName].sectorOrder
-        : [];
+      const savedSectorOrder = currentSectorOrder;
       const savedOrderPositions = new Map(savedSectorOrder.map((sector, index) => [sector, index]));
       const sectorNames = Object.keys(groupedItems).sort((first, second) => {
         const firstPosition = savedOrderPositions.has(first) ? savedOrderPositions.get(first) : Number.MAX_SAFE_INTEGER;
@@ -2244,7 +2360,7 @@
 
             const sectorSelect = document.createElement('select');
             sectorSelect.className = 'edit-sector';
-            predefinedSectors.forEach((sector) => {
+            availableSectorNames().forEach((sector) => {
               const option = document.createElement('option');
               option.value = sector;
               option.textContent = sector;
@@ -3066,8 +3182,8 @@
             currentListName,
             owner: currentFirebaseUser.uid,
             ownerEmail: currentFirebaseUser.email || '',
-            lastEditedBy: currentFirebaseUser.displayName || currentFirebaseUser.email || 'Usuário GetGoList',
-            lastEditedByEmail: currentFirebaseUser.email || '',
+            lastEditedBy: cleanText(currentFirebaseUser.displayName || currentFirebaseUser.email, 80, 'Usuário GetGoList'),
+            lastEditedByEmail: cleanText(currentFirebaseUser.email, 254),
             lastEditedAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           });
@@ -3232,6 +3348,7 @@
         shoppingList = lists[currentListName].items;
         listHistory = lists[currentListName].history;
         allSelected = false;
+        populateSectorSelect();
         updateList();
         updateTotal();
         updateBalance();
@@ -3610,6 +3727,10 @@
       }
       const setBalanceButton = document.getElementById('setBalanceButton');
       const addItemButton = document.getElementById('addItemButton');
+      const openCreateSectorDialogButton = document.getElementById('openCreateSectorDialogButton');
+      const createSectorButton = document.getElementById('createSectorButton');
+      const closeCreateSectorDialogButton = document.getElementById('closeCreateSectorDialogButton');
+      const newSectorName = document.getElementById('newSectorName');
       const triggerPhotoUpload = document.getElementById('triggerPhotoUpload');
       const profileAvatar = document.getElementById('profileAvatar');
       const shareButton = document.querySelector('.share-button');
@@ -3667,6 +3788,23 @@
       }
       if (addItemButton) {
         addItemButton.addEventListener('click', addItem);
+      }
+      if (openCreateSectorDialogButton) {
+        openCreateSectorDialogButton.addEventListener('click', openCreateSectorDialog);
+      }
+      if (createSectorButton) {
+        createSectorButton.addEventListener('click', createCustomSector);
+      }
+      if (closeCreateSectorDialogButton) {
+        closeCreateSectorDialogButton.addEventListener('click', () => closeDialog('createSectorDialog'));
+      }
+      if (newSectorName) {
+        newSectorName.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            createCustomSector();
+          }
+        });
       }
       if (triggerPhotoUpload) {
         triggerPhotoUpload.addEventListener('click', promptPhotoEdit);

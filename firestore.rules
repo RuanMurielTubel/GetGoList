@@ -43,14 +43,58 @@ service cloud.firestore {
           && request.resource.data.get('ownerEmail', '') == resource.data.get('ownerEmail', '');
       }
 
+      function hasValidSharedListShape() {
+        let listName = request.resource.data.currentListName;
+        let listData = request.resource.data.lists[listName];
+        return request.resource.data.keys().hasOnly([
+            'owner', 'ownerEmail', 'allowedEmails', 'linkAccess',
+            'sharingEnded', 'endedAt', 'participantEmails', 'participants',
+            'lists', 'currentListName', 'lastEditedBy', 'lastEditedByEmail',
+            'lastEditedAt', 'createdAt', 'updatedAt'
+          ])
+          && request.resource.data.owner is string
+          && request.resource.data.owner.size() <= 128
+          && request.resource.data.get('ownerEmail', '') is string
+          && request.resource.data.get('ownerEmail', '').size() <= 254
+          && request.resource.data.allowedEmails is list
+          && request.resource.data.allowedEmails.size() <= 21
+          && request.resource.data.linkAccess is bool
+          && request.resource.data.sharingEnded is bool
+          && request.resource.data.get('participantEmails', []) is list
+          && request.resource.data.get('participantEmails', []).size() <= 100
+          && request.resource.data.get('participants', {}) is map
+          && request.resource.data.get('participants', {}).size() <= 100
+          && request.resource.data.get('lastEditedBy', '') is string
+          && request.resource.data.get('lastEditedBy', '').size() <= 80
+          && request.resource.data.get('lastEditedByEmail', '') is string
+          && request.resource.data.get('lastEditedByEmail', '').size() <= 254
+          && request.resource.data.currentListName is string
+          && request.resource.data.currentListName.size() > 0
+          && request.resource.data.currentListName.size() <= 80
+          && request.resource.data.lists is map
+          && request.resource.data.lists.size() == 1
+          && listName in request.resource.data.lists
+          && listData is map
+          && listData.keys().hasOnly(['items', 'history', 'sectorOrder', 'balance', 'initialBalance'])
+          && listData.items is list
+          && listData.items.size() <= 500
+          && listData.history is list
+          && listData.history.size() <= 1000
+          && listData.get('sectorOrder', []) is list
+          && listData.get('sectorOrder', []).size() <= 50
+          && listData.balance is number
+          && listData.initialBalance is number;
+      }
+
       allow create: if hasVerifiedEmail()
         && request.auth.uid == request.resource.data.owner
         && request.auth.token.email == request.resource.data.get('ownerEmail', '')
-        && request.resource.data.get('sharingEnded', false) == false;
+        && request.resource.data.get('sharingEnded', false) == false
+        && hasValidSharedListShape();
       allow update: if (
-        isOwner() && preservesOwnerIdentity()
+        isOwner() && preservesOwnerIdentity() && hasValidSharedListShape()
       ) || (
-        hasSharedListAccess() && preservesOwnerControlledFields()
+        hasSharedListAccess() && preservesOwnerControlledFields() && hasValidSharedListShape()
       );
       allow delete: if hasVerifiedEmail()
         && request.auth.uid == resource.data.owner;

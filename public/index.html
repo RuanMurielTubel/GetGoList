@@ -1233,7 +1233,10 @@
         <input type="text" id="itemName" maxlength="120" placeholder="Nome do item">
         <input type="text" id="itemPrice" placeholder="Preço unitário (R$)">
         <input type="number" id="itemQuantity" placeholder="Quantidade" min="1" max="10000" value="1">
-        <select id="itemSector"></select>
+        <div class="sector-picker">
+          <select id="itemSector" aria-label="Setor do produto"></select>
+          <button type="button" class="create-sector-button" id="openCreateSectorDialogButton" aria-label="Criar um novo setor">+ Novo setor</button>
+        </div>
         <button id="addItemButton">Adicionar</button>
         </div>
       </div>
@@ -1306,56 +1309,78 @@
     </div>
 
     <div id="profileSection" class="section">
-      <div class="profile-card">
-        <div class="profile-header">
-          <div class="profile-avatar" id="profileAvatar">
-            <span id="profileInitials">GV</span>
+      <div class="profile-workspace">
+        <section class="profile-identity-card" aria-labelledby="profileName">
+          <div class="profile-avatar-wrap">
+            <button type="button" class="profile-avatar" id="profileAvatar" aria-label="Escolher outra foto de perfil">
+              <span id="profileInitials">GV</span>
+            </button>
+            <span class="profile-photo-badge" aria-hidden="true">+</span>
           </div>
           <div class="profile-info">
+            <small>Minha conta</small>
             <h2 id="profileName">Visitante</h2>
             <p id="profileEmail">Sem login</p>
-            <p id="profileStatus">Entre para ativar o perfil</p>
+            <span class="profile-status" id="profileStatus">Entre para ativar o perfil</span>
           </div>
-        </div>
-        <h3 style="margin: 0 0 18px; color: #006d9c;">Detalhes do Perfil</h3>
-        <div class="profile-body">
-          <div class="profile-grid">
-            <div class="profile-field">
-              <label for="displayNameInput">Nome de exibição</label>
-              <input id="displayNameInput" type="text" maxlength="80" placeholder="Digite seu nome" />
-            </div>
-            <div class="profile-field">
-              <label for="photoFileInput">Foto do perfil</label>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                <button type="button" class="update-profile" id="triggerPhotoUpload">Escolher outra foto</button>
-                <span id="photoUploadHint" style="font-size: 14px; color: #495057;">PNG ou JPEG</span>
+        </section>
+
+        <div class="profile-content-grid">
+          <section class="profile-editor-card">
+            <div class="profile-section-heading">
+              <div>
+                <small>Dados do perfil</small>
+                <h3>Como você aparece no GetGoList</h3>
               </div>
-              <input id="photoFileInput" type="file" accept="image/png, image/jpeg" style="display:none" />
+              <span>O nome é sincronizado; bio e foto personalizada ficam neste dispositivo.</span>
             </div>
-            <div class="profile-field">
-              <label for="profileBioInput">Bio (opcional)</label>
-              <textarea id="profileBioInput" maxlength="300" placeholder="Fale um pouquinho sobre você"></textarea>
+            <div class="profile-grid">
+              <div class="profile-field">
+                <label for="displayNameInput">Nome de exibição</label>
+                <input id="displayNameInput" type="text" maxlength="80" autocomplete="name" placeholder="Digite seu nome" />
+              </div>
+              <div class="profile-field">
+                <label for="profileBioInput">Sobre você <span>opcional</span></label>
+                <textarea id="profileBioInput" maxlength="300" placeholder="Conte brevemente como você usa suas listas"></textarea>
+              </div>
+              <div class="profile-photo-control">
+                <div>
+                  <strong>Foto do perfil</strong>
+                  <span id="photoUploadHint">Usamos a foto do Google automaticamente. Formatos aceitos: PNG ou JPEG.</span>
+                </div>
+                <button type="button" class="profile-secondary-button" id="triggerPhotoUpload">Escolher outra foto</button>
+                <input id="photoFileInput" type="file" accept="image/png, image/jpeg" style="display:none" />
+              </div>
             </div>
-          </div>
-          <div class="profile-stats">
-            <div class="profile-stat">
-              <strong id="profileTotalLists">0</strong>
-              <span>Listas criadas</span>
+            <div class="profile-actions">
+              <button class="profile-primary-button" id="saveProfileEditsButton">Salvar alterações</button>
+              <button class="profile-secondary-button" id="loadCurrentProfileButton">Descartar alterações</button>
             </div>
-            <div class="profile-stat">
-              <strong id="profileTotalItems">0</strong>
-              <span>Itens adicionados</span>
+          </section>
+
+          <aside class="profile-summary-card">
+            <div class="profile-section-heading compact">
+              <div>
+                <small>Sua atividade</small>
+                <h3>Resumo das compras</h3>
+              </div>
             </div>
-            <div class="profile-stat">
-              <strong id="profileTotalSpent">R$ 0,00</strong>
-              <span>Gasto total</span>
+            <div class="profile-stats">
+              <div class="profile-stat">
+                <span class="profile-stat-icon" aria-hidden="true">&#9776;</span>
+                <div><strong id="profileTotalLists">0</strong><span>Listas criadas</span></div>
+              </div>
+              <div class="profile-stat">
+                <span class="profile-stat-icon" aria-hidden="true">&#10003;</span>
+                <div><strong id="profileTotalItems">0</strong><span>Itens adicionados</span></div>
+              </div>
+              <div class="profile-stat">
+                <span class="profile-stat-icon currency" aria-hidden="true">R$</span>
+                <div><strong id="profileTotalSpent">R$ 0,00</strong><span>Gasto total</span></div>
+              </div>
             </div>
-          </div>
-          <div class="profile-actions">
-            <button class="update-profile" id="saveProfileEditsButton">Salvar perfil</button>
-            <button class="update-profile" id="loadCurrentProfileButton">Recarregar</button>
-          </div>
-          <p class="profile-note">A foto da sua conta Google é carregada automaticamente. Se preferir, você pode escolher outra imagem neste dispositivo.</p>
+            <p class="profile-note">Sua foto do Google aparece somente como identificação do perfil. Senhas e dados de acesso nunca ficam visíveis.</p>
+          </aside>
         </div>
       </div>
     </div>
@@ -1363,6 +1388,20 @@
   </div>
   
   <!-- Diálogos -->
+  <div id="createSectorDialog" class="dialog">
+    <div class="dialog-content create-sector-dialog-content">
+      <span class="dialog-eyebrow">Organizar produtos</span>
+      <h3>Criar novo setor</h3>
+      <p>Use um nome que ajude a seguir o seu caminho dentro da loja.</p>
+      <label class="dialog-field" for="newSectorName">Nome do setor</label>
+      <input type="text" id="newSectorName" maxlength="60" autocomplete="off" placeholder="Ex.: Pet shop, Bebidas geladas">
+      <p class="dialog-error" id="createSectorError" role="alert" style="display:none"></p>
+      <div class="dialog-actions">
+        <button type="button" id="createSectorButton">Criar setor</button>
+        <button type="button" class="dialog-secondary-button" id="closeCreateSectorDialogButton">Cancelar</button>
+      </div>
+    </div>
+  </div>
   <div id="createListDialog" class="dialog">
     <div class="dialog-content">
       <h3>Criar Nova Lista</h3>

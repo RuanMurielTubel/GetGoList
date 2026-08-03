@@ -410,7 +410,7 @@ export default function LoginPage() {
         )}
 
         {mode === "verify" ? (
-          <div>
+          <div className="account-verification">
             <div className="account-card-heading">
               <p className="eyebrow">Proteção da sua conta</p>
               <h2 id="account-title">Confirme seu e-mail</h2>
@@ -424,6 +424,7 @@ export default function LoginPage() {
                 Código de confirmação
                 <input
                   autoComplete="one-time-code"
+                  className="verification-code-input"
                   inputMode="numeric"
                   maxLength={6}
                   onChange={(event) =>
@@ -431,7 +432,6 @@ export default function LoginPage() {
                   }
                   placeholder="000000"
                   required
-                  style={{ fontSize: 24, letterSpacing: 8, textAlign: "center" }}
                   value={verificationCode}
                 />
               </label>
@@ -442,12 +442,14 @@ export default function LoginPage() {
                 {loading ? "Confirmando..." : "Confirmar e liberar minha conta"}
               </button>
             </form>
-            <button className="password-reset" disabled={loading} onClick={handleResendCode} type="button">
-              Reenviar código
-            </button>
-            <button className="password-reset" disabled={loading} onClick={handleLeaveVerification} type="button">
-              Voltar para o login
-            </button>
+            <div className="account-verification-actions">
+              <button className="password-reset" disabled={loading} onClick={handleResendCode} type="button">
+                Reenviar código
+              </button>
+              <button className="password-reset" disabled={loading} onClick={handleLeaveVerification} type="button">
+                Voltar para o login
+              </button>
+            </div>
           </div>
         ) : (
           <>

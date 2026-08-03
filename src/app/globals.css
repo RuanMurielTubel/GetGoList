@@ -539,6 +539,13 @@ footer {
   width: calc(100% - 48px);
 }
 
+.account-card > *,
+.account-verification,
+.account-form,
+.account-form label {
+  min-width: 0;
+}
+
 .account-page-app {
   align-items: center;
   background:
@@ -645,7 +652,16 @@ footer {
   color: var(--ink);
   font: inherit;
   min-height: 48px;
+  min-width: 0;
   padding: 0 13px;
+  width: 100%;
+}
+
+.account-form .verification-code-input {
+  font-size: 1.5rem;
+  letter-spacing: clamp(0.35rem, 2vw, 0.65rem);
+  padding-left: 1.05rem;
+  text-align: center;
 }
 
 .account-form input:focus {
@@ -686,6 +702,17 @@ footer {
   font-weight: 700;
   margin-top: 16px;
   padding: 0;
+}
+
+.account-verification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: 16px;
+}
+
+.account-verification-actions .password-reset {
+  margin-top: 0;
 }
 
 .guest-divider {
@@ -974,6 +1001,11 @@ footer a {
 
   .account-page-app .account-card-heading {
     margin: 24px 0 20px;
+  }
+
+  .account-form .verification-code-input {
+    font-size: 1.35rem;
+    letter-spacing: 0.4rem;
   }
 
   .account-page-app .guest-divider {

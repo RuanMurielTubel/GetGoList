@@ -551,10 +551,10 @@
     }
 
     function promptPhotoEdit() {
-      const photoFileInput = document.getElementById('photoFileInput');
-      if (photoFileInput) {
-        photoFileInput.click();
-      }
+      // Foto de perfil personalizada depende do Firebase Storage, que
+      // ainda não foi ativado (exige o plano Blaze). Enquanto isso, o
+      // avatar mostra as iniciais ou a foto do Google, quando houver.
+      alert('O envio de foto de perfil personalizada está temporariamente indisponível. Em breve!');
     }
 
     function handlePhotoFileSelect(event) {

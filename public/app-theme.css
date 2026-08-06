@@ -3596,6 +3596,10 @@ body.nav-collapsed .footer {
   padding: 16px;
 }
 
+.ai-locked-banner[hidden] {
+  display: none;
+}
+
 .ai-locked-banner > span {
   font-size: 22px;
 }

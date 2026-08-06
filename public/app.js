@@ -2152,6 +2152,11 @@
       setCompactNavCollapsed(collapsed, false);
     }
 
+    function handleSidebarNavClick(action) {
+      setCompactNavCollapsed(true);
+      action();
+    }
+
     function updateFooter() {
       const footerListName = document.getElementById('footerListName');
       const footerItemCount = document.getElementById('footerItemCount');
@@ -4454,7 +4459,7 @@
       if (accountDropdownProfileButton) {
         accountDropdownProfileButton.addEventListener('click', () => {
           closeAccountMenu();
-          showSection('profileSection');
+          handleSidebarNavClick(() => showSection('profileSection'));
         });
       }
       document.addEventListener('click', (event) => {
@@ -4610,22 +4615,22 @@
         profileAvatar.addEventListener('click', promptPhotoEdit);
       }
       if (shareButton) {
-        shareButton.addEventListener('click', showShareDialog);
+        shareButton.addEventListener('click', () => handleSidebarNavClick(showShareDialog));
       }
       if (homeButton) {
-        homeButton.addEventListener('click', () => showSection('homeSection'));
+        homeButton.addEventListener('click', () => handleSidebarNavClick(() => showSection('homeSection')));
       }
       if (managementButton) {
-        managementButton.addEventListener('click', () => showSection('managementSection'));
+        managementButton.addEventListener('click', () => handleSidebarNavClick(() => showSection('managementSection')));
       }
       if (shoppingButton) {
-        shoppingButton.addEventListener('click', () => showSection('shoppingSection'));
+        shoppingButton.addEventListener('click', () => handleSidebarNavClick(() => showSection('shoppingSection')));
       }
       if (productsButton) {
-        productsButton.addEventListener('click', () => showSection('productsSection'));
+        productsButton.addEventListener('click', () => handleSidebarNavClick(() => showSection('productsSection')));
       }
       if (pricesButton) {
-        pricesButton.addEventListener('click', () => showSection('pricesSection'));
+        pricesButton.addEventListener('click', () => handleSidebarNavClick(() => showSection('pricesSection')));
       }
       if (manageListsButton) {
         manageListsButton.addEventListener('click', () => showSection('shoppingSection'));
@@ -4634,10 +4639,10 @@
         openProductsFromListsButton.addEventListener('click', () => showSection('productsSection'));
       }
       if (historyButton) {
-        historyButton.addEventListener('click', () => showSection('historySection'));
+        historyButton.addEventListener('click', () => handleSidebarNavClick(() => showSection('historySection')));
       }
       if (divideButton) {
-        divideButton.addEventListener('click', () => showSection('divideSection'));
+        divideButton.addEventListener('click', () => handleSidebarNavClick(() => showSection('divideSection')));
       }
       if (openListNavigationStat) {
         openListNavigationStat.addEventListener('click', openListNavigationDialog);

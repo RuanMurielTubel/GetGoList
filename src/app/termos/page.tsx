@@ -148,9 +148,8 @@ export default function TermsPage() {
         <section>
           <h2>10. Limitação de responsabilidade</h2>
           <p>
-            As sugestões geradas pela IA e as ofertas exibidas na comparação de
-            preços têm caráter informativo, dependem de fontes de terceiros e podem
-            conter imprecisões; a decisão de compra é sempre sua. Fazemos esforços
+            As sugestões geradas pela IA têm caráter informativo e podem conter
+            imprecisões; a decisão de compra é sempre sua. Fazemos esforços
             razoáveis para manter o serviço disponível, mas não garantimos
             disponibilidade ininterrupta e não respondemos por indisponibilidades
             causadas por terceiros, como o Mercado Pago, o Google ou provedores de

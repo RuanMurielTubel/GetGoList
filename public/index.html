@@ -1082,7 +1082,6 @@
     <button type="button" class="management-button" title="Gestão" aria-label="Gestão"><span>Gestão</span></button>
     <button type="button" class="shopping-button" title="Listas" aria-label="Listas"><span>Listas</span></button>
     <button type="button" class="products-button" title="Produtos" aria-label="Produtos"><span>Produtos</span></button>
-    <button type="button" class="prices-button" title="Menores preços" aria-label="Menores preços"><span>Menores preços</span></button>
     <button type="button" class="history-button" title="Histórico" aria-label="Histórico"><span>Histórico</span></button>
     <div class="sidebar-section-label">Colaboração</div>
     <button type="button" class="divide-button" title="Dividir conta" aria-label="Dividir conta"><span>Dividir conta</span></button>
@@ -1146,22 +1145,6 @@
             <a href="/planos">Ver planos</a>
           </div>
         </section>
-
-        <aside class="offers-card" aria-labelledby="offersTitle">
-          <div class="offers-heading">
-            <span class="offers-icon" aria-hidden="true">%</span>
-            <div>
-              <small>Economize com segurança</small>
-              <h3 id="offersTitle">Ofertas verificadas</h3>
-            </div>
-          </div>
-          <div class="offers-empty-state offers-ready-state">
-            <span aria-hidden="true">⌁</span>
-            <strong>Compare preços online</strong>
-            <p>Pesquise produtos em fontes conectadas e veja as opções em ordem de preço.</p>
-            <button type="button" class="offers-open-button" id="openPricesFromHomeButton">Pesquisar menores preços</button>
-          </div>
-        </aside>
       </div>
 
       <div class="ad-slot" id="adSlotHome">
@@ -1190,46 +1173,6 @@
         <div class="ai-preview-actions">
           <button type="button" class="ai-secondary-button" id="discardAiListButton">Descartar</button>
           <button type="button" class="ai-create-list-button" id="createAiListButton">Criar esta lista</button>
-        </div>
-      </section>
-    </div>
-
-    <!-- Seção: comparação de preços online -->
-    <div id="pricesSection" class="section">
-      <section class="price-search-shell" aria-labelledby="priceSearchTitle">
-        <div class="price-search-heading">
-          <div>
-            <span class="price-source-badge">Online nacional</span>
-            <h2 id="priceSearchTitle">Encontre opções com menor preço</h2>
-            <p>Compare ofertas nacionais antes de comprar. Joinville/SC é a localização inicial; a estrutura já está preparada para todo o Brasil.</p>
-          </div>
-          <div class="price-location-card" aria-label="Localização inicial">
-            <small>Localização inicial</small>
-            <strong>Joinville · SC</strong>
-            <span>Resultados nacionais</span>
-          </div>
-        </div>
-
-        <form id="priceSearchForm" class="price-search-form">
-          <label for="priceSearchQuery">Qual produto você quer comparar?</label>
-          <div class="price-search-controls">
-            <input id="priceSearchQuery" name="query" type="search" maxlength="80" list="priceListSuggestions" placeholder="Ex.: arroz 5 kg, leite integral, sabão em pó" autocomplete="off">
-            <datalist id="priceListSuggestions"></datalist>
-            <button type="submit" id="priceSearchButton">Pesquisar preços</button>
-          </div>
-          <p>Você pode digitar um produto ou escolher um item da lista atual.</p>
-        </form>
-
-        <div class="price-search-status" id="priceSearchStatus" role="status" aria-live="polite">
-          A integração começa pelo Mercado Livre e poderá receber novas lojas e parceiros depois.
-        </div>
-
-        <div class="price-results-summary" id="priceResultsSummary" hidden></div>
-        <div class="price-results-grid" id="priceResultsGrid"></div>
-
-        <div class="price-disclaimer">
-          <strong>Antes de comprar</strong>
-          <p>Confira descrição, quantidade, frete e preço final no site da loja. O GetGoList não altera valores nem conclui a compra.</p>
         </div>
       </section>
     </div>

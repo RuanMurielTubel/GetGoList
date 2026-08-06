@@ -2898,9 +2898,11 @@
         heading.appendChild(chevron);
         heading.appendChild(labels);
 
+        const sectorTotal = sectorItems.reduce((sum, { item }) => sum + item.total, 0);
+
         const count = document.createElement('span');
         count.className = 'sector-count';
-        count.textContent = `${sectorItems.length} item${sectorItems.length === 1 ? '' : 's'}`;
+        count.textContent = `${sectorItems.length} item${sectorItems.length === 1 ? '' : 's'} · R$ ${sectorTotal.toFixed(2).replace('.', ',')}`;
 
         header.appendChild(heading);
         header.appendChild(count);

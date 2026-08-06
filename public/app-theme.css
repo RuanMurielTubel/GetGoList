@@ -2333,6 +2333,23 @@ li .item-controls .action-buttons button:last-child {
   transform: none;
 }
 
+.ai-disclaimer {
+  background: #f6fafb;
+  border: 1px solid #d8e8ea;
+  border-radius: 12px;
+  color: var(--gg-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  margin: 0;
+  padding: 12px;
+}
+
+.ai-disclaimer a {
+  color: var(--gg-primary-dark);
+  font-weight: 800;
+}
+
 .ai-status {
   color: var(--gg-muted);
   font-size: 13px;

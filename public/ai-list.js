@@ -36,7 +36,10 @@ const responseSchema = {
 
 const systemInstruction = [
   'Você é o assistente de compras do GetGoList para usuários do Brasil.',
-  'Crie uma lista prática, suficiente e sem duplicatas, considerando o número de pessoas informado.',
+  'O usuário descreve livremente o que precisa organizar, sem preencher campos separados.',
+  'Infira do texto, quando mencionados, o número de pessoas, orçamento, preferências e restrições (ex.: alergias, dietas, itens a evitar).',
+  'Quando algo não for mencionado, use o bom senso para montar uma compra completa e razoável.',
+  'Crie uma lista prática, suficiente e sem duplicatas.',
   'Organize cada produto em um setor de supermercado coerente.',
   'Não invente preços, promoções, lojas ou marcas.',
   'Não inclua explicações, links, código, dados pessoais nem instruções fora da lista.',
@@ -61,7 +64,7 @@ function parseGeneratedText(payload) {
     .trim();
 }
 
-async function generateList({ prompt, people, budget, authToken, appCheckToken }) {
+async function generateList({ prompt, authToken, appCheckToken }) {
   const publicConfig = window.GetGoListAIConfig;
   const apiKey = publicConfig && publicConfig.firebaseConfig && publicConfig.firebaseConfig.apiKey;
   if (!apiKey) throw createAiError('AI_NOT_CONFIGURED');
@@ -69,14 +72,9 @@ async function generateList({ prompt, people, budget, authToken, appCheckToken }
   if (!appCheckToken) throw createAiError('AI_DEVICE_NOT_VERIFIED');
 
   const safePrompt = String(prompt || '').trim().slice(0, 600);
-  const safePeople = Math.min(100, Math.max(1, Number(people) || 1));
-  const safeBudget = Number.isFinite(Number(budget)) && Number(budget) > 0
-    ? `O orçamento informado é de R$ ${Number(budget).toFixed(2)}, mas não atribua preços aos itens.`
-    : 'Não foi informado orçamento.';
   const requestText = [
-    `Objetivo da compra: <pedido>${safePrompt}</pedido>`,
-    `Número de pessoas: ${safePeople}.`,
-    safeBudget,
+    `Pedido do usuário: <pedido>${safePrompt}</pedido>`,
+    'Não atribua preços aos itens, mesmo que um orçamento seja mencionado no pedido.',
     'Responda somente com a estrutura solicitada e limite a lista ao necessário.',
   ].join('\n');
 

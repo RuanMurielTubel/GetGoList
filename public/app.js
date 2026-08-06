@@ -1276,14 +1276,13 @@
       const preview = document.getElementById('aiListPreview');
       const nameInput = document.getElementById('aiPreviewListName');
       const budgetInput = document.getElementById('aiPreviewBudget');
-      const sourceBudget = document.getElementById('aiBudgetInput');
       const itemsContainer = document.getElementById('aiPreviewItems');
       const itemCount = document.getElementById('aiPreviewItemCount');
       if (!preview || !nameInput || !budgetInput || !itemsContainer || !itemCount) return;
 
       aiSuggestedItems = suggestion.items.slice();
       nameInput.value = suggestion.listName;
-      budgetInput.value = sourceBudget ? sourceBudget.value : '';
+      budgetInput.value = '';
       itemsContainer.replaceChildren();
 
       aiSuggestedItems.forEach((item, index) => {
@@ -1492,9 +1491,6 @@
     async function generateAiList(event) {
       if (event) event.preventDefault();
       const promptInput = document.getElementById('aiListPrompt');
-      const peopleInput = document.getElementById('aiPeopleCount');
-      const budgetInput = document.getElementById('aiBudgetInput');
-      const consentInput = document.getElementById('aiTermsConsent');
       const button = document.getElementById('generateAiListButton');
       const prompt = cleanText(promptInput && promptInput.value, 600);
 
@@ -1512,11 +1508,6 @@
         if (promptInput) promptInput.focus();
         return;
       }
-      if (!consentInput || !consentInput.checked) {
-        setAiListStatus('Confirme a idade mínima e o aviso de privacidade para usar a IA.', true);
-        if (consentInput) consentInput.focus();
-        return;
-      }
       const now = Date.now();
       if (now - lastAiGenerationAt < 10000) {
         setAiListStatus('Aguarde alguns segundos antes de pedir outra lista.', true);
@@ -1527,8 +1518,6 @@
         return;
       }
 
-      const people = boundedNumber(peopleInput && peopleInput.value, 1, 100, 4);
-      const budget = parsePrice(budgetInput && budgetInput.value);
       lastAiGenerationAt = now;
       if (button) button.disabled = true;
       setAiListStatus('Organizando quantidades, produtos e setores…');
@@ -1540,8 +1529,6 @@
         ]);
         const result = await window.GetGoListAI.generateList({
           prompt,
-          people,
-          budget,
           authToken,
           appCheckToken,
         });
@@ -4428,7 +4415,6 @@
       const itemPrice = document.getElementById('itemPrice');
       const balanceInput = document.getElementById('balanceInput');
       const newListBalance = document.getElementById('newListBalance');
-      const aiBudgetInput = document.getElementById('aiBudgetInput');
       const aiPreviewBudget = document.getElementById('aiPreviewBudget');
 
       if (menuToggle) {
@@ -4493,11 +4479,6 @@
       }
       if (newListBalance) {
         newListBalance.addEventListener('input', function () {
-          formatPrice(this);
-        });
-      }
-      if (aiBudgetInput) {
-        aiBudgetInput.addEventListener('input', function () {
           formatPrice(this);
         });
       }
@@ -4650,14 +4631,6 @@
       if (aiListForm) {
         aiListForm.addEventListener('submit', generateAiList);
       }
-      document.querySelectorAll('[data-ai-suggestion]').forEach((button) => {
-        button.addEventListener('click', () => {
-          const promptInput = document.getElementById('aiListPrompt');
-          if (!promptInput) return;
-          promptInput.value = button.dataset.aiSuggestion || '';
-          promptInput.focus();
-        });
-      });
       if (createAiListButton) {
         createAiListButton.addEventListener('click', createListFromAiPreview);
       }

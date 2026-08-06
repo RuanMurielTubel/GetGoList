@@ -1129,25 +1129,6 @@
           <form id="aiListForm" class="ai-list-form">
             <label for="aiListPrompt">O que você precisa organizar?</label>
             <textarea id="aiListPrompt" maxlength="600" rows="4" placeholder="Ex.: churrasco para 12 pessoas, com bebidas sem álcool e acompanhamentos"></textarea>
-            <div class="ai-form-options">
-              <label>
-                Pessoas
-                <input id="aiPeopleCount" type="number" min="1" max="100" value="4" inputmode="numeric">
-              </label>
-              <label>
-                Orçamento opcional
-                <input id="aiBudgetInput" type="text" inputmode="decimal" placeholder="R$ 0,00">
-              </label>
-            </div>
-            <div class="ai-suggestion-chips" aria-label="Exemplos de listas">
-              <button type="button" data-ai-suggestion="Compra semanal equilibrada para uma família">Compra da semana</button>
-              <button type="button" data-ai-suggestion="Churrasco completo com acompanhamentos e bebidas">Churrasco</button>
-              <button type="button" data-ai-suggestion="Festa de aniversário simples com comidas, bebidas e descartáveis">Aniversário</button>
-            </div>
-            <label class="ai-consent">
-              <input id="aiTermsConsent" type="checkbox">
-              <span>Confirmo ter 18 anos ou mais e não incluirei dados pessoais, sensíveis ou confidenciais. O pedido será processado pelo Google Gemini. <a href="/privacidade#inteligencia-artificial">Saiba como tratamos esses dados</a>.</span>
-            </label>
             <button type="submit" class="ai-generate-button" id="generateAiListButton">
               <span aria-hidden="true">✦</span>
               <span>Montar lista com IA</span>

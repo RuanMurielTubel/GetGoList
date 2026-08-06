@@ -37,6 +37,14 @@
     let subscriptionUnsubscribe = null;
     let checkoutReturnPending = false;
 
+    // O bridge nativo do Capacitor injeta window.Capacitor antes dos
+    // scripts da página rodarem — só existe dentro do app Android, nunca
+    // no navegador. Usado pra manter o menu fixo (sempre aberto) na web e
+    // recolhível como hoje só dentro do app.
+    const isNativeAppShell = typeof window.Capacitor !== 'undefined'
+      && typeof window.Capacitor.isNativePlatform === 'function'
+      && window.Capacitor.isNativePlatform();
+
     const firebaseConfig = {
       apiKey: "AIzaSyAFj6YWQfz3dI2motK3qH9xc0UNVF7TzqY",
       authDomain: "getgolist.firebaseapp.com",
@@ -2361,6 +2369,13 @@
     }
 
     function initializeCompactNav() {
+      if (!isNativeAppShell) {
+        // Na web o menu fica fixo, sempre aberto, sem opção de recolher.
+        const toggle = document.getElementById('navRailToggle');
+        if (toggle) toggle.style.display = 'none';
+        setCompactNavCollapsed(false, false);
+        return;
+      }
       let collapsed = false;
       try {
         collapsed = localStorage.getItem('compactNavCollapsed') === '1';
@@ -2371,7 +2386,9 @@
     }
 
     function handleSidebarNavClick(action) {
-      setCompactNavCollapsed(true);
+      if (isNativeAppShell) {
+        setCompactNavCollapsed(true);
+      }
       action();
     }
 

@@ -2432,6 +2432,14 @@
       if (sectionId === 'managementSection') {
         updateDashboard();
       }
+      if (sectionId === 'shoppingSection') {
+        // Revalida o atalho de "lista compartilhada recente" toda vez que
+        // volta pra essa tela — sem isso, ele só era atualizado no login,
+        // e clicar num atalho de uma lista já finalizada (por você ou por
+        // quem é dono dela) derrubava pra tela inicial com um alerta fácil
+        // de não perceber.
+        syncSharedListsForAccount();
+      }
       if (sectionId === 'productsSection') {
         populateSectorSelect();
         updateList();
@@ -3845,14 +3853,20 @@
       if (finishWithoutDivisionButton) finishWithoutDivisionButton.disabled = true;
       const ownerEmail = (currentFirebaseUser.email || '').toLowerCase();
 
-      remoteListReference.update({
-        allowedEmails: ownerEmail ? [ownerEmail] : [],
-        linkAccess: false,
-        sharingEnded: true,
-        endedBy: currentFirebaseUser.uid,
-        endedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }).then(() => {
+      // Precisa terminar ANTES do update abaixo: a rota lê quem tinha
+      // acesso pra avisar por e-mail, e o update seguinte já zera
+      // allowedEmails. Falha no envio não impede a finalização em si —
+      // só não deixa a leitura da rota disputar com a escrita do update.
+      authenticatedEmailRequest('/api/email/share-ended', { listId: sharedListId })
+        .catch((error) => console.warn('Não foi possível avisar os colaboradores por e-mail.', error))
+        .then(() => remoteListReference.update({
+          allowedEmails: ownerEmail ? [ownerEmail] : [],
+          linkAccess: false,
+          sharingEnded: true,
+          endedBy: currentFirebaseUser.uid,
+          endedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        })).then(() => {
         sharedListEnded = true;
         allowEndedSharedDivision = shouldDivide;
         clearRememberedSharedList(sharedListId);

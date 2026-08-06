@@ -26,7 +26,11 @@ export default function PrivacyPage() {
           por que eles são necessários, com quem podem ser compartilhados e como
           você pode exercer seus direitos.
         </p>
-        <span className="policy-updated">Atualizada em 3 de agosto de 2026</span>
+        <span className="policy-updated">Atualizada em 6 de agosto de 2026</span>
+        <p className="policy-lead">
+          Para condições de uso, planos, cobrança e cancelamento, consulte também
+          os <Link href="/termos">Termos de Uso</Link>.
+        </p>
 
         <section>
           <h2>1. Quem trata os dados</h2>
@@ -44,15 +48,19 @@ export default function PrivacyPage() {
             <li><strong>Listas:</strong> nomes das listas, saldo ou orçamento, produtos, setores, quantidades, preços, itens marcados e histórico de alterações.</li>
             <li><strong>Colaboração:</strong> pessoas autorizadas, participantes que acessaram, data do acesso e identificação de quem fez uma alteração.</li>
             <li><strong>Divisão de conta:</strong> e-mails dos destinatários, quantidade de participantes, valores e chave PIX ou dados de pagamento informados pelo usuário.</li>
+            <li><strong>Assinatura e pagamento:</strong> plano contratado, status da assinatura, datas de início e renovação, e identificador, valor e status de cada pagamento processado pelo Mercado Pago. O GetGoList não recebe nem armazena número de cartão.</li>
             <li><strong>Segurança e funcionamento:</strong> tokens de autenticação, registros técnicos, informações do dispositivo e sinais usados para prevenir abuso e acessos indevidos.</li>
             <li><strong>Criação com inteligência artificial:</strong> descrição da compra, número de pessoas, orçamento opcional e a sugestão de lista gerada.</li>
             <li><strong>Comparação de preços:</strong> nome do produto pesquisado, fonte consultada, data da consulta e localização geral usada como referência para disponibilidade ou frete.</li>
+            <li><strong>Anúncios:</strong> nos planos Free e Cesta, o Google AdSense pode usar identificadores e cookies para exibir e medir anúncios. Veja a seção 6-A.</li>
             <li><strong>Dados locais:</strong> preferências e cópias temporárias podem ficar armazenadas no navegador ou no aplicativo para melhorar o funcionamento e a continuidade de uso.</li>
           </ul>
           <p>
-            O GetGoList não solicita dados de cartão e não realiza, intermedeia ou
-            confirma pagamentos. As informações de PIX ou conta são apenas
-            repassadas, por escolha do usuário, na mensagem de divisão.
+            O GetGoList não solicita nem armazena dados de cartão. Os pagamentos das
+            assinaturas Cesta e Cestão são processados pelo Mercado Pago, que atua
+            como operador desses dados conforme sua própria política de privacidade.
+            Nas mensagens de divisão de conta, a chave PIX ou os dados informados são
+            apenas repassados, por escolha do usuário, e não passam pelo Mercado Pago.
           </p>
         </section>
 
@@ -66,6 +74,8 @@ export default function PrivacyPage() {
             <li>Manter o serviço disponível, corrigir falhas, combater fraude e melhorar a segurança.</li>
             <li>Gerar uma sugestão de produtos e setores quando você solicitar a criação de uma lista com inteligência artificial.</li>
             <li>Consultar e ordenar ofertas de fontes online conectadas quando você solicitar uma comparação de preços.</li>
+            <li>Processar a assinatura de um plano pago, confirmar pagamentos e aplicar automaticamente os limites e recursos do plano contratado.</li>
+            <li>Exibir e medir anúncios nos planos Free e Cesta.</li>
             <li>Cumprir obrigações legais e atender solicitações legítimas de titulares ou autoridades.</li>
           </ul>
           <p>
@@ -129,6 +139,8 @@ export default function PrivacyPage() {
             <li><strong>Vercel:</strong> hospedagem e entrega do site e das rotas do sistema.</li>
             <li><strong>Titan/GoDaddy:</strong> envio de mensagens transacionais pelo domínio getgolist.com.</li>
             <li><strong>Mercado Livre:</strong> primeira fonte prevista para consulta de anúncios e preços online; somente o termo pesquisado é enviado pelo servidor do GetGoList.</li>
+            <li><strong>Mercado Pago:</strong> processamento dos pagamentos e da cobrança recorrente das assinaturas Cesta e Cestão.</li>
+            <li><strong>Google AdSense:</strong> exibição e medição de anúncios nos planos Free e Cesta.</li>
           </ul>
           <p>
             Alguns fornecedores podem tratar dados em outros países. Nesses casos,
@@ -136,6 +148,27 @@ export default function PrivacyPage() {
             transferência internacional de dados.
           </p>
           <p>O GetGoList não vende dados pessoais.</p>
+        </section>
+
+        <section>
+          <h2 id="publicidade">6-A. Publicidade e cookies de anúncios</h2>
+          <p>
+            Nos planos Free e Cesta, o GetGoList exibe anúncios fornecidos pelo Google
+            AdSense em espaços específicos da tela, sem interromper o uso das listas.
+            O plano Cestão não exibe nenhum anúncio.
+          </p>
+          <p>
+            Para selecionar e medir anúncios, o Google AdSense pode usar cookies e
+            identificadores semelhantes no seu navegador. Você pode gerenciar ou
+            desativar a personalização de anúncios do Google em{" "}
+            <a href="https://myadcenter.google.com" target="_blank" rel="noreferrer">
+              myadcenter.google.com
+            </a>{" "}
+            e obter mais detalhes sobre o tratamento feito pelo Google em{" "}
+            <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noreferrer">
+              policies.google.com/technologies/ads
+            </a>.
+          </p>
         </section>
 
         <section>
@@ -150,6 +183,13 @@ export default function PrivacyPage() {
             Códigos de confirmação possuem validade curta e deixam de ser úteis após
             o uso ou a expiração. Registros técnicos são conservados somente pelo tempo
             necessário para segurança, prevenção de abuso e diagnóstico de falhas.
+          </p>
+          <p>
+            O histórico de pagamentos e os dados da assinatura são mantidos enquanto a
+            conta existir, podendo permanecer por um período adicional após o
+            cancelamento para fins de comprovação fiscal e contábil, prazo esse ainda
+            em definição junto à nossa contabilidade e que será detalhado aqui antes do
+            lançamento da cobrança.
           </p>
         </section>
 

@@ -15,11 +15,13 @@ import {
 import { Capacitor } from "@capacitor/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { firebaseAuth } from "@/lib/firebase";
 import { getAppCheckToken } from "@/lib/app-check";
+import PlanCards from "@/components/PlanCards";
+import type { PlanId } from "@/lib/shared/plan-limits";
 
-type Mode = "login" | "register" | "verify";
+type Mode = "login" | "register" | "verify" | "plan";
 
 function strongPasswordMessage(password: string) {
   if (password.length < 8) return "A senha precisa ter pelo menos 8 caracteres.";
@@ -91,6 +93,7 @@ export default function LoginPage() {
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
   const [isNativeApp, setIsNativeApp] = useState(false);
+  const skipAutoRedirectRef = useRef(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -115,6 +118,7 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
+        if (skipAutoRedirectRef.current) return;
         router.replace(redirectTo);
       }
     });
@@ -210,6 +214,7 @@ export default function LoginPage() {
         );
         await updateProfile(credential.user, { displayName: name.trim() });
         await selectFreePlanDefault(credential.user);
+        skipAutoRedirectRef.current = true;
         setMode("verify");
         await requestVerificationCode(credential.user, false);
         setFeedback("Enviamos um código de 6 dígitos para o seu e-mail.");
@@ -338,9 +343,58 @@ export default function LoginPage() {
       }
       await user.reload();
       await user.getIdToken(true);
+      if (skipAutoRedirectRef.current) {
+        setMode("plan");
+        setLoading(false);
+        return;
+      }
       router.replace(redirectTo || "/index.html");
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Não foi possível confirmar o código.");
+      setLoading(false);
+    }
+  }
+
+  function finishOnboarding() {
+    skipAutoRedirectRef.current = false;
+    router.replace(redirectTo || "/index.html");
+  }
+
+  async function handlePlanSelection(plan: PlanId) {
+    if (plan === "free") {
+      finishOnboarding();
+      return;
+    }
+    setFeedback("");
+    setLoading(true);
+    try {
+      const user = firebaseAuth.currentUser;
+      if (!user) throw new Error("Sua sessão expirou. Entre novamente.");
+      const [token, appCheckToken] = await Promise.all([
+        user.getIdToken(),
+        getAppCheckToken(),
+      ]);
+      const response = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "X-Firebase-AppCheck": appCheckToken,
+        },
+        body: JSON.stringify({ plan }),
+      });
+      if (response.status === 503) {
+        setFeedback("Os pagamentos ainda estão sendo configurados. Você pode assinar depois em Minha Conta.");
+        setLoading(false);
+        return;
+      }
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.checkoutUrl) {
+        throw new Error("Não foi possível iniciar o pagamento agora.");
+      }
+      window.location.href = result.checkoutUrl;
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Não foi possível iniciar o pagamento agora.");
       setLoading(false);
     }
   }
@@ -472,6 +526,29 @@ export default function LoginPage() {
                 Voltar para o login
               </button>
             </div>
+          </div>
+        ) : mode === "plan" ? (
+          <div className="account-plan-picker">
+            <div className="account-card-heading">
+              <p className="eyebrow">Quase lá</p>
+              <h2 id="account-title">Escolha seu plano</h2>
+              <p>
+                Comece no Free ou já assine um plano pago — dá para trocar
+                quando quiser em Minha Conta.
+              </p>
+            </div>
+            <PlanCards currentPlan="free" onSelect={handlePlanSelection} />
+            {feedback && (
+              <p className="account-feedback" role="status">{feedback}</p>
+            )}
+            <button
+              className="password-reset"
+              disabled={loading}
+              onClick={finishOnboarding}
+              type="button"
+            >
+              Decidir depois
+            </button>
           </div>
         ) : (
           <>
@@ -626,7 +703,8 @@ export default function LoginPage() {
         </div>
 
         <p className="account-terms">
-          Ao usar o GetGoList, você declara ciência da nossa{" "}
+          Ao usar o GetGoList, você concorda com os{" "}
+          <Link href="/termos">Termos de Uso</Link> e declara ciência da nossa{" "}
           <Link href="/privacidade">Política de Privacidade e Segurança</Link>.
         </p>
           </>

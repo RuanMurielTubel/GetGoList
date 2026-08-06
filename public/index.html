@@ -1133,7 +1133,7 @@
               <span aria-hidden="true">✦</span>
               <span>Montar lista com IA</span>
             </button>
-            <p class="ai-disclaimer">Recurso destinado a maiores de 18 anos. Seu pedido é processado pelo Google Gemini — evite incluir dados pessoais, sensíveis ou confidenciais. <a href="/privacidade#inteligencia-artificial">Saiba como tratamos esses dados</a>.</p>
+            <p class="ai-disclaimer">Atenção! Seu pedido é processado pelo Google Gemini — evite incluir dados pessoais, sensíveis ou confidenciais. <a href="/privacidade#inteligencia-artificial">Saiba como tratamos esses dados</a>.</p>
             <p class="ai-status" id="aiListStatus" role="status" aria-live="polite"></p>
           </form>
         </section>
@@ -1153,6 +1153,10 @@
             <button type="button" class="offers-open-button" id="openPricesFromHomeButton">Pesquisar menores preços</button>
           </div>
         </aside>
+      </div>
+
+      <div class="ad-slot" id="adSlotHome">
+        <ins class="adsbygoogle" style="display:block" data-ad-format="auto" data-full-width-responsive="true"></ins>
       </div>
 
       <section class="ai-list-preview" id="aiListPreview" aria-labelledby="aiPreviewTitle" hidden>
@@ -1361,6 +1365,10 @@
       
       <ul id="shoppingList"></ul>
       <div class="total">Total: R$ <span id="total">0,00</span></div>
+
+      <div class="ad-slot" id="adSlotProducts">
+        <ins class="adsbygoogle" style="display:block" data-ad-format="auto" data-full-width-responsive="true"></ins>
+      </div>
     </div>
     
     <div id="historySection" class="section">
@@ -1491,6 +1499,30 @@
             <p class="profile-note">Sua foto do Google aparece somente como identificação do perfil. Senhas e dados de acesso nunca ficam visíveis.</p>
           </aside>
         </div>
+
+        <section class="profile-plan-card">
+          <div class="profile-section-heading">
+            <div>
+              <small>Assinatura</small>
+              <h3>Seu plano no GetGoList</h3>
+            </div>
+            <span id="planUsageText"></span>
+          </div>
+          <div class="plan-summary-row">
+            <span class="plan-summary-badge" id="planBadge">Free</span>
+            <span id="planStatusText">Plano gratuito ativo.</span>
+          </div>
+          <div class="profile-actions">
+            <button class="profile-primary-button" id="planUpgradeButton">Ver planos</button>
+            <button class="profile-secondary-button" id="planCancelButton" style="display:none">Cancelar assinatura</button>
+          </div>
+          <div class="plan-payment-history">
+            <h4>Histórico de pagamentos</h4>
+            <ul id="planPaymentHistoryList">
+              <li class="plan-payment-empty">Nenhum pagamento registrado ainda.</li>
+            </ul>
+          </div>
+        </section>
       </div>
     </div>
 

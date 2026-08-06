@@ -1,0 +1,87 @@
+import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+import { adminFirestore } from "@/lib/server/firebase-admin";
+import { cancelPreapproval } from "@/lib/server/mercadopago";
+import {
+  authenticatedVerifiedUser,
+  verifiedAppRequest,
+} from "@/lib/server/request-auth";
+import { withinRateLimit } from "@/lib/server/rate-limit";
+
+export const runtime = "nodejs";
+
+export async function POST(request: Request) {
+  try {
+    await verifiedAppRequest(request);
+    const user = await authenticatedVerifiedUser(request);
+
+    if (!(await withinRateLimit(`billing-cancel:${user.uid}`, 10, 15 * 60 * 1000))) {
+      return NextResponse.json({ ok: false }, { status: 429 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const downgradeToFree = body.downgradeToFree === true;
+
+    const reference = adminFirestore()
+      .collection("users")
+      .doc(user.uid)
+      .collection("billing")
+      .doc("subscription");
+
+    const snapshot = await reference.get();
+    const existing = snapshot.data();
+    const preapprovalId = existing?.mercadoPago?.preapprovalId;
+
+    if (preapprovalId && existing?.status !== "cancelled") {
+      try {
+        await cancelPreapproval(preapprovalId);
+      } catch (error) {
+        console.warn("Não foi possível cancelar a assinatura no Mercado Pago.", error);
+      }
+    }
+
+    if (downgradeToFree) {
+      // Free não tem período de cobrança em andamento — o benefício some
+      // imediatamente, diferente do cancelamento normal (que só encerra no
+      // fim do período já pago).
+      await reference.set(
+        {
+          plan: "free",
+          status: "active",
+          pendingPlan: null,
+          cancelAtPeriodEnd: false,
+          cancelledAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+          updatedBy: "cancel",
+        },
+        { merge: true },
+      );
+      return NextResponse.json({ ok: true, plan: "free" });
+    }
+
+    await reference.set(
+      {
+        cancelAtPeriodEnd: true,
+        cancelledAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: "cancel",
+      },
+      { merge: true },
+    );
+
+    return NextResponse.json({ ok: true, cancelAtPeriodEnd: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "UNAUTHORIZED") {
+      return NextResponse.json({ ok: false }, { status: 401 });
+    }
+    if (message === "VERIFIED_ACCOUNT_REQUIRED" || message.startsWith("APP_CHECK_")) {
+      return NextResponse.json({ ok: false }, { status: 403 });
+    }
+    if (message.includes("NOT_CONFIGURED")) {
+      return NextResponse.json({ ok: false, configurationPending: true }, { status: 503 });
+    }
+    console.error("Falha ao cancelar a assinatura.", error);
+    return NextResponse.json({ ok: false }, { status: 500 });
+  }
+}

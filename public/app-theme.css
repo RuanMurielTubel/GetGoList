@@ -2790,12 +2790,70 @@ button.profile-avatar:hover {
 }
 
 .profile-editor-card,
-.profile-summary-card {
+.profile-summary-card,
+.profile-plan-card {
   background: var(--gg-surface);
   border: 1px solid var(--gg-line);
   border-radius: 18px;
   box-shadow: var(--gg-shadow-sm);
   padding: 20px;
+}
+
+.profile-plan-card {
+  margin-top: 16px;
+}
+
+.plan-summary-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.plan-summary-badge {
+  background: var(--gg-primary-pale);
+  border-radius: 999px;
+  color: var(--gg-primary-dark);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 14px;
+  text-transform: uppercase;
+}
+
+.plan-summary-row > span:not(.plan-summary-badge) {
+  color: var(--gg-muted);
+  font-size: 13px;
+}
+
+.plan-payment-history {
+  border-top: 1px solid var(--gg-line);
+  margin-top: 18px;
+  padding-top: 16px;
+}
+
+.plan-payment-history h4 {
+  color: var(--gg-ink);
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.plan-payment-history ul {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plan-payment-history li {
+  color: var(--gg-ink);
+  display: flex;
+  font-size: 13px;
+  justify-content: space-between;
+}
+
+.plan-payment-empty {
+  color: var(--gg-muted);
 }
 
 .profile-section-heading {
@@ -3470,4 +3528,18 @@ body.nav-collapsed .footer {
   .sector-quick-add-actions button {
     flex: 1;
   }
+}
+
+.ad-slot {
+  background: var(--gg-soft);
+  border: 1px dashed var(--gg-line);
+  border-radius: 14px;
+  margin: 18px 0;
+  min-height: 90px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.ad-slot-hidden {
+  display: none;
 }

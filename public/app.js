@@ -35,6 +35,7 @@
     let lastAiGenerationAt = 0;
     let currentSubscription = null;
     let subscriptionUnsubscribe = null;
+    let checkoutReturnPending = false;
 
     const firebaseConfig = {
       apiKey: "AIzaSyAFj6YWQfz3dI2motK3qH9xc0UNVF7TzqY",
@@ -44,10 +45,6 @@
       appId: "1:448077185241:web:f6b41684c7c34d12ecbec8"
     };
     const recaptchaSiteKey = "6Lf_8nEtAAAAACSA6bpk3s2s9raecd6-iGqIiyxI";
-    window.GetGoListAIConfig = Object.freeze({
-      firebaseConfig: Object.freeze({ ...firebaseConfig }),
-      appCheckSiteKey: recaptchaSiteKey,
-    });
     const MAX_LISTS = 50;
     const MAX_ITEMS_PER_LIST = 500;
     const MAX_HISTORY_PER_LIST = 1000;
@@ -66,6 +63,40 @@
     function currentPlanLimits() {
       const plan = currentSubscription && currentSubscription.plan;
       return PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+    }
+
+    // Vazio até a conta do Google AdSense ser criada — enquanto isso,
+    // initializeAds() não faz nada, sem carregar um script inválido.
+    const ADSENSE_PUBLISHER_ID = '';
+    let adsInitialized = false;
+
+    function initializeAds() {
+      if (adsInitialized || !ADSENSE_PUBLISHER_ID) {
+        return;
+      }
+      adsInitialized = true;
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`;
+      script.crossOrigin = 'anonymous';
+      document.head.appendChild(script);
+      document.querySelectorAll('.ad-slot .adsbygoogle').forEach(() => {
+        try {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        } catch (error) {
+          console.warn('Não foi possível carregar um anúncio.', error);
+        }
+      });
+    }
+
+    function updateAdVisibility() {
+      const showAds = currentPlanLimits().showAds;
+      document.querySelectorAll('.ad-slot').forEach((slot) => {
+        slot.classList.toggle('ad-slot-hidden', !showAds);
+      });
+      if (showAds) {
+        initializeAds();
+      }
     }
 
     const predefinedSectors = [
@@ -1096,8 +1127,11 @@
         });
     }
 
+    const PLAN_NAMES = { free: 'Free', cesta: 'Cesta', cestao: 'Cestão' };
+
     function updatePlanUi() {
       const limits = currentPlanLimits();
+      updateAdVisibility();
       const managementButton = document.querySelector('.management-button');
       const shareButton = document.querySelector('.share-button');
       if (managementButton) {
@@ -1105,6 +1139,112 @@
       }
       if (shareButton) {
         shareButton.style.display = limits.canShare ? '' : 'none';
+      }
+
+      const plan = (currentSubscription && currentSubscription.plan) || 'free';
+      const badge = document.getElementById('planBadge');
+      const statusText = document.getElementById('planStatusText');
+      const usageText = document.getElementById('planUsageText');
+      const upgradeButton = document.getElementById('planUpgradeButton');
+      const cancelButton = document.getElementById('planCancelButton');
+
+      if (badge) {
+        badge.textContent = PLAN_NAMES[plan] || 'Free';
+      }
+      if (statusText) {
+        if (currentSubscription && currentSubscription.cancelAtPeriodEnd) {
+          statusText.textContent = 'Assinatura cancelada — benefícios ativos até o fim do período já pago.';
+        } else if (currentSubscription && currentSubscription.pendingPlan) {
+          const pendingName = PLAN_NAMES[currentSubscription.pendingPlan] || currentSubscription.pendingPlan;
+          statusText.textContent = `Aguardando confirmação do pagamento do plano ${pendingName}.`;
+        } else if (plan === 'free') {
+          statusText.textContent = 'Plano gratuito ativo.';
+        } else {
+          statusText.textContent = 'Assinatura ativa.';
+        }
+      }
+      if (usageText) {
+        const listCount = Object.keys(lists).length;
+        usageText.textContent = Number.isFinite(limits.maxLists)
+          ? `${listCount} de ${limits.maxLists} listas usadas`
+          : `${listCount} listas (ilimitado)`;
+      }
+      if (upgradeButton) {
+        upgradeButton.textContent = plan === 'free' ? 'Ver planos' : 'Trocar de plano';
+      }
+      if (cancelButton) {
+        const hasPaidPlan = plan !== 'free';
+        const alreadyCancelling = Boolean(currentSubscription && currentSubscription.cancelAtPeriodEnd);
+        cancelButton.style.display = hasPaidPlan && !alreadyCancelling ? '' : 'none';
+      }
+    }
+
+    async function loadPaymentHistory() {
+      const list = document.getElementById('planPaymentHistoryList');
+      if (!list || !currentFirebaseUser) {
+        return;
+      }
+      try {
+        const [token, appCheckToken] = await Promise.all([
+          currentFirebaseUser.getIdToken(),
+          getFirebaseAppCheckToken(),
+        ]);
+        const response = await fetch('/api/billing/status', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-Firebase-AppCheck': appCheckToken,
+          },
+        });
+        if (!response.ok) return;
+        const result = await response.json();
+        const payments = Array.isArray(result.payments) ? result.payments : [];
+        if (!payments.length) {
+          list.innerHTML = '<li class="plan-payment-empty">Nenhum pagamento registrado ainda.</li>';
+          return;
+        }
+        list.innerHTML = '';
+        payments.forEach((payment) => {
+          const item = document.createElement('li');
+          const amount = document.createElement('span');
+          amount.textContent = `R$ ${(payment.amountCents / 100).toFixed(2).replace('.', ',')}`;
+          const status = document.createElement('span');
+          status.textContent = payment.status || '';
+          item.append(amount, status);
+          list.appendChild(item);
+        });
+      } catch (error) {
+        console.error('Não foi possível carregar o histórico de pagamentos.', error);
+      }
+    }
+
+    async function handleCancelSubscription() {
+      if (!currentFirebaseUser) return;
+      if (!confirm('Deseja cancelar sua assinatura? Os benefícios do plano pago continuam até o fim do período já pago.')) {
+        return;
+      }
+      const cancelButton = document.getElementById('planCancelButton');
+      if (cancelButton) cancelButton.disabled = true;
+      try {
+        const [token, appCheckToken] = await Promise.all([
+          currentFirebaseUser.getIdToken(),
+          getFirebaseAppCheckToken(),
+        ]);
+        const response = await fetch('/api/billing/cancel', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'X-Firebase-AppCheck': appCheckToken,
+          },
+          body: JSON.stringify({}),
+        });
+        if (!response.ok) throw new Error('CANCEL_FAILED');
+        alert('Assinatura cancelada. Os benefícios ficam ativos até o fim do período já pago.');
+      } catch (error) {
+        console.error('Não foi possível cancelar a assinatura.', error);
+        alert('Não foi possível cancelar agora. Tente novamente.');
+      } finally {
+        if (cancelButton) cancelButton.disabled = false;
       }
     }
 
@@ -1197,7 +1337,11 @@
               .collection('appData')
               .doc('lists');
           }
-          showSection(sharedListId ? 'productsSection' : 'homeSection');
+          showSection(checkoutReturnPending ? 'profileSection' : (sharedListId ? 'productsSection' : 'homeSection'));
+          if (checkoutReturnPending) {
+            checkoutReturnPending = false;
+            updateAccountPanel('Conta conectada • confirmando seu pagamento…');
+          }
           updateSharedModeUi();
           subscribeToRemoteLists();
           subscribeToSubscriptionStatus();
@@ -1236,6 +1380,11 @@
         window.history.replaceState({}, document.title, window.location.pathname);
       }
       if (sharedListId) {
+      }
+
+      checkoutReturnPending = urlParams.get('checkout') === 'return';
+      if (checkoutReturnPending) {
+        window.history.replaceState({}, document.title, `${window.location.pathname}?section=profileSection`);
       }
 
       // Tenta carregar listas do localStorage, mas ignore em modo de lista compartilhada.
@@ -1596,7 +1745,9 @@
       } catch (error) {
         console.error('Não foi possível gerar a lista inteligente.', error);
         const errorCode = error && (error.code || error.message);
-        const message = errorCode === 'AI_NOT_CONFIGURED'
+        const message = errorCode === 'AI_PLAN_REQUIRED'
+          ? 'Assine o plano Cestão para usar a criação de listas com IA.'
+          : errorCode === 'AI_NOT_CONFIGURED'
           ? 'A inteligência artificial está aguardando a ativação segura no Firebase.'
           : errorCode === 'AI_AUTH_REQUIRED'
             ? 'Entre novamente na sua conta para montar a lista com IA.'
@@ -2330,6 +2481,7 @@
       }
       if (sectionId === 'profileSection') {
         updateProfileSection();
+        loadPaymentHistory();
       }
       if (sectionId === 'divideSection') {
         document.getElementById('divisionResult').innerHTML = '';
@@ -4623,6 +4775,8 @@
       const finishAndDivideButton = document.getElementById('finishAndDivideButton');
       const finishWithoutDivisionButton = document.getElementById('finishWithoutDivisionButton');
       const cancelFinishSharingButton = document.getElementById('cancelFinishSharingButton');
+      const planUpgradeButton = document.getElementById('planUpgradeButton');
+      const planCancelButton = document.getElementById('planCancelButton');
       const aiListForm = document.getElementById('aiListForm');
       const createAiListButton = document.getElementById('createAiListButton');
       const discardAiListButton = document.getElementById('discardAiListButton');
@@ -4846,6 +5000,12 @@
       if (cancelFinishSharingButton) {
         cancelFinishSharingButton.addEventListener('click', () => closeDialog('finishSharingDialog'));
       }
+      if (planUpgradeButton) {
+        planUpgradeButton.addEventListener('click', () => { window.location.href = '/planos'; });
+      }
+      if (planCancelButton) {
+        planCancelButton.addEventListener('click', handleCancelSubscription);
+      }
     }
 
     // Event listener para fechar menu ao clicar fora
@@ -4860,6 +5020,7 @@
     initializeLists();
     initializeCompactNav();
     initializeFirebaseSync();
+    updateAdVisibility();
     setupDialogOverlayClose();
     setupEventHandlers();
     setupListButtons();

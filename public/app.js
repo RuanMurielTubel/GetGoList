@@ -68,9 +68,25 @@
       cesta:  { maxLists: 10, canShare: true,  hasAI: false, hasGestao: false, showAds: true },
       cestao: { maxLists: Infinity, canShare: true, hasAI: true, hasGestao: true, showAds: false },
     };
-    function currentPlanLimits() {
+    // Contas que sempre têm Cestão e nunca são cobradas — decisão manual,
+    // não uma assinatura paga. Mesma lista em src/lib/shared/plan-limits.ts
+    // (COMPLIMENTARY_CESTAO_EMAILS) e em firestore.rules.
+    const COMPLIMENTARY_CESTAO_EMAILS = ['gabrielamoraesn@gmail.com', 'tubel.mendes@gmail.com'];
+    function isComplimentaryCestaoAccount() {
+      const email = currentFirebaseUser && currentFirebaseUser.email
+        ? currentFirebaseUser.email.trim().toLowerCase()
+        : '';
+      return COMPLIMENTARY_CESTAO_EMAILS.includes(email);
+    }
+
+    function currentEffectivePlanId() {
+      if (isComplimentaryCestaoAccount()) return 'cestao';
       const plan = currentSubscription && currentSubscription.plan;
-      return PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+      return plan === 'cesta' || plan === 'cestao' ? plan : 'free';
+    }
+
+    function currentPlanLimits() {
+      return PLAN_LIMITS[currentEffectivePlanId()];
     }
 
     // Vazio até a conta do Google AdSense ser criada — enquanto isso,
@@ -1198,7 +1214,8 @@
         generateAiListButton.disabled = !limits.hasAI;
       }
 
-      const plan = (currentSubscription && currentSubscription.plan) || 'free';
+      const plan = currentEffectivePlanId();
+      const isComplimentary = isComplimentaryCestaoAccount();
       const badge = document.getElementById('planBadge');
       const statusText = document.getElementById('planStatusText');
       const usageText = document.getElementById('planUsageText');
@@ -1209,7 +1226,9 @@
         badge.textContent = PLAN_NAMES[plan] || 'Free';
       }
       if (statusText) {
-        if (currentSubscription && currentSubscription.cancelAtPeriodEnd) {
+        if (isComplimentary) {
+          statusText.textContent = 'Cestão cortesia — acesso completo, nunca cobrado.';
+        } else if (currentSubscription && currentSubscription.cancelAtPeriodEnd) {
           statusText.textContent = 'Assinatura cancelada — benefícios ativos até o fim do período já pago.';
         } else if (currentSubscription && currentSubscription.pendingPlan) {
           const pendingName = PLAN_NAMES[currentSubscription.pendingPlan] || currentSubscription.pendingPlan;
@@ -1227,12 +1246,13 @@
           : `${listCount} listas (ilimitado)`;
       }
       if (upgradeButton) {
+        upgradeButton.style.display = isComplimentary ? 'none' : '';
         upgradeButton.textContent = plan === 'free' ? 'Ver planos' : 'Trocar de plano';
       }
       if (cancelButton) {
         const hasPaidPlan = plan !== 'free';
         const alreadyCancelling = Boolean(currentSubscription && currentSubscription.cancelAtPeriodEnd);
-        cancelButton.style.display = hasPaidPlan && !alreadyCancelling ? '' : 'none';
+        cancelButton.style.display = !isComplimentary && hasPaidPlan && !alreadyCancelling ? '' : 'none';
       }
     }
 

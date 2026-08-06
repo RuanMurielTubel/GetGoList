@@ -5,6 +5,7 @@ import {
   authenticatedVerifiedUser,
   verifiedAppRequest,
 } from "@/lib/server/request-auth";
+import { COMPLIMENTARY_CESTAO_EMAILS, effectivePlan } from "@/lib/shared/plan-limits";
 
 export const runtime = "nodejs";
 
@@ -55,19 +56,22 @@ export async function GET(request: Request) {
     }
 
     const data = snapshot.data() || {};
+    const isComplimentary = COMPLIMENTARY_CESTAO_EMAILS.includes(
+      (user.email || "").trim().toLowerCase(),
+    );
     // Etapa B popula a subcoleção payments/ (webhook do Mercado Pago);
     // por enquanto o histórico sempre volta vazio.
     return NextResponse.json({
       ok: true,
       subscription: {
-        plan: data.plan || "free",
-        status: data.status || "active",
+        plan: effectivePlan(data.plan, user.email),
+        status: isComplimentary ? "active" : (data.status || "active"),
         startedAt: timestampMillis(data.startedAt),
-        renewsAt: timestampMillis(data.renewsAt),
-        cancelAtPeriodEnd: Boolean(data.cancelAtPeriodEnd),
-        cancelledAt: timestampMillis(data.cancelledAt),
-        expiredAt: timestampMillis(data.expiredAt),
-        pendingPlan: data.pendingPlan || null,
+        renewsAt: isComplimentary ? null : timestampMillis(data.renewsAt),
+        cancelAtPeriodEnd: isComplimentary ? false : Boolean(data.cancelAtPeriodEnd),
+        cancelledAt: isComplimentary ? null : timestampMillis(data.cancelledAt),
+        expiredAt: isComplimentary ? null : timestampMillis(data.expiredAt),
+        pendingPlan: isComplimentary ? null : (data.pendingPlan || null),
       },
       payments: [],
     });

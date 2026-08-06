@@ -332,3 +332,37 @@ test("cliente nunca grava diretamente em billing/subscription", async () => {
   );
   await assertSucceeds(getDoc(doc(user, `users/${uid}/billing/subscription`)));
 });
+
+test("contas cortesia (COMPLIMENTARY_CESTAO_EMAILS) têm acesso de Cestão mesmo sem documento de assinatura", async () => {
+  const uid = "complimentary-user";
+  const user = account(uid, "tubel.mendes@gmail.com");
+  const reference = doc(user, `users/${uid}/appData/lists`);
+
+  // Sem seedSubscription nenhum — nem documento de billing/subscription
+  // existe, e ainda assim o limite aplicado deve ser o do Cestão (sem
+  // limite prático), não o do Free.
+  await assertSucceeds(
+    setDoc(reference, { lists: listsOfSize(25), currentListName: "Lista 0" }),
+  );
+
+  const freeUid = "not-complimentary-user";
+  const freeUser = account(freeUid, "alguem-qualquer@getgolist.com");
+  await assertFails(
+    setDoc(doc(freeUser, `users/${freeUid}/appData/lists`), {
+      lists: listsOfSize(2),
+      currentListName: "Lista 0",
+    }),
+  );
+});
+
+test("conta cortesia pode criar compartilhamento novo mesmo sem assinatura paga registrada", async () => {
+  const uid = "complimentary-sharer";
+  const user = account(uid, "gabrielamoraesn@gmail.com");
+
+  await assertSucceeds(
+    setDoc(
+      doc(user, "sharedLists", listId),
+      sharedList({ owner: uid, ownerEmail: "gabrielamoraesn@gmail.com" }),
+    ),
+  );
+});

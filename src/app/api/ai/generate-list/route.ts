@@ -12,7 +12,7 @@ import {
   verifiedAppRequest,
 } from "@/lib/server/request-auth";
 import { withinRateLimit } from "@/lib/server/rate-limit";
-import { limitsForPlan } from "@/lib/shared/plan-limits";
+import { effectivePlan, limitsForPlan } from "@/lib/shared/plan-limits";
 
 export const runtime = "nodejs";
 
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       .collection("billing")
       .doc("subscription")
       .get();
-    const plan = subscriptionSnapshot.data()?.plan;
+    const plan = effectivePlan(subscriptionSnapshot.data()?.plan, user.email);
     if (!limitsForPlan(plan).hasAI) {
       return NextResponse.json({ ok: false, code: "AI_PLAN_REQUIRED" }, { status: 403 });
     }

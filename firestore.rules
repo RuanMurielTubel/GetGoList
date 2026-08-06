@@ -7,13 +7,24 @@ service cloud.firestore {
         && request.auth.token.email_verified == true;
     }
 
+    // Contas que sempre têm Cestão e nunca são cobradas — decisão manual,
+    // não uma assinatura paga. Mesma lista em src/lib/shared/plan-limits.ts
+    // (COMPLIMENTARY_CESTAO_EMAILS) e em public/app.js.
+    function isComplimentaryCestao(email) {
+      return email in ['gabrielamoraesn@gmail.com', 'tubel.mendes@gmail.com'];
+    }
+
     // Usuário sem documento de assinatura ainda (conta antiga, ou o
     // POST /api/billing/select-free-plan do cadastro ainda não rodou)
     // é tratado como "free" por padrão.
     function planId(userId) {
-      return exists(/databases/$(database)/documents/users/$(userId)/billing/subscription)
-        ? get(/databases/$(database)/documents/users/$(userId)/billing/subscription).data.get('plan', 'free')
-        : 'free';
+      return isComplimentaryCestao(request.auth.token.email)
+        ? 'cestao'
+        : (
+          exists(/databases/$(database)/documents/users/$(userId)/billing/subscription)
+            ? get(/databases/$(database)/documents/users/$(userId)/billing/subscription).data.get('plan', 'free')
+            : 'free'
+        );
     }
 
     function maxListsForPlan(plan) {

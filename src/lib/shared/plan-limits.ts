@@ -53,3 +53,22 @@ export function limitsForPlan(plan: string | undefined | null): PlanLimits {
   }
   return PLAN_LIMITS.free;
 }
+
+// Contas que sempre têm Cestão e nunca são cobradas — decisão manual,
+// não uma assinatura paga. Mesma lista replicada em public/app.js
+// (verificado por tests/plan-limits-sync.test.mjs) e em firestore.rules
+// (linguagem própria, não importa este arquivo). O efeito é aplicado na
+// LEITURA do plano (aqui, nas rotas server e nas rules) — nunca escreve
+// "cestao" no documento da assinatura, então um cancelamento ou qualquer
+// outra escrita acidental não consegue derrubar o acesso.
+export const COMPLIMENTARY_CESTAO_EMAILS = [
+  "gabrielamoraesn@gmail.com",
+  "tubel.mendes@gmail.com",
+];
+
+export function effectivePlan(storedPlan: string | undefined | null, email: string | undefined | null): PlanId {
+  if (email && COMPLIMENTARY_CESTAO_EMAILS.includes(email.trim().toLowerCase())) {
+    return "cestao";
+  }
+  return storedPlan === "cesta" || storedPlan === "cestao" ? storedPlan : "free";
+}

@@ -7,6 +7,7 @@ import {
   verifiedAppRequest,
 } from "@/lib/server/request-auth";
 import { withinRateLimit } from "@/lib/server/rate-limit";
+import { COMPLIMENTARY_CESTAO_EMAILS } from "@/lib/shared/plan-limits";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,11 @@ export async function POST(request: Request) {
     const user = await authenticatedVerifiedUser(request);
     if (!user.email) {
       return NextResponse.json({ ok: false }, { status: 400 });
+    }
+    // Essas contas já têm Cestão por decisão manual e nunca devem ser
+    // cobradas — nem por engano.
+    if (COMPLIMENTARY_CESTAO_EMAILS.includes(user.email.trim().toLowerCase())) {
+      return NextResponse.json({ ok: false, code: "ALREADY_COMPLIMENTARY" }, { status: 400 });
     }
 
     const body = await request.json().catch(() => ({}));

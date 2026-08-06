@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import {
-  AI_RESPONSE_SCHEMA,
   AI_SYSTEM_INSTRUCTION,
-  FIREBASE_AI_ENDPOINT,
+  DEEPSEEK_ENDPOINT,
+  DEEPSEEK_MODEL,
   buildAiRequestText,
   parseGeneratedText,
+  validateAiListResult,
 } from "@/lib/server/ai-list-prompt";
 import { adminFirestore } from "@/lib/server/firebase-admin";
 import {
@@ -16,8 +17,13 @@ import { effectivePlan, limitsForPlan } from "@/lib/shared/plan-limits";
 
 export const runtime = "nodejs";
 
-const FIREBASE_WEB_API_KEY =
-  process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyAFj6YWQfz3dI2motK3qH9xc0UNVF7TzqY";
+function deepSeekApiKey() {
+  const key = process.env.DEEPSEEK_API_KEY;
+  if (!key) {
+    throw new Error("DEEPSEEK_NOT_CONFIGURED");
+  }
+  return key;
+}
 
 export async function POST(request: Request) {
   try {
@@ -45,35 +51,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, code: "AI_EMPTY_RESULT" }, { status: 400 });
     }
 
-    // Reencaminha exatamente as mesmas credenciais que o cliente já provou
-    // nesta requisição (ID token + App Check) para o Firebase AI Logic —
-    // é o mesmo esquema de auth que o navegador usava chamando direto,
-    // só que agora com o gate de plano acima antes de repassar.
-    const authorizationHeader = request.headers.get("authorization") || "";
-    const idToken = authorizationHeader.startsWith("Bearer ")
-      ? authorizationHeader.slice("Bearer ".length)
-      : "";
-    const appCheckToken = request.headers.get("x-firebase-appcheck") || "";
-
     let aiResponse: Response;
     try {
-      aiResponse = await fetch(FIREBASE_AI_ENDPOINT, {
+      aiResponse = await fetch(DEEPSEEK_ENDPOINT, {
         method: "POST",
         headers: {
-          Authorization: `Firebase ${idToken}`,
+          Authorization: `Bearer ${deepSeekApiKey()}`,
           "Content-Type": "application/json",
-          "X-Firebase-AppCheck": appCheckToken,
-          "x-goog-api-key": FIREBASE_WEB_API_KEY,
         },
         body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: buildAiRequestText(prompt) }] }],
-          systemInstruction: { role: "system", parts: [{ text: AI_SYSTEM_INSTRUCTION }] },
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: AI_RESPONSE_SCHEMA,
-            maxOutputTokens: 2500,
-            temperature: 0.35,
-          },
+          model: DEEPSEEK_MODEL,
+          messages: [
+            { role: "system", content: AI_SYSTEM_INSTRUCTION },
+            { role: "user", content: buildAiRequestText(prompt) },
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 2500,
+          temperature: 0.35,
         }),
       });
     } catch (error) {
@@ -84,7 +78,7 @@ export async function POST(request: Request) {
     const payload = await aiResponse.json().catch(() => ({}));
     if (!aiResponse.ok) {
       const codeByStatus: Record<number, string> = {
-        401: "AI_DEVICE_NOT_VERIFIED",
+        401: "AI_ACCESS_BLOCKED",
         403: "AI_ACCESS_BLOCKED",
         404: "AI_MODEL_UNAVAILABLE",
         429: "AI_LIMIT_REACHED",
@@ -105,7 +99,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, code: "AI_EMPTY_RESULT" }, { status: 502 });
     }
 
-    return NextResponse.json({ ok: true, result: parsed });
+    const result = validateAiListResult(parsed);
+    if (!result) {
+      return NextResponse.json({ ok: false, code: "AI_EMPTY_RESULT" }, { status: 502 });
+    }
+
+    return NextResponse.json({ ok: true, result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "UNAUTHORIZED") {
@@ -113,6 +112,9 @@ export async function POST(request: Request) {
     }
     if (message === "VERIFIED_ACCOUNT_REQUIRED" || message.startsWith("APP_CHECK_")) {
       return NextResponse.json({ ok: false, code: "AI_DEVICE_NOT_VERIFIED" }, { status: 403 });
+    }
+    if (message === "DEEPSEEK_NOT_CONFIGURED") {
+      return NextResponse.json({ ok: false, code: "AI_NOT_CONFIGURED" }, { status: 503 });
     }
     console.error("Falha ao gerar lista com IA.", error);
     return NextResponse.json({ ok: false, code: "AI_TEMPORARY_ERROR" }, { status: 500 });

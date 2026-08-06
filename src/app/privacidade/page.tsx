@@ -101,21 +101,24 @@ export default function PrivacyPage() {
         <section>
           <h2 id="inteligencia-artificial">5. Criação de listas com inteligência artificial</h2>
           <p>
-            O recurso GetGoList IA envia ao Google Gemini somente o texto digitado
+            O recurso GetGoList IA envia ao DeepSeek somente o texto digitado
             para descrever a compra, o número de pessoas e o orçamento opcional. O
             nome, e-mail, listas existentes e outros dados da conta não são incluídos
             automaticamente nesse pedido.
           </p>
           <p>
-            No serviço sem custo usado nesta versão, o Google informa em seus{" "}
-            <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">
-              termos da API Gemini
+            O DeepSeek informa em seus{" "}
+            <a
+              href="https://cdn.deepseek.com/policies/en-US/deepseek-open-platform-terms-of-service.html"
+              target="_blank"
+              rel="noreferrer"
+            >
+              termos da API
             </a>{" "}
-            que entradas e respostas podem ser processadas para fornecer, desenvolver
-            e melhorar seus produtos, inclusive com revisão humana sob medidas de proteção. Por isso,
-            não informe nomes de pessoas, endereços, documentos, informações de saúde,
-            dados financeiros, segredos ou qualquer conteúdo pessoal, sensível ou
-            confidencial no campo da IA.
+            que entradas podem ser processadas para fornecer, desenvolver e melhorar seus
+            produtos. Por isso, não informe nomes de pessoas, endereços, documentos,
+            informações de saúde, dados financeiros, segredos ou qualquer conteúdo
+            pessoal, sensível ou confidencial no campo da IA.
           </p>
           <p>
             O recurso de IA é destinado a maiores de 18 anos. A resposta é apenas uma
@@ -132,7 +135,7 @@ export default function PrivacyPage() {
           </p>
           <ul>
             <li><strong>Google Firebase:</strong> autenticação, banco de dados, armazenamento de fotos e proteção do aplicativo.</li>
-            <li><strong>Google Gemini por Firebase AI Logic:</strong> geração das sugestões de listas solicitadas pelo usuário.</li>
+            <li><strong>DeepSeek:</strong> geração das sugestões de listas solicitadas pelo usuário.</li>
             <li><strong>Google:</strong> login com Google e mecanismos de proteção como reCAPTCHA e Play Integrity.</li>
             <li><strong>Vercel:</strong> hospedagem e entrega do site e das rotas do sistema.</li>
             <li><strong>Titan/GoDaddy:</strong> envio de mensagens transacionais pelo domínio getgolist.com.</li>

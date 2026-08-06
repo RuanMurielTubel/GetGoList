@@ -1103,6 +1103,7 @@
     </div>
     <div id="accountSyncStatus" class="account-dropdown-status">Modo visitante</div>
     <button type="button" class="account-dropdown-item" id="accountDropdownProfileButton">Configurações do perfil</button>
+    <a class="account-dropdown-item" id="accountDropdownPrivacyLink" href="/privacidade" target="_blank" rel="noopener">Política de Privacidade</a>
     <button type="button" class="account-dropdown-item" id="accountAction" title="Entrar e sincronizar" aria-label="Entrar e sincronizar">Entrar e sincronizar</button>
   </div>
 
@@ -1529,6 +1530,23 @@
             <ul id="planPaymentHistoryList">
               <li class="plan-payment-empty">Nenhum pagamento registrado ainda.</li>
             </ul>
+          </div>
+        </section>
+
+        <section class="profile-account-card">
+          <div class="profile-section-heading">
+            <div>
+              <small>Conta e privacidade</small>
+              <h3>Seus dados e sua conta</h3>
+            </div>
+          </div>
+          <div class="profile-actions profile-actions-start">
+            <a class="profile-secondary-button" href="/privacidade" target="_blank" rel="noopener">Política de Privacidade</a>
+            <a class="profile-secondary-button" href="/termos" target="_blank" rel="noopener">Termos de Uso</a>
+          </div>
+          <p class="profile-note">Excluir sua conta apaga permanentemente suas listas, sua assinatura e seu histórico de pagamentos. Listas que você compartilhou deixam de ser controladas por você, mas continuam acessíveis para os demais colaboradores.</p>
+          <div class="profile-actions">
+            <button class="profile-danger-button" id="deleteAccountButton">Excluir conta</button>
           </div>
         </section>
       </div>

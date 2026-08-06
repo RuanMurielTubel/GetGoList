@@ -102,6 +102,9 @@ export default function LoginPage() {
       setIsNativeApp(
         Capacitor.isNativePlatform() || searchParams.get("app") === "android",
       );
+      if (searchParams.get("deleted") === "1") {
+        setFeedback("Sua conta foi excluída com sucesso.");
+      }
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);

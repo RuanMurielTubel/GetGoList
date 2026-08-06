@@ -2,6 +2,7 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getAppCheck } from "firebase-admin/app-check";
 import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 function adminApp() {
   const existingApp = getApps()[0];
@@ -33,4 +34,8 @@ export function adminFirestore() {
 
 export function adminAppCheck() {
   return getAppCheck(adminApp());
+}
+
+export function adminStorage() {
+  return getStorage(adminApp());
 }

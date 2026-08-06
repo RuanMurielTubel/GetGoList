@@ -191,6 +191,16 @@ export default function PrivacyPage() {
             em definição junto à nossa contabilidade e que será detalhado aqui antes do
             lançamento da cobrança.
           </p>
+          <p>
+            Você pode excluir sua conta a qualquer momento em Minha Conta →
+            Excluir conta. A exclusão é imediata e permanente: suas listas
+            particulares, sua assinatura e seu histórico de pagamentos são
+            apagados e não podem ser recuperados. Listas que você compartilhou
+            deixam de ficar sob seu controle, mas permanecem acessíveis aos
+            demais colaboradores, já que também contêm conteúdo inserido por
+            eles. Se não conseguir acessar o aplicativo, você pode solicitar a
+            exclusão pelo contato indicado na seção 12.
+          </p>
         </section>
 
         <section>

@@ -1298,6 +1298,41 @@
       }
     }
 
+    async function handleDeleteAccount() {
+      if (!currentFirebaseUser) return;
+      if (!confirm('Excluir sua conta é permanente: suas listas, assinatura e histórico de pagamentos serão apagados e não podem ser recuperados. Listas que você compartilhou continuam acessíveis para os demais colaboradores, sem o seu controle. Deseja continuar?')) {
+        return;
+      }
+      const deleteButton = document.getElementById('deleteAccountButton');
+      if (deleteButton) {
+        deleteButton.disabled = true;
+        deleteButton.textContent = 'Excluindo...';
+      }
+      try {
+        const [token, appCheckToken] = await Promise.all([
+          currentFirebaseUser.getIdToken(),
+          getFirebaseAppCheckToken(),
+        ]);
+        const response = await fetch('/api/account/delete', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-Firebase-AppCheck': appCheckToken,
+          },
+        });
+        if (!response.ok) throw new Error('DELETE_FAILED');
+        await firebaseAuth.signOut();
+        window.location.href = '/login?deleted=1';
+      } catch (error) {
+        console.error('Não foi possível excluir a conta.', error);
+        alert('Não foi possível excluir sua conta agora. Tente novamente em instantes.');
+        if (deleteButton) {
+          deleteButton.disabled = false;
+          deleteButton.textContent = 'Excluir conta';
+        }
+      }
+    }
+
     function activateSharedList(docRef, documentId, initialLists) {
       remoteListReference = docRef;
       sharedListId = documentId;
@@ -2064,6 +2099,19 @@
       updateTrendChart();
     }
 
+    // Equivalente em hex das CSS vars --gg-primary/--gg-accent/etc
+    // (app-theme.css) — Chart.js não lê custom properties diretamente.
+    const CHART_COLORS = {
+      primary: '#087f8c',
+      primaryDark: '#055f69',
+      primarySoft: 'rgba(8, 127, 140, 0.12)',
+      accent: '#ffb703',
+      accentDark: '#e29c00',
+      accentSoft: 'rgba(255, 183, 3, 0.15)',
+      muted: '#64748b',
+      doughnut: ['#087f8c', '#ffb703', '#055f69', '#e29c00', '#64748b'],
+    };
+
     function updateMonthlyChart() {
       const ctx = document.getElementById('monthlyChart').getContext('2d');
       
@@ -2093,8 +2141,8 @@
           datasets: [{
             label: 'Gastos (R$)',
             data: sortedMonths.map(month => monthlyData[month]),
-            borderColor: '#007bff',
-            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            borderColor: CHART_COLORS.primary,
+            backgroundColor: CHART_COLORS.primarySoft,
             tension: 0.4,
             fill: true
           }]
@@ -2145,13 +2193,7 @@
           labels: sortedItems.map(item => item[0]),
           datasets: [{
             data: sortedItems.map(item => item[1]),
-            backgroundColor: [
-              '#007bff',
-              '#28a745',
-              '#ffc107',
-              '#dc3545',
-              '#6c757d'
-            ]
+            backgroundColor: CHART_COLORS.doughnut
           }]
         },
         options: {
@@ -2197,7 +2239,7 @@
           datasets: [{
             label: 'Quantidade de Compras',
             data: Object.values(ranges),
-            backgroundColor: '#28a745'
+            backgroundColor: CHART_COLORS.primary
           }]
         },
         options: {
@@ -2249,8 +2291,8 @@
           datasets: [{
             label: 'Gastos Semanais (R$)',
             data: sortedWeeks.map(week => weeklyData[week]),
-            borderColor: '#ffc107',
-            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+            borderColor: CHART_COLORS.accentDark,
+            backgroundColor: CHART_COLORS.accentSoft,
             tension: 0.4,
             fill: true
           }]
@@ -4835,6 +4877,7 @@
       const cancelFinishSharingButton = document.getElementById('cancelFinishSharingButton');
       const planUpgradeButton = document.getElementById('planUpgradeButton');
       const planCancelButton = document.getElementById('planCancelButton');
+      const deleteAccountButton = document.getElementById('deleteAccountButton');
       const aiListForm = document.getElementById('aiListForm');
       const createAiListButton = document.getElementById('createAiListButton');
       const discardAiListButton = document.getElementById('discardAiListButton');
@@ -5063,6 +5106,9 @@
       }
       if (planCancelButton) {
         planCancelButton.addEventListener('click', handleCancelSubscription);
+      }
+      if (deleteAccountButton) {
+        deleteAccountButton.addEventListener('click', handleDeleteAccount);
       }
     }
 

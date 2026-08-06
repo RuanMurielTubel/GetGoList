@@ -1,7 +1,11 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { PlanId } from "@/lib/shared/plan-limits";
+import { PLAN_LIMITS, type PlanId } from "@/lib/shared/plan-limits";
 
 const MERCADO_PAGO_API = "https://api.mercadopago.com";
+const PLAN_NAMES: Record<"cesta" | "cestao", string> = {
+  cesta: "GetGoList Cesta",
+  cestao: "GetGoList Cestão",
+};
 
 function mercadoPagoAccessToken() {
   const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
@@ -9,16 +13,6 @@ function mercadoPagoAccessToken() {
     throw new Error("MERCADOPAGO_NOT_CONFIGURED");
   }
   return token;
-}
-
-function preapprovalPlanIdForTier(plan: "cesta" | "cestao") {
-  const envVar = plan === "cesta"
-    ? process.env.MERCADOPAGO_PLAN_ID_CESTA
-    : process.env.MERCADOPAGO_PLAN_ID_CESTAO;
-  if (!envVar) {
-    throw new Error("MERCADOPAGO_NOT_CONFIGURED");
-  }
-  return envVar;
 }
 
 async function mercadoPagoRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -60,22 +54,41 @@ export type MercadoPagoPayment = {
  * Cria a assinatura (preapproval) do usuário para um plano pago e retorna a
  * URL de checkout hospedado (Checkout Pro — redirecionamento, sem SDK/iframe
  * embutido, por isso não exige mudança de CSP).
+ *
+ * Sem preapproval_plan_id de propósito: uma assinatura vinculada a um plano
+ * exige card_token_id (cartão já tokenizado no seu servidor) e não retorna
+ * init_point — exigiria embutir o formulário de cartão da própria Mercado
+ * Pago no site. Passando o valor direto em auto_recurring, a API trata como
+ * "assinatura sem plano associado", que é o único modo com checkout
+ * hospedado (redirecionamento simples).
  */
 export async function createSubscriptionCheckout(args: {
   uid: string;
   email: string;
   plan: "cesta" | "cestao";
 }): Promise<{ checkoutUrl: string; preapprovalId: string }> {
-  const preapprovalPlanId = preapprovalPlanIdForTier(args.plan);
   const appUrl = process.env.APP_URL || "https://www.getgolist.com";
+  const priceCents = PLAN_LIMITS[args.plan].priceCents;
+  if (!priceCents) {
+    throw new Error("MERCADOPAGO_NOT_CONFIGURED");
+  }
 
   const preapproval = await mercadoPagoRequest<MercadoPagoPreapproval>("/preapproval", {
     method: "POST",
     body: JSON.stringify({
-      preapproval_plan_id: preapprovalPlanId,
+      reason: PLAN_NAMES[args.plan],
       payer_email: args.email,
-      external_reference: args.uid,
+      // Carrega o plano junto do uid porque não há preapproval_plan_id pra
+      // o webhook consultar depois e descobrir qual dos dois planos foi
+      // assinado.
+      external_reference: `${args.uid}:${args.plan}`,
       back_url: `${appUrl}/index.html?section=profileSection&checkout=return`,
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: "months",
+        transaction_amount: priceCents / 100,
+        currency_id: "BRL",
+      },
     }),
   });
 
@@ -141,9 +154,14 @@ export function verifyWebhookSignature(params: {
   return timingSafeEqual(expectedBuffer, receivedBuffer);
 }
 
-export function planForPreapprovalPlanId(preapprovalPlanId: string | undefined): PlanId | null {
-  if (!preapprovalPlanId) return null;
-  if (preapprovalPlanId === process.env.MERCADOPAGO_PLAN_ID_CESTA) return "cesta";
-  if (preapprovalPlanId === process.env.MERCADOPAGO_PLAN_ID_CESTAO) return "cestao";
-  return null;
+/**
+ * O uid do usuário e o plano assinado vêm juntos em external_reference
+ * (formato "uid:plano"), já que a assinatura não está vinculada a um
+ * preapproval_plan_id — ver comentário em createSubscriptionCheckout.
+ */
+export function parseExternalReference(externalReference: string | undefined): { uid: string; plan: PlanId } | null {
+  if (!externalReference) return null;
+  const [uid, plan] = externalReference.split(":");
+  if (!uid || (plan !== "cesta" && plan !== "cestao")) return null;
+  return { uid, plan };
 }

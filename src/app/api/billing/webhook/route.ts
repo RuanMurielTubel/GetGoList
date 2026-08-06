@@ -4,7 +4,7 @@ import { adminFirestore } from "@/lib/server/firebase-admin";
 import {
   fetchPayment,
   fetchPreapproval,
-  planForPreapprovalPlanId,
+  parseExternalReference,
   verifyWebhookSignature,
 } from "@/lib/server/mercadopago";
 
@@ -18,11 +18,9 @@ export const runtime = "nodejs";
 // authorized -> active | pending -> pending | paused -> expired | cancelled -> cancelled.
 //
 // Para eventos type=payment (cada cobrança recorrente), este handler
-// assume que o pagamento carrega `external_reference` com o uid do
-// usuário (herdado da preapproval, conforme o comportamento documentado
-// do Mercado Pago para assinaturas). Isso ainda não foi validado contra
-// uma conta real — se o payload real vier diferente, ajustar aqui antes
-// de ativar `MERCADOPAGO_ACCESS_TOKEN` em produção.
+// assume que o pagamento carrega `external_reference` (herdado da
+// preapproval, conforme o comportamento documentado do Mercado Pago
+// para assinaturas) no formato "uid:plano" — ver parseExternalReference.
 function mapPreapprovalStatus(status: string | undefined): "active" | "pending" | "expired" | "cancelled" {
   switch (status) {
     case "authorized":
@@ -38,13 +36,12 @@ function mapPreapprovalStatus(status: string | undefined): "active" | "pending" 
 
 async function upsertFromPreapproval(preapprovalId: string) {
   const preapproval = await fetchPreapproval(preapprovalId);
-  const uid = preapproval.external_reference;
-  if (!uid) {
-    console.warn("Webhook de preapproval sem external_reference, ignorando.", preapprovalId);
+  const parsed = parseExternalReference(preapproval.external_reference);
+  if (!parsed) {
+    console.warn("Webhook de preapproval com external_reference inválido, ignorando.", preapprovalId);
     return;
   }
-
-  const plan = planForPreapprovalPlanId(preapproval.preapproval_plan_id) || "cesta";
+  const { uid, plan } = parsed;
   const status = mapPreapprovalStatus(preapproval.status);
 
   const reference = adminFirestore()
@@ -75,11 +72,12 @@ async function upsertFromPreapproval(preapprovalId: string) {
 
 async function upsertFromPayment(paymentId: string) {
   const payment = await fetchPayment(paymentId);
-  const uid = (payment as { external_reference?: string }).external_reference;
-  if (!uid) {
-    console.warn("Webhook de pagamento sem external_reference conhecido, ignorando.", paymentId);
+  const parsed = parseExternalReference((payment as { external_reference?: string }).external_reference);
+  if (!parsed) {
+    console.warn("Webhook de pagamento com external_reference inválido, ignorando.", paymentId);
     return;
   }
+  const { uid } = parsed;
 
   const subscriptionReference = adminFirestore()
     .collection("users")
@@ -89,7 +87,7 @@ async function upsertFromPayment(paymentId: string) {
   const paymentReference = subscriptionReference.collection("payments").doc(String(payment.id));
 
   const subscriptionSnapshot = await subscriptionReference.get();
-  const plan = (subscriptionSnapshot.data()?.pendingPlan || subscriptionSnapshot.data()?.plan || "cesta") as
+  const plan = (subscriptionSnapshot.data()?.pendingPlan || subscriptionSnapshot.data()?.plan || parsed.plan) as
     | "cesta"
     | "cestao";
 

@@ -33,6 +33,8 @@
     let allowEndedSharedDivision = false;
     let aiSuggestedItems = [];
     let lastAiGenerationAt = 0;
+    let currentSubscription = null;
+    let subscriptionUnsubscribe = null;
 
     const firebaseConfig = {
       apiKey: "AIzaSyAFj6YWQfz3dI2motK3qH9xc0UNVF7TzqY",
@@ -52,6 +54,19 @@
     const MAX_SECTORS_PER_LIST = 50;
     const MAX_SECTOR_NAME_LENGTH = 60;
     const CREATE_SECTOR_OPTION_VALUE = '__create_sector__';
+
+    // MANTER EM SINCRONIA COM src/lib/shared/plan-limits.ts E
+    // firestore.rules (maxListsForPlan/canShareForPlan). Verificado por
+    // tests/plan-limits-sync.test.mjs.
+    const PLAN_LIMITS = {
+      free:   { maxLists: 1,  canShare: false, hasAI: false, hasGestao: false, showAds: true },
+      cesta:  { maxLists: 10, canShare: true,  hasAI: false, hasGestao: false, showAds: true },
+      cestao: { maxLists: Infinity, canShare: true, hasAI: true, hasGestao: true, showAds: false },
+    };
+    function currentPlanLimits() {
+      const plan = currentSubscription && currentSubscription.plan;
+      return PLAN_LIMITS[plan] || PLAN_LIMITS.free;
+    }
 
     const predefinedSectors = [
       'Geral',
@@ -1060,6 +1075,39 @@
       });
     }
 
+    function subscribeToSubscriptionStatus() {
+      if (subscriptionUnsubscribe) {
+        subscriptionUnsubscribe();
+        subscriptionUnsubscribe = null;
+      }
+      if (!currentFirebaseUser || !firestoreDb) {
+        return;
+      }
+      subscriptionUnsubscribe = firestoreDb
+        .collection('users')
+        .doc(currentFirebaseUser.uid)
+        .collection('billing')
+        .doc('subscription')
+        .onSnapshot((snapshot) => {
+          currentSubscription = snapshot.exists ? snapshot.data() : null;
+          updatePlanUi();
+        }, (error) => {
+          console.error('Não foi possível acompanhar o plano da conta.', error);
+        });
+    }
+
+    function updatePlanUi() {
+      const limits = currentPlanLimits();
+      const managementButton = document.querySelector('.management-button');
+      const shareButton = document.querySelector('.share-button');
+      if (managementButton) {
+        managementButton.style.display = limits.hasGestao ? '' : 'none';
+      }
+      if (shareButton) {
+        shareButton.style.display = limits.canShare ? '' : 'none';
+      }
+    }
+
     function activateSharedList(docRef, documentId, initialLists) {
       remoteListReference = docRef;
       sharedListId = documentId;
@@ -1114,6 +1162,11 @@
             remoteListUnsubscribe();
             remoteListUnsubscribe = null;
           }
+          if (subscriptionUnsubscribe) {
+            subscriptionUnsubscribe();
+            subscriptionUnsubscribe = null;
+          }
+          currentSubscription = null;
 
           if (!user) {
             remoteListReference = null;
@@ -1147,6 +1200,7 @@
           showSection(sharedListId ? 'productsSection' : 'homeSection');
           updateSharedModeUi();
           subscribeToRemoteLists();
+          subscribeToSubscriptionStatus();
           syncSharedListsForAccount();
         });
       } catch (error) {
@@ -1576,8 +1630,8 @@
         setAiListStatus('Volte para “Minhas listas” antes de salvar esta lista particular.', true);
         return;
       }
-      if (Object.keys(lists).length >= MAX_LISTS) {
-        setAiListStatus(`Sua conta atingiu o limite de ${MAX_LISTS} listas.`, true);
+      if (Object.keys(lists).length >= currentPlanLimits().maxLists) {
+        setAiListStatus('Seu plano atual atingiu o limite de listas. Assine um plano com mais listas para continuar.', true);
         return;
       }
 
@@ -2246,6 +2300,11 @@
       
       if (!currentFirebaseUser && sectionId !== 'homeSection') {
         alert('Faça login para acessar esta área.');
+        showSection('homeSection');
+        return;
+      }
+      if (currentFirebaseUser && sectionId === 'managementSection' && !currentPlanLimits().hasGestao) {
+        alert('Assine o plano Cestão para acessar a Gestão.');
         showSection('homeSection');
         return;
       }
@@ -3805,6 +3864,10 @@
         window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
         return;
       }
+      if (!sharedListId && !currentPlanLimits().canShare) {
+        alert('Assine o plano Cesta ou Cestão para compartilhar listas.');
+        return;
+      }
       if (!firestoreDb) {
         showShareError(new Error('A sincronização ainda não está disponível. Recarregue a página.'));
         return;
@@ -4119,8 +4182,8 @@
         console.error("Elemento de entrada 'newListName' não encontrado");
         return;
       }
-      if (Object.keys(lists).length >= MAX_LISTS) {
-        alert(`Você pode manter no máximo ${MAX_LISTS} listas por conta.`);
+      if (Object.keys(lists).length >= currentPlanLimits().maxLists) {
+        alert('Seu plano atual atingiu o limite de listas. Assine um plano com mais listas para continuar.');
         return;
       }
       const newName = safeListName(input.value, '');

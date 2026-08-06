@@ -7,9 +7,54 @@ service cloud.firestore {
         && request.auth.token.email_verified == true;
     }
 
-    match /users/{userId}/{document=**} {
-      allow read, write: if hasVerifiedEmail()
-        && request.auth.uid == userId;
+    // Usuário sem documento de assinatura ainda (conta antiga, ou o
+    // POST /api/billing/select-free-plan do cadastro ainda não rodou)
+    // é tratado como "free" por padrão.
+    function planId(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId)/billing/subscription)
+        ? get(/databases/$(database)/documents/users/$(userId)/billing/subscription).data.get('plan', 'free')
+        : 'free';
+    }
+
+    function maxListsForPlan(plan) {
+      return plan == 'cestao' ? 100000 : (plan == 'cesta' ? 10 : 1);
+    }
+
+    function canShareForPlan(plan) {
+      return plan != 'free';
+    }
+
+    match /users/{userId} {
+      // Nada é gravado no documento raiz hoje.
+      allow read, write: if false;
+    }
+
+    match /users/{userId}/appData/lists {
+      allow read: if hasVerifiedEmail() && request.auth.uid == userId;
+      allow write: if hasVerifiedEmail()
+        && request.auth.uid == userId
+        && request.resource.data.lists is map
+        && request.resource.data.currentListName is string
+        && request.resource.data.currentListName.size() <= 80
+        // Só trava a CRIAÇÃO de listas além do limite do plano. Um usuário
+        // que já está acima do limite (conta antiga, downgrade) continua
+        // editando/removendo itens normalmente — só não pode aumentar a
+        // contagem de listas.
+        && (
+          request.resource.data.lists.size() <= maxListsForPlan(planId(userId))
+          || request.resource.data.lists.size() <= resource.data.lists.size()
+        );
+    }
+
+    match /users/{userId}/billing/subscription {
+      allow read: if hasVerifiedEmail() && request.auth.uid == userId;
+      // Autoritativo: só o Admin SDK (rotas server) grava aqui.
+      allow write: if false;
+    }
+
+    match /users/{userId}/billing/subscription/payments/{paymentId} {
+      allow read: if hasVerifiedEmail() && request.auth.uid == userId;
+      allow write: if false;
     }
 
     match /sharedLists/{listId} {
@@ -93,6 +138,7 @@ service cloud.firestore {
         && request.auth.uid == request.resource.data.owner
         && request.auth.token.email == request.resource.data.get('ownerEmail', '')
         && request.resource.data.get('sharingEnded', false) == false
+        && canShareForPlan(planId(request.auth.uid))
         && hasValidSharedListShape();
       allow update: if (
         isOwner() && preservesOwnerIdentity() && hasValidSharedListShape()

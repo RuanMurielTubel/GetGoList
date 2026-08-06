@@ -209,6 +209,7 @@ export default function LoginPage() {
           password,
         );
         await updateProfile(credential.user, { displayName: name.trim() });
+        await selectFreePlanDefault(credential.user);
         setMode("verify");
         await requestVerificationCode(credential.user, false);
         setFeedback("Enviamos um código de 6 dígitos para o seu e-mail.");
@@ -236,6 +237,27 @@ export default function LoginPage() {
           : "";
       setFeedback(controlledMessage || messageForError(code));
       setLoading(false);
+    }
+  }
+
+  async function selectFreePlanDefault(user = firebaseAuth.currentUser) {
+    if (!user) return;
+    try {
+      const [token, appCheckToken] = await Promise.all([
+        user.getIdToken(),
+        getAppCheckToken(),
+      ]);
+      await fetch("/api/billing/select-free-plan", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Firebase-AppCheck": appCheckToken,
+        },
+      });
+    } catch (error) {
+      // Não bloqueia o cadastro: as regras do Firestore já tratam a
+      // ausência deste documento como plano "free" por padrão.
+      console.error("Não foi possível registrar o plano gratuito inicial.", error);
     }
   }
 

@@ -190,7 +190,6 @@
     .sidebar button.history-button::before { content: ""; }
     .sidebar button.divide-button::before { content: ""; }
     .sidebar button.share-button::before { content: ""; }
-    .sidebar button.profile-button::before { content: ""; }
     .sidebar button.logout-button::before { content: ""; }
     
     .sidebar button:hover {
@@ -1078,20 +1077,6 @@
       <span>GetGoList</span>
     </a>
     <h2 id="sidebarGreeting">Olá, Visitante</h2>
-    <div class="account-panel" id="accountPanel">
-      <div class="sidebar-account">
-        <div class="sidebar-avatar" id="sidebarAvatar"><span>G</span></div>
-        <div class="sidebar-account-text">
-          <strong id="sidebarName">Visitante</strong>
-          <small id="accountEmail">Listas salvas neste dispositivo</small>
-          <small id="lastEditedBy" style="display:block; margin-top:4px; font-size:12px; color: rgba(255,255,255,0.75);">Última alteração: não registrada</small>
-        </div>
-      </div>
-      <div id="syncStatus" style="margin-top: 10px; font-size: 13px; color: rgba(255,255,255,0.78);">
-        Modo visitante
-      </div>
-      <button id="accountAction" title="Sair da conta" aria-label="Sair da conta">Entrar e sincronizar</button>
-    </div>
     <div class="sidebar-section-label">Organização</div>
     <button type="button" class="home-button active" title="Início" aria-label="Início"><span>Início</span></button>
     <button type="button" class="management-button" title="Gestão" aria-label="Gestão"><span>Gestão</span></button>
@@ -1102,8 +1087,25 @@
     <div class="sidebar-section-label">Colaboração</div>
     <button type="button" class="divide-button" title="Dividir conta" aria-label="Dividir conta"><span>Dividir conta</span></button>
     <button type="button" class="share-button" title="Compartilhar lista" aria-label="Compartilhar lista"><span>Compartilhar lista</span></button>
-    <button type="button" class="profile-button" title="Meu perfil" aria-label="Meu perfil"><span>Meu perfil</span></button>
+
+    <div class="sidebar-account-slot" id="sidebarAccountSlot">
+      <button type="button" class="sidebar-account-trigger" id="sidebarAccountTrigger" title="Conta" aria-label="Conta" aria-haspopup="true" aria-expanded="false">
+        <div class="sidebar-avatar" id="sidebarAvatar"><span>G</span></div>
+      </button>
+    </div>
       </div>
+
+  <div class="account-dropdown" id="accountDropdown" role="menu" aria-hidden="true">
+    <div class="account-dropdown-info">
+      <strong id="sidebarName">Visitante</strong>
+      <small id="accountEmail">Listas salvas neste dispositivo</small>
+      <small id="lastEditedBy" class="account-dropdown-lasted">Última alteração: não registrada</small>
+    </div>
+    <div id="accountSyncStatus" class="account-dropdown-status">Modo visitante</div>
+    <button type="button" class="account-dropdown-item" id="accountDropdownProfileButton">Configurações do perfil</button>
+    <button type="button" class="account-dropdown-item" id="accountAction" title="Entrar e sincronizar" aria-label="Entrar e sincronizar">Entrar e sincronizar</button>
+  </div>
+
   <button type="button" class="nav-rail-toggle" id="navRailToggle" title="Recolher menu" aria-label="Recolher menu" aria-expanded="true">‹</button>
   
   <div class="container" id="mainContainer">

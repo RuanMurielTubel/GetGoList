@@ -232,7 +232,7 @@
     }
 
     function updateAccountPanel(statusMessage) {
-      const status = document.getElementById('syncStatus');
+      const status = document.getElementById('accountSyncStatus');
       const email = document.getElementById('accountEmail');
       const action = document.getElementById('accountAction');
 
@@ -242,22 +242,18 @@
 
       const navButtons = document.querySelectorAll('.sidebar > button');
       const sidebarGreeting = document.getElementById('sidebarGreeting');
-      const sidebarAccount = document.querySelector('.sidebar-account');
 
       if (currentFirebaseUser) {
         status.textContent = statusMessage || "Conta conectada • sincronizado";
         email.textContent = currentFirebaseUser.email || "Conta GetGoList";
-        action.textContent = "Sair da conta";
-        action.title = "Sair da conta";
-        action.setAttribute('aria-label', 'Sair da conta');
+        action.textContent = "Desconectar";
+        action.title = "Desconectar";
+        action.setAttribute('aria-label', 'Desconectar');
         navButtons.forEach((button) => {
           button.style.display = 'flex';
         });
         if (sidebarGreeting) {
           sidebarGreeting.style.display = 'block';
-        }
-        if (sidebarAccount) {
-          sidebarAccount.style.display = 'flex';
         }
       } else {
         status.textContent = "Modo visitante";
@@ -270,9 +266,6 @@
         });
         if (sidebarGreeting) {
           sidebarGreeting.style.display = 'none';
-        }
-        if (sidebarAccount) {
-          sidebarAccount.style.display = 'none';
         }
       }
       updateProfileSection();
@@ -2072,6 +2065,62 @@
       if (isMenuOpen) {
         toggleMenu();
       }
+      closeAccountMenu();
+    }
+
+    function positionAccountDropdown() {
+      const trigger = document.getElementById('sidebarAccountTrigger');
+      const dropdown = document.getElementById('accountDropdown');
+      if (!trigger || !dropdown) {
+        return;
+      }
+      const triggerRect = trigger.getBoundingClientRect();
+      const dropdownWidth = dropdown.offsetWidth || 240;
+      const margin = 12;
+      let left = triggerRect.right + 10;
+      if (left + dropdownWidth > window.innerWidth - margin) {
+        left = Math.max(margin, window.innerWidth - dropdownWidth - margin);
+      }
+      const bottom = Math.max(margin, window.innerHeight - triggerRect.bottom);
+      dropdown.style.left = `${left}px`;
+      dropdown.style.bottom = `${bottom}px`;
+    }
+
+    function toggleAccountMenu() {
+      const dropdown = document.getElementById('accountDropdown');
+      if (!dropdown) {
+        return;
+      }
+      if (dropdown.classList.contains('open')) {
+        closeAccountMenu();
+      } else {
+        openAccountMenu();
+      }
+    }
+
+    function openAccountMenu() {
+      const dropdown = document.getElementById('accountDropdown');
+      const trigger = document.getElementById('sidebarAccountTrigger');
+      if (!dropdown || !trigger) {
+        return;
+      }
+      dropdown.classList.add('open');
+      dropdown.setAttribute('aria-hidden', 'false');
+      trigger.setAttribute('aria-expanded', 'true');
+      positionAccountDropdown();
+    }
+
+    function closeAccountMenu() {
+      const dropdown = document.getElementById('accountDropdown');
+      const trigger = document.getElementById('sidebarAccountTrigger');
+      if (!dropdown) {
+        return;
+      }
+      dropdown.classList.remove('open');
+      dropdown.setAttribute('aria-hidden', 'true');
+      if (trigger) {
+        trigger.setAttribute('aria-expanded', 'false');
+      }
     }
 
     function setCompactNavCollapsed(collapsed, persist = true) {
@@ -2166,7 +2215,7 @@
         pricesSection: '.prices-button',
         historySection: '.history-button',
         divideSection: '.divide-button',
-        profileSection: '.profile-button'
+        profileSection: '#accountDropdownProfileButton'
       };
       const targetButton = sectionButtons[sectionId]
         ? document.querySelector(sectionButtons[sectionId])
@@ -4389,8 +4438,41 @@
         overlay.addEventListener('click', closeMenu);
       }
       if (accountAction) {
-        accountAction.addEventListener('click', handleAccountAction);
+        accountAction.addEventListener('click', () => {
+          handleAccountAction();
+          closeAccountMenu();
+        });
       }
+      const sidebarAccountTrigger = document.getElementById('sidebarAccountTrigger');
+      const accountDropdownProfileButton = document.getElementById('accountDropdownProfileButton');
+      if (sidebarAccountTrigger) {
+        sidebarAccountTrigger.addEventListener('click', (event) => {
+          event.stopPropagation();
+          toggleAccountMenu();
+        });
+      }
+      if (accountDropdownProfileButton) {
+        accountDropdownProfileButton.addEventListener('click', () => {
+          closeAccountMenu();
+          showSection('profileSection');
+        });
+      }
+      document.addEventListener('click', (event) => {
+        const dropdown = document.getElementById('accountDropdown');
+        const trigger = document.getElementById('sidebarAccountTrigger');
+        if (!dropdown || !dropdown.classList.contains('open')) {
+          return;
+        }
+        if (!dropdown.contains(event.target) && (!trigger || !trigger.contains(event.target))) {
+          closeAccountMenu();
+        }
+      });
+      window.addEventListener('resize', () => {
+        const dropdown = document.getElementById('accountDropdown');
+        if (dropdown && dropdown.classList.contains('open')) {
+          positionAccountDropdown();
+        }
+      });
       if (photoFileInput) {
         photoFileInput.addEventListener('change', handlePhotoFileSelect);
       }
@@ -4435,7 +4517,6 @@
       const pricesButton = document.querySelector('.prices-button');
       const historyButton = document.querySelector('.history-button');
       const divideButton = document.querySelector('.divide-button');
-      const profileButton = document.querySelector('.profile-button');
       const openListNavigationStat = document.getElementById('openListNavigationStat');
       const openBudgetDialogButton = document.getElementById('openBudgetDialogButton');
       const manageListsButton = document.getElementById('manageListsButton');
@@ -4557,9 +4638,6 @@
       }
       if (divideButton) {
         divideButton.addEventListener('click', () => showSection('divideSection'));
-      }
-      if (profileButton) {
-        profileButton.addEventListener('click', () => showSection('profileSection'));
       }
       if (openListNavigationStat) {
         openListNavigationStat.addEventListener('click', openListNavigationDialog);

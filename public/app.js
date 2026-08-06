@@ -2893,19 +2893,19 @@
         action.className = 'sector-action';
         action.textContent = isCollapsed ? 'Toque para ver os produtos' : 'Toque para recolher';
 
-        labels.appendChild(name);
-        labels.appendChild(action);
-        heading.appendChild(chevron);
-        heading.appendChild(labels);
-
         const sectorTotal = sectorItems.reduce((sum, { item }) => sum + item.total, 0);
 
         const count = document.createElement('span');
         count.className = 'sector-count';
         count.textContent = `${sectorItems.length} item${sectorItems.length === 1 ? '' : 's'} · R$ ${sectorTotal.toFixed(2).replace('.', ',')}`;
 
+        labels.appendChild(name);
+        labels.appendChild(action);
+        labels.appendChild(count);
+        heading.appendChild(chevron);
+        heading.appendChild(labels);
+
         header.appendChild(heading);
-        header.appendChild(count);
         header.addEventListener('click', () => {
           if (collapsedSectors.has(sectorName)) {
             collapsedSectors.delete(sectorName);

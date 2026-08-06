@@ -1832,7 +1832,10 @@ body.is-sector-dragging .sector-group * {
   color: var(--gg-primary-dark);
   flex: 0 0 auto;
   font-size: 11px;
+  justify-self: start;
+  margin-top: 4px;
   padding: 5px 9px;
+  white-space: nowrap;
 }
 
 .sector-body {

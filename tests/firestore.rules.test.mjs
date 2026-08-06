@@ -196,7 +196,11 @@ test("encerrar o compartilhamento revoga imediatamente leitura e escrita", async
 
   await assertSucceeds(setDoc(ownerReference, sharedList()));
   await assertSucceeds(
-    updateDoc(ownerReference, { sharingEnded: true, endedAt: "agora" }),
+    updateDoc(ownerReference, {
+      sharingEnded: true,
+      endedAt: "agora",
+      endedBy: "owner-user",
+    }),
   );
 
   await assertSucceeds(getDoc(ownerReference));

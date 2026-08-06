@@ -49,7 +49,7 @@ service cloud.firestore {
         let listData = request.resource.data.lists[listName];
         return request.resource.data.keys().hasOnly([
             'owner', 'ownerEmail', 'allowedEmails', 'linkAccess',
-            'sharingEnded', 'endedAt', 'participantEmails', 'participants',
+            'sharingEnded', 'endedAt', 'endedBy', 'participantEmails', 'participants',
             'lists', 'currentListName', 'lastEditedBy', 'lastEditedByEmail',
             'lastEditedAt', 'createdAt', 'updatedAt'
           ])
@@ -61,6 +61,8 @@ service cloud.firestore {
           && request.resource.data.allowedEmails.size() <= 21
           && request.resource.data.linkAccess is bool
           && request.resource.data.sharingEnded is bool
+          && request.resource.data.get('endedBy', '') is string
+          && request.resource.data.get('endedBy', '').size() <= 128
           && request.resource.data.get('participantEmails', []) is list
           && request.resource.data.get('participantEmails', []).size() <= 100
           && request.resource.data.get('participants', {}) is map

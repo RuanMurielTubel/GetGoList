@@ -3442,12 +3442,10 @@
       if (initialBalance > 0 && balance < 0 && !hasShownLowBalanceAlert) {
         alertElement.textContent = 'Atenção: você já ultrapassou o saldo estabelecido!';
         alertElement.classList.add('active');
-        alert('Atenção: você já ultrapassou o saldo estabelecido!');
         hasShownLowBalanceAlert = true;
       } else if (initialBalance > 0 && balance <= initialBalance * 0.1 && balance >= 0 && !hasShownLowBalanceAlert) {
         alertElement.textContent = 'Atenção: Seu saldo está baixo. Restam menos de 10% do valor inicial.';
         alertElement.classList.add('active');
-        alert('Atenção: seu saldo está baixo. Restam menos de 10% do valor inicial.');
         hasShownLowBalanceAlert = true;
       } else if (balance > initialBalance * 0.1 || initialBalance === 0) {
         alertElement.classList.remove('active');

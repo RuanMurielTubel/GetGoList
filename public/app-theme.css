@@ -381,6 +381,32 @@ button.select-all:hover {
   color: var(--gg-ink);
 }
 
+/* Sobrescreve o .alert antigo (index.html) com o mesmo padrão visual
+   dos banners acima, em tom de aviso. */
+.alert {
+  align-items: center;
+  background: #fffaf0;
+  border: 1px solid #f4d58b;
+  border-radius: 14px;
+  color: #7a4a00;
+  display: none;
+  font-weight: 700;
+  gap: 10px;
+  margin: 15px 0;
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.alert.active {
+  display: flex;
+}
+
+.alert.active::before {
+  content: "⚠️";
+  flex: 0 0 auto;
+  font-size: 18px;
+}
+
 .shared-space-button {
   background: var(--gg-surface);
   border: 1px solid var(--gg-primary);

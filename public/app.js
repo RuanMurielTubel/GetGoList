@@ -2443,12 +2443,12 @@
       if (sectionId === 'managementSection') {
         updateDashboard();
       }
-      if (sectionId === 'shoppingSection') {
+      if (sectionId === 'shoppingSection' || sectionId === 'productsSection') {
         // Revalida o atalho de "lista compartilhada recente" toda vez que
-        // volta pra essa tela — sem isso, ele só era atualizado no login,
-        // e clicar num atalho de uma lista já finalizada (por você ou por
-        // quem é dono dela) derrubava pra tela inicial com um alerta fácil
-        // de não perceber.
+        // volta pra uma dessas telas (as duas mostram o banner de atalho)
+        // — sem isso, ele só era atualizado no login, e clicar num atalho
+        // de uma lista já finalizada (por você ou por quem é dono dela)
+        // derrubava pra tela inicial com um alerta fácil de não perceber.
         syncSharedListsForAccount();
       }
       if (sectionId === 'productsSection') {

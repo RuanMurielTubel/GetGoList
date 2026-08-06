@@ -9,6 +9,7 @@
     let isMenuOpen = false;
     let charts = {};
     let collapsedSectors = new Set();
+    let sectorsDefaultedCollapsed = new Set();
     let quickAddSector = null;
     let firebaseAuth = null;
     let firestoreDb = null;
@@ -1724,6 +1725,7 @@
         sectorName,
       ]);
       collapsedSectors.delete(sectorName);
+      sectorsDefaultedCollapsed.add(sectorName);
       closeDialog('createSectorDialog');
       input.value = '';
       saveLists();
@@ -2837,6 +2839,13 @@
         if (first === 'Geral') return -1;
         if (second === 'Geral') return 1;
         return first.localeCompare(second, 'pt-BR');
+      });
+
+      sectorNames.forEach((sectorName) => {
+        if (!sectorsDefaultedCollapsed.has(sectorName)) {
+          collapsedSectors.add(sectorName);
+          sectorsDefaultedCollapsed.add(sectorName);
+        }
       });
 
       if (sectorNames.length > 1) {

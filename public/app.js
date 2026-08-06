@@ -231,9 +231,18 @@
       return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
 
+    function localStorageListsKey() {
+      // Isolado por UID quando autenticado: sem isso, o cache local de
+      // listas particulares (usado pra funcionar offline e pra preservar
+      // edições feitas antes do primeiro sincronismo) era uma única chave
+      // global do navegador — trocar de conta no mesmo navegador podia
+      // mostrar, e até mesclar de volta na nuvem, listas de outra conta.
+      return currentFirebaseUser ? `lists:${currentFirebaseUser.uid}` : 'lists';
+    }
+
     function saveLists(options = {}) {
       try {
-        localStorage.setItem('lists', JSON.stringify(lists));
+        localStorage.setItem(localStorageListsKey(), JSON.stringify(lists));
       } catch (error) {
         console.error("Não foi possível salvar as listas neste dispositivo.", error);
       }
@@ -790,7 +799,7 @@
 
     function clearLocalCache() {
       try {
-        localStorage.removeItem('lists');
+        localStorage.removeItem(localStorageListsKey());
         console.log('Cache local de listas limpo');
       } catch (error) {
         console.error('Não foi possível limpar o cache local:', error);
@@ -1309,6 +1318,7 @@
             return;
           }
           currentFirebaseUser = user;
+          loadListsFromLocalCache();
           remoteSyncReady = false;
           initialRemoteSnapshotHandled = false;
           sharedParticipantRegistered = false;
@@ -1382,20 +1392,14 @@
     }
 
     function initializeLists() {
-      const defaultLists = {
-        "Lista 1": { items: [], history: [], balance: 0, initialBalance: 0 }
-      };
-
-      // Descobre o modo compartilhado antes de consultar o armazenamento
-      // local. Antes, essa informação era lida tarde demais e as listas
-      // particulares acabavam sendo copiadas para o documento compartilhado.
+      // Descobre o modo compartilhado antes de qualquer outra coisa. Antes,
+      // essa informação era lida tarde demais e as listas particulares
+      // acabavam sendo copiadas para o documento compartilhado.
       const urlParams = new URLSearchParams(window.location.search);
       sharedListId = urlParams.get('sharedList');
       if (sharedListId && !/^[A-Za-z0-9]{20}$/.test(sharedListId)) {
         sharedListId = null;
         window.history.replaceState({}, document.title, window.location.pathname);
-      }
-      if (sharedListId) {
       }
 
       checkoutReturnPending = urlParams.get('checkout') === 'return';
@@ -1403,49 +1407,53 @@
         window.history.replaceState({}, document.title, `${window.location.pathname}?section=profileSection`);
       }
 
-      // Tenta carregar listas do localStorage, mas ignore em modo de lista compartilhada.
-      let storedLists = null;
-      if (!sharedListId) {
-        try {
-          const storedData = localStorage.getItem('lists');
-          if (storedData) {
-            storedLists = JSON.parse(storedData);
-            console.log("Dados carregados do localStorage:", storedLists);
-          }
-        } catch (e) {
-          console.error("Erro ao parsear localStorage 'lists':", e);
-        }
-      }
-
-      // Inicializa listas com base no localStorage ou importação
-      if (!storedLists || typeof storedLists !== 'object' || Object.keys(storedLists).length === 0) {
-        console.warn("localStorage vazio, corrompido ou inválido. Usando listas padrão ou importada.");
-        lists = defaultLists;
-      } else {
-        lists = {};
-        Object.keys(storedLists).slice(0, MAX_LISTS).forEach(listName => {
-          const storedList = storedLists[listName];
-          lists[safeListName(listName)] = normalizeListData(storedList);
-        });
-      }
-
-      // Define a lista atual
-      currentListName = Object.keys(lists)[0] || "Lista 1";
-      if (!lists[currentListName]) {
-        console.warn(`Lista "${currentListName}" não encontrada. Criando lista padrão.`);
-        lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
-      }
-
+      // Não lê nenhum cache local aqui: antes de saber qual conta (se
+      // alguma) está autenticada neste navegador, carregar o cache
+      // compartilhado do dispositivo podia mostrar por um instante — e,
+      // pior, mesclar de volta na nuvem — listas de uma conta diferente
+      // que usou este mesmo navegador antes. loadListsFromLocalCache()
+      // cuida disso assim que o estado de autenticação é conhecido.
+      lists = { "Lista 1": { items: [], history: [], balance: 0, initialBalance: 0 } };
+      currentListName = "Lista 1";
       shoppingList = lists[currentListName].items;
       listHistory = lists[currentListName].history;
 
-      // Salva listas no localStorage
-      try {
-        saveLists();
-        console.log("Estrutura inicial salva no localStorage:", lists);
-      } catch (e) {
-        console.error("Erro ao salvar listas no localStorage:", e);
+      updateFooter();
+      updateDashboard();
+      updateTargetListSelect();
+      populateSectorSelect();
+    }
+
+    function loadListsFromLocalCache() {
+      if (sharedListId) {
+        return;
       }
+
+      let storedLists = null;
+      try {
+        const storedData = localStorage.getItem(localStorageListsKey());
+        if (storedData) {
+          storedLists = JSON.parse(storedData);
+        }
+      } catch (e) {
+        console.error("Erro ao parsear o cache local de listas:", e);
+      }
+
+      if (!storedLists || typeof storedLists !== 'object' || !Object.keys(storedLists).length) {
+        return;
+      }
+
+      lists = {};
+      Object.keys(storedLists).slice(0, MAX_LISTS).forEach(listName => {
+        lists[safeListName(listName)] = normalizeListData(storedLists[listName]);
+      });
+
+      currentListName = Object.keys(lists)[0] || "Lista 1";
+      if (!lists[currentListName]) {
+        lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
+      }
+      shoppingList = lists[currentListName].items;
+      listHistory = lists[currentListName].history;
 
       updateFooter();
       updateDashboard();

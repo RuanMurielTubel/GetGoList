@@ -996,6 +996,13 @@
       }
     }
 
+    function isSharedGuest() {
+      // Colaborador numa lista compartilhada (não o dono): só pode
+      // incluir/remover/editar produtos, não controla orçamento, nome
+      // da lista nem finaliza o compartilhamento.
+      return Boolean(sharedListId) && (!currentFirebaseUser || currentSharedOwnerId !== currentFirebaseUser.uid);
+    }
+
     function updateSharedModeUi() {
       const sharedBanner = document.getElementById('sharedModeBanner');
       const sharedListName = document.getElementById('sharedModeListName');
@@ -1050,6 +1057,10 @@
           element.style.display = sharedListId ? 'none' : '';
         }
       });
+      const budgetButton = document.getElementById('openBudgetDialogButton');
+      if (budgetButton) {
+        budgetButton.style.display = isSharedGuest() ? 'none' : '';
+      }
     }
 
     async function registerSharedListParticipant() {
@@ -2476,6 +2487,9 @@
     }
 
     function openBudgetDialog() {
+      if (isSharedGuest()) {
+        return;
+      }
       const dialog = document.getElementById('budgetDialog');
       const balanceInput = document.getElementById('balanceInput');
       const budgetListName = document.getElementById('budgetListName');
@@ -2491,6 +2505,9 @@
     }
 
     function setBalance() {
+      if (isSharedGuest()) {
+        return;
+      }
       const balanceInput = document.getElementById('balanceInput');
       if (!balanceInput) {
         console.error("Elemento de entrada de saldo não encontrado");

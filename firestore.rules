@@ -100,6 +100,17 @@ service cloud.firestore {
           && request.resource.data.get('ownerEmail', '') == resource.data.get('ownerEmail', '');
       }
 
+      // Convidados só editam o conteúdo da lista (itens, histórico, setores).
+      // Nome da lista e orçamento definido (initialBalance) são decisões do
+      // dono; `balance` fica de fora porque varia normalmente conforme os
+      // próprios convidados incluem/removem produtos.
+      function preservesListIdentityForGuests() {
+        let listName = resource.data.currentListName;
+        return request.resource.data.currentListName == listName
+          && request.resource.data.lists[listName].initialBalance
+            == resource.data.lists[listName].initialBalance;
+      }
+
       function hasValidSharedListShape() {
         let listName = request.resource.data.currentListName;
         let listData = request.resource.data.lists[listName];
@@ -154,7 +165,8 @@ service cloud.firestore {
       allow update: if (
         isOwner() && preservesOwnerIdentity() && hasValidSharedListShape()
       ) || (
-        hasSharedListAccess() && preservesOwnerControlledFields() && hasValidSharedListShape()
+        hasSharedListAccess() && preservesOwnerControlledFields()
+          && preservesListIdentityForGuests() && hasValidSharedListShape()
       );
       allow delete: if hasVerifiedEmail()
         && request.auth.uid == resource.data.owner;

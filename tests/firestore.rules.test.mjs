@@ -149,6 +149,44 @@ test("colaboradores editam conteúdo, mas não controlam permissões", async () 
   );
 });
 
+test("colaborador não pode renomear a lista nem mudar o orçamento, só o dono pode", async () => {
+  await seedSubscription("owner-user", "cesta");
+  const owner = account("owner-user", "owner@getgolist.com");
+  const guest = account("guest-user", "guest@getgolist.com");
+  const ownerReference = doc(owner, "sharedLists", listId);
+
+  await assertSucceeds(setDoc(ownerReference, sharedList()));
+
+  await assertFails(
+    updateDoc(doc(guest, "sharedLists", listId), {
+      currentListName: "Outro nome",
+      lists: {
+        "Outro nome": sharedList().lists.Mercado,
+      },
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(guest, "sharedLists", listId), {
+      "lists.Mercado.initialBalance": 500,
+    }),
+  );
+
+  // Dono continua livre pra renomear e ajustar o orçamento.
+  await assertSucceeds(
+    updateDoc(doc(owner, "sharedLists", listId), {
+      "lists.Mercado.initialBalance": 500,
+    }),
+  );
+  await assertSucceeds(
+    updateDoc(doc(owner, "sharedLists", listId), {
+      currentListName: "Outro nome",
+      lists: {
+        "Outro nome": { ...sharedList().lists.Mercado, initialBalance: 500 },
+      },
+    }),
+  );
+});
+
 test("participante registrado mantém acesso até o compartilhamento ser finalizado", async () => {
   await seedSubscription("owner-user", "cesta");
   const owner = account("owner-user", "owner@getgolist.com");

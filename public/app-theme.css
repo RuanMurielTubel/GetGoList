@@ -3344,6 +3344,11 @@ button.profile-avatar:hover {
   width: 100%;
 }
 
+.account-dropdown-item:hover {
+  background: #eef3f6;
+  color: var(--gg-primary-dark);
+}
+
 .account-dropdown-item:last-child {
   margin-bottom: 0;
 }

@@ -89,9 +89,10 @@
       return PLAN_LIMITS[currentEffectivePlanId()];
     }
 
-    // Vazio até a conta do Google AdSense ser criada — enquanto isso,
-    // initializeAds() não faz nada, sem carregar um script inválido.
-    const ADSENSE_PUBLISHER_ID = '';
+    // O script do AdSense já carrega direto pelo <head> de public/index.html
+    // (obrigatório pra verificação de propriedade do site). Aqui só resta
+    // pedir os anúncios pra cada espaço, uma vez, quando o plano permitir.
+    const ADSENSE_PUBLISHER_ID = 'ca-pub-8312406358027338';
     let adsInitialized = false;
 
     function initializeAds() {
@@ -99,11 +100,6 @@
         return;
       }
       adsInitialized = true;
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`;
-      script.crossOrigin = 'anonymous';
-      document.head.appendChild(script);
       document.querySelectorAll('.ad-slot .adsbygoogle').forEach(() => {
         try {
           (window.adsbygoogle = window.adsbygoogle || []).push({});

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geist = Geist({
@@ -24,7 +25,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={geist.variable}>{children}</body>
+      <body className={geist.variable}>
+        <Script
+          async
+          strategy="beforeInteractive"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8312406358027338"
+          crossOrigin="anonymous"
+        />
+        {children}
+      </body>
     </html>
   );
 }

@@ -3138,6 +3138,13 @@ button.profile-avatar:hover {
   border-radius: 50% !important;
 }
 
+.sidebar-account-trigger::before {
+  content: none !important;
+  display: none !important;
+  margin: 0 !important;
+  width: 0 !important;
+}
+
 .sidebar-account-trigger.active,
 .sidebar-account-trigger[aria-expanded="true"] {
   background: rgba(255, 255, 255, .16) !important;

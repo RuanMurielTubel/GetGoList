@@ -1044,8 +1044,11 @@
       li.editing input[type="text"],
       li.editing input[type="number"],
       li.editing select.edit-sector,
+      li.editing select.edit-unit,
       select#itemSector,
-      .edit-sector {
+      select#itemUnit,
+      .edit-sector,
+      .edit-unit {
         width: 100% !important;
         box-sizing: border-box;
         margin: 6px 0;
@@ -1298,7 +1301,12 @@
         <div class="button-group item-entry-form">
         <input type="text" id="itemName" maxlength="120" placeholder="Nome do item">
         <input type="text" id="itemPrice" placeholder="Preço unitário (R$)">
-        <input type="number" id="itemQuantity" placeholder="Quantidade" min="1" max="10000" value="1">
+        <input type="number" id="itemQuantity" placeholder="Quantidade" min="1" step="1" max="10000" value="1">
+        <select id="itemUnit" aria-label="Unidade de medida">
+          <option value="un">Unidade</option>
+          <option value="kg">Kg</option>
+          <option value="L">L</option>
+        </select>
         <div class="sector-picker">
           <select id="itemSector" aria-label="Setor do produto"></select>
         </div>

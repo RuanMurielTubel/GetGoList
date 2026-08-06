@@ -143,6 +143,31 @@
       return Math.min(maximum, Math.max(minimum, number));
     }
 
+    const ITEM_UNITS = ['un', 'kg', 'L'];
+    function normalizeItemUnit(value) {
+      return ITEM_UNITS.includes(value) ? value : 'un';
+    }
+    function boundedQuantity(value, unit) {
+      const allowDecimal = unit === 'kg' || unit === 'L';
+      const bounded = boundedNumber(value, allowDecimal ? 0.01 : 1, 10000, 1);
+      return allowDecimal ? Math.round(bounded * 100) / 100 : Math.round(bounded);
+    }
+    function formatItemQuantity(quantity, unit) {
+      const normalizedUnit = normalizeItemUnit(unit);
+      if (normalizedUnit === 'un') return String(Math.round(quantity));
+      const trimmed = quantity.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+      return `${trimmed.replace('.', ',')} ${normalizedUnit}`;
+    }
+
+    // Kg/L aceitam quantidade fracionada (2,5 kg); "un" continua inteiro,
+    // já que não existe "2,5 unidades" de um produto contado.
+    function updateItemUnitStep(quantityInput, unit) {
+      if (!quantityInput) return;
+      const allowDecimal = unit === 'kg' || unit === 'L';
+      quantityInput.step = allowDecimal ? '0.01' : '1';
+      quantityInput.min = allowDecimal ? '0.01' : '1';
+    }
+
     function safeListName(value, fallback = 'Lista') {
       return cleanText(value, 80, fallback);
     }
@@ -650,12 +675,14 @@
         ? listData.items.slice(0, MAX_ITEMS_PER_LIST).map((item, index) => {
             const sanitizedItem = item && typeof item === 'object' ? item : {};
             const price = boundedNumber(sanitizedItem.price, 0, 100000000, 0);
-            const quantity = boundedNumber(sanitizedItem.quantity, 1, 10000, 1);
+            const unit = normalizeItemUnit(sanitizedItem.unit);
+            const quantity = boundedQuantity(sanitizedItem.quantity, unit);
             return {
               id: cleanText(sanitizedItem.id, 100, legacyEntityId('item', sanitizedItem, index)),
               name: cleanText(sanitizedItem.name, 120, 'Item'),
               price,
               quantity,
+              unit,
               total: price * quantity,
               sector: normalizeSectorName(sanitizedItem.sector, 'Geral'),
               date: cleanText(sanitizedItem.date, 20, new Date().toLocaleDateString()),
@@ -668,12 +695,14 @@
         ? listData.history.slice(0, MAX_HISTORY_PER_LIST).map((entry, index) => {
             const sanitizedEntry = entry && typeof entry === 'object' ? entry : {};
             const price = boundedNumber(sanitizedEntry.price, 0, 100000000, 0);
-            const quantity = boundedNumber(sanitizedEntry.quantity, 1, 10000, 1);
+            const unit = normalizeItemUnit(sanitizedEntry.unit);
+            const quantity = boundedQuantity(sanitizedEntry.quantity, unit);
             return {
               id: cleanText(sanitizedEntry.id, 100, legacyEntityId('history', sanitizedEntry, index)),
               name: cleanText(sanitizedEntry.name, 120, 'Item'),
               price,
               quantity,
+              unit,
               total: price * quantity,
               sector: normalizeSectorName(sanitizedEntry.sector, 'Geral'),
               date: cleanText(sanitizedEntry.date, 20, new Date().toLocaleDateString()),
@@ -1582,9 +1611,11 @@
         .slice(0, 80)
         .map((item) => {
           const itemSource = item && typeof item === 'object' ? item : {};
+          const unit = normalizeItemUnit(itemSource.unit);
           return {
             name: cleanText(itemSource.name, 120),
-            quantity: boundedNumber(itemSource.quantity, 1, 10000, 1),
+            quantity: boundedQuantity(itemSource.quantity, unit),
+            unit,
             sector: normalizeSectorName(itemSource.sector, 'Geral'),
           };
         })
@@ -1619,7 +1650,7 @@
         row.className = 'ai-preview-item';
 
         const itemLabel = document.createElement('strong');
-        itemLabel.textContent = `${item.quantity} × ${item.name}`;
+        itemLabel.textContent = `${formatItemQuantity(item.quantity, item.unit)} × ${item.name}`;
 
         const sectorLabel = document.createElement('small');
         sectorLabel.textContent = item.sector;
@@ -1769,16 +1800,20 @@
       }
 
       const today = new Date().toLocaleDateString();
-      const newItems = aiSuggestedItems.slice(0, MAX_ITEMS_PER_LIST).map((item) => ({
-        id: createEntityId('item'),
-        name: cleanText(item.name, 120, 'Item'),
-        price: 0,
-        quantity: boundedNumber(item.quantity, 1, 10000, 1),
-        total: 0,
-        sector: normalizeSectorName(item.sector, 'Geral'),
-        date: today,
-        checked: false,
-      }));
+      const newItems = aiSuggestedItems.slice(0, MAX_ITEMS_PER_LIST).map((item) => {
+        const unit = normalizeItemUnit(item.unit);
+        return {
+          id: createEntityId('item'),
+          name: cleanText(item.name, 120, 'Item'),
+          price: 0,
+          quantity: boundedQuantity(item.quantity, unit),
+          unit,
+          total: 0,
+          sector: normalizeSectorName(item.sector, 'Geral'),
+          date: today,
+          checked: false,
+        };
+      });
       lists[listName] = {
         items: newItems,
         history: [],
@@ -2538,10 +2573,11 @@
       }
     }
 
-    function addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector) {
+    function addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector, itemUnit) {
       itemName = cleanText(itemName, 120);
       itemPrice = boundedNumber(itemPrice, 0, 100000000, 0);
-      itemQuantity = boundedNumber(itemQuantity, 1, 10000, 1);
+      itemUnit = normalizeItemUnit(itemUnit);
+      itemQuantity = boundedQuantity(itemQuantity, itemUnit);
       itemSector = normalizeSectorName(itemSector, 'Geral');
       if (shoppingList.length >= MAX_ITEMS_PER_LIST) {
         alert(`Esta lista atingiu o limite de ${MAX_ITEMS_PER_LIST} itens.`);
@@ -2561,6 +2597,7 @@
           name: itemName,
           price: itemPrice,
           quantity: itemQuantity,
+          unit: itemUnit,
           total: itemTotal,
           sector: itemSector,
           date: new Date().toLocaleDateString(),
@@ -2590,13 +2627,16 @@
     function addItem() {
       const itemName = document.getElementById('itemName').value.trim();
       const itemPrice = parsePrice(document.getElementById('itemPrice').value);
-      const itemQuantity = parseInt(document.getElementById('itemQuantity').value) || 1;
+      const itemUnit = normalizeItemUnit(document.getElementById('itemUnit').value);
+      const itemQuantity = parseFloat(document.getElementById('itemQuantity').value) || 1;
       const itemSector = document.getElementById('itemSector').value.trim() || 'Geral';
 
-      if (addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector)) {
+      if (addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector, itemUnit)) {
         document.getElementById('itemName').value = '';
         document.getElementById('itemPrice').value = '';
         document.getElementById('itemQuantity').value = '1';
+        document.getElementById('itemUnit').value = 'un';
+        updateItemUnitStep(document.getElementById('itemQuantity'), 'un');
         populateSectorSelect('Geral');
       }
     }
@@ -2618,7 +2658,9 @@
       }
       const itemName = cleanText(li.querySelector('.edit-name').value, 120);
       const itemPrice = parsePrice(li.querySelector('.edit-price').value);
-      const itemQuantity = boundedNumber(parseInt(li.querySelector('.edit-quantity').value), 1, 10000, 1);
+      const unitEl = li.querySelector('.edit-unit');
+      const itemUnit = normalizeItemUnit(unitEl ? unitEl.value : 'un');
+      const itemQuantity = boundedQuantity(parseFloat(li.querySelector('.edit-quantity').value), itemUnit);
       const sectorEl = li.querySelector('.edit-sector');
       const itemSector = normalizeSectorName(sectorEl ? (sectorEl.value || 'Geral') : 'Geral', 'Geral');
       const itemTotal = itemPrice * itemQuantity;
@@ -2638,6 +2680,7 @@
           name: itemName,
           price: itemPrice,
           quantity: itemQuantity,
+          unit: itemUnit,
           total: itemTotal,
           sector: itemSector,
           date: new Date().toLocaleDateString(),
@@ -3189,9 +3232,21 @@
           quickQuantity.type = 'number';
           quickQuantity.className = 'quick-add-quantity';
           quickQuantity.min = '1';
+          quickQuantity.step = '1';
           quickQuantity.max = '10000';
           quickQuantity.value = '1';
           quickQuantity.setAttribute('aria-label', `Quantidade do produto em ${sectorName}`);
+
+          const quickUnit = document.createElement('select');
+          quickUnit.className = 'quick-add-unit';
+          quickUnit.setAttribute('aria-label', `Unidade do produto em ${sectorName}`);
+          ITEM_UNITS.forEach((unitValue) => {
+            const option = document.createElement('option');
+            option.value = unitValue;
+            option.textContent = unitValue === 'un' ? 'Unidade' : unitValue === 'kg' ? 'Kg' : 'L';
+            quickUnit.appendChild(option);
+          });
+          quickUnit.addEventListener('change', () => updateItemUnitStep(quickQuantity, quickUnit.value));
 
           const quickActions = document.createElement('div');
           quickActions.className = 'sector-quick-add-actions';
@@ -3215,16 +3270,18 @@
           quickForm.appendChild(quickName);
           quickForm.appendChild(quickPrice);
           quickForm.appendChild(quickQuantity);
+          quickForm.appendChild(quickUnit);
           quickForm.appendChild(quickActions);
           quickForm.addEventListener('submit', (event) => {
             event.preventDefault();
             const nameValue = quickName.value.trim();
             const priceValue = parsePrice(quickPrice.value);
-            const quantityValue = parseInt(quickQuantity.value) || 1;
+            const unitValue = normalizeItemUnit(quickUnit.value);
+            const quantityValue = parseFloat(quickQuantity.value) || 1;
             if (nameValue && priceValue > 0 && quantityValue > 0) {
               quickAddSector = null;
             }
-            if (!addItemToCurrentList(nameValue, priceValue, quantityValue, sectorName)) {
+            if (!addItemToCurrentList(nameValue, priceValue, quantityValue, sectorName, unitValue)) {
               quickAddSector = sectorName;
             }
           });
@@ -3252,9 +3309,20 @@
             const quantityInput = document.createElement('input');
             quantityInput.type = 'number';
             quantityInput.className = 'edit-quantity';
-            quantityInput.min = '1';
             quantityInput.max = '10000';
             quantityInput.value = String(item.quantity);
+            updateItemUnitStep(quantityInput, item.unit);
+
+            const unitSelect = document.createElement('select');
+            unitSelect.className = 'edit-unit';
+            ITEM_UNITS.forEach((unitValue) => {
+              const option = document.createElement('option');
+              option.value = unitValue;
+              option.textContent = unitValue === 'un' ? 'Unidade' : unitValue === 'kg' ? 'Kg' : 'L';
+              option.selected = normalizeItemUnit(item.unit) === unitValue;
+              unitSelect.appendChild(option);
+            });
+            unitSelect.addEventListener('change', () => updateItemUnitStep(quantityInput, unitSelect.value));
 
             const sectorSelect = document.createElement('select');
             sectorSelect.className = 'edit-sector';
@@ -3276,13 +3344,13 @@
             cancelButton.textContent = 'Cancelar';
             cancelButton.addEventListener('click', cancelEdit);
 
-            li.append(nameInput, priceInput, quantityInput, sectorSelect, saveButton, cancelButton);
+            li.append(nameInput, priceInput, quantityInput, unitSelect, sectorSelect, saveButton, cancelButton);
           } else {
             const itemInfo = document.createElement('div');
             itemInfo.className = 'item-info';
             const itemLabel = document.createElement('span');
             if (item.checked) itemLabel.classList.add('checked');
-            itemLabel.textContent = `${item.name} - ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}`;
+            itemLabel.textContent = `${item.name} - ${formatItemQuantity(item.quantity, item.unit)} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}`;
             const sectorLabel = document.createElement('small');
             sectorLabel.className = 'item-sector-label';
             sectorLabel.textContent = `Setor: ${item.sector || 'Geral'}`;
@@ -3401,7 +3469,7 @@
         li.className = 'history-item';
         const label = document.createElement('label');
         label.htmlFor = `history-${index}`;
-        label.textContent = `${item.date}: ${item.name} - ${item.quantity} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}`;
+        label.textContent = `${item.date}: ${item.name} - ${formatItemQuantity(item.quantity, item.unit)} x R$ ${item.price.toFixed(2).replace('.', ',')} = R$ ${item.total.toFixed(2).replace('.', ',')}`;
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.name = 'historyItem';
@@ -4634,6 +4702,8 @@
       const accountAction = document.getElementById('accountAction');
       const photoFileInput = document.getElementById('photoFileInput');
       const itemPrice = document.getElementById('itemPrice');
+      const itemUnit = document.getElementById('itemUnit');
+      const itemQuantity = document.getElementById('itemQuantity');
       const balanceInput = document.getElementById('balanceInput');
       const newListBalance = document.getElementById('newListBalance');
       const aiPreviewBudget = document.getElementById('aiPreviewBudget');
@@ -4692,6 +4762,9 @@
         itemPrice.addEventListener('input', function () {
           formatPrice(this);
         });
+      }
+      if (itemUnit) {
+        itemUnit.addEventListener('change', () => updateItemUnitStep(itemQuantity, itemUnit.value));
       }
       if (balanceInput) {
         balanceInput.addEventListener('input', function () {

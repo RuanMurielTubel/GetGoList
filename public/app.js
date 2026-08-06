@@ -1174,6 +1174,23 @@
         shareButton.style.display = limits.canShare ? '' : 'none';
       }
 
+      const aiListCreator = document.querySelector('.ai-list-creator');
+      const aiLockedBanner = document.getElementById('aiLockedBanner');
+      const aiListPrompt = document.getElementById('aiListPrompt');
+      const generateAiListButton = document.getElementById('generateAiListButton');
+      if (aiListCreator) {
+        aiListCreator.classList.toggle('ai-locked', !limits.hasAI);
+      }
+      if (aiLockedBanner) {
+        aiLockedBanner.hidden = limits.hasAI;
+      }
+      if (aiListPrompt) {
+        aiListPrompt.disabled = !limits.hasAI;
+      }
+      if (generateAiListButton) {
+        generateAiListButton.disabled = !limits.hasAI;
+      }
+
       const plan = (currentSubscription && currentSubscription.plan) || 'free';
       const badge = document.getElementById('planBadge');
       const statusText = document.getElementById('planStatusText');
@@ -5061,7 +5078,7 @@
     initializeLists();
     initializeCompactNav();
     initializeFirebaseSync();
-    updateAdVisibility();
+    updatePlanUi();
     setupDialogOverlayClose();
     setupEventHandlers();
     setupListButtons();

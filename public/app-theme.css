@@ -3530,6 +3530,66 @@ body.nav-collapsed .footer {
   }
 }
 
+.ai-list-creator.ai-locked .ai-list-form {
+  filter: grayscale(.5);
+  opacity: .45;
+  pointer-events: none;
+}
+
+.ai-locked-banner {
+  align-items: center;
+  background: var(--gg-primary-pale);
+  border: 1px solid var(--gg-primary);
+  border-radius: 14px;
+  display: flex;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.ai-locked-banner > span {
+  font-size: 22px;
+}
+
+.ai-locked-banner strong {
+  color: var(--gg-primary-dark);
+  display: block;
+  font-size: 14px;
+}
+
+.ai-locked-banner p {
+  color: var(--gg-muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.ai-locked-banner a {
+  background: var(--gg-primary);
+  border-radius: 10px;
+  color: #fff;
+  flex-shrink: 0;
+  font-weight: 750;
+  margin-left: auto;
+  padding: 10px 16px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ai-locked-banner a:hover {
+  background: var(--gg-primary-dark);
+}
+
+@media (max-width: 600px) {
+  .ai-locked-banner {
+    flex-wrap: wrap;
+  }
+
+  .ai-locked-banner a {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
 .ad-slot {
   background: var(--gg-soft);
   border: 1px dashed var(--gg-line);

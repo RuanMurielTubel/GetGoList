@@ -171,8 +171,15 @@
     }
 
     function isSafeImageSource(value) {
-      if (typeof value !== 'string' || value.length > 4096) return false;
-      if (/^data:image\/(png|jpeg);base64,/i.test(value)) return true;
+      if (typeof value !== 'string') return false;
+      // Prévia local (FileReader) de uma foto já validada em até 5 MB —
+      // em base64 isso vira uma string de até ~7 MB de caracteres, bem
+      // além do limite de 4096 usado abaixo pra URLs normais. Esse limite
+      // maior é só pra essa prévia local; não vem de fonte externa.
+      if (/^data:image\/(png|jpeg);base64,/i.test(value)) {
+        return value.length <= 7 * 1024 * 1024;
+      }
+      if (value.length > 4096) return false;
       try {
         return new URL(value).protocol === 'https:';
       } catch {

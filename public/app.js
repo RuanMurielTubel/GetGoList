@@ -840,12 +840,23 @@
       applyingRemoteLists = false;
     }
 
+    function recentSharedListStorageKey() {
+      // Isolado por UID: sem isso, trocar de conta no mesmo navegador fazia
+      // a conta nova herdar (e até acessar) a lista compartilhada da conta
+      // anterior, já que localStorage não é isolado por conta sozinho.
+      return currentFirebaseUser ? `recentSharedList:${currentFirebaseUser.uid}` : null;
+    }
+
     function rememberSharedListAccess(listName, documentId) {
       if (!listName || !documentId) {
         return;
       }
+      const storageKey = recentSharedListStorageKey();
+      if (!storageKey) {
+        return;
+      }
       try {
-        localStorage.setItem('recentSharedList', JSON.stringify({
+        localStorage.setItem(storageKey, JSON.stringify({
           id: documentId,
           name: listName,
         }));
@@ -855,8 +866,12 @@
     }
 
     function getRecentSharedList() {
+      const storageKey = recentSharedListStorageKey();
+      if (!storageKey) {
+        return null;
+      }
       try {
-        const recent = JSON.parse(localStorage.getItem('recentSharedList') || 'null');
+        const recent = JSON.parse(localStorage.getItem(storageKey) || 'null');
         if (recent && typeof recent.id === 'string' && recent.id && typeof recent.name === 'string' && recent.name) {
           return recent;
         }
@@ -867,10 +882,11 @@
     }
 
     function clearRememberedSharedList(documentId) {
+      const storageKey = recentSharedListStorageKey();
       try {
         const recent = getRecentSharedList();
-        if (!documentId || !recent || recent.id === documentId) {
-          localStorage.removeItem('recentSharedList');
+        if (storageKey && (!documentId || !recent || recent.id === documentId)) {
+          localStorage.removeItem(storageKey);
         }
       } catch (error) {
         console.warn('Não foi possível remover o atalho da lista compartilhada.', error);

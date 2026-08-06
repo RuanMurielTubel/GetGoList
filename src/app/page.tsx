@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { PLAN_LIMITS, type PlanId } from "@/lib/shared/plan-limits";
 
 const benefits = [
   {
-    title: "Anote sem complicação",
+    title: "Compartilhe e colabore",
     description:
-      "Adicione produtos, quantidades e preços enquanto monta sua compra.",
-    icon: "✓",
+      "Convide pessoas para atualizar itens e valores da mesma lista em tempo real.",
+    icon: "≡",
   },
   {
     title: "Acompanhe o total",
@@ -14,10 +15,10 @@ const benefits = [
     icon: "R$",
   },
   {
-    title: "Compartilhe e colabore",
+    title: "Divida a conta",
     description:
-      "Convide pessoas para atualizar itens e valores da mesma lista em tempo real.",
-    icon: "≡",
+      "Feche a compra e calcule automaticamente quanto cada participante deve.",
+    icon: "÷",
   },
 ];
 
@@ -26,6 +27,48 @@ const steps = [
   "Adicione os produtos que precisa",
   "Marque cada item durante a compra",
 ];
+
+const aiExampleItems = [
+  { name: "Picanha", quantity: "3 kg", sector: "Açougue" },
+  { name: "Carvão", quantity: "20 kg", sector: "Mercearia" },
+  { name: "Pão de alho", quantity: "24 un", sector: "Padaria" },
+  { name: "Cerveja", quantity: "48 latas", sector: "Bebidas" },
+];
+
+type PlanTeaser = {
+  id: PlanId;
+  name: string;
+  tagline: string;
+  highlight: string;
+  recommended?: boolean;
+};
+
+const planTeasers: PlanTeaser[] = [
+  {
+    id: "free",
+    name: "Free",
+    tagline: "Para começar a organizar suas compras.",
+    highlight: "1 lista, sem custo",
+  },
+  {
+    id: "cesta",
+    name: "Cesta",
+    tagline: "Para organizar compras em família ou casa.",
+    highlight: "Até 10 listas compartilhadas",
+  },
+  {
+    id: "cestao",
+    name: "Cestão",
+    tagline: "Acesso completo, sem anúncios e sem limites.",
+    highlight: "IA, Gestão e listas ilimitadas",
+    recommended: true,
+  },
+];
+
+function formatPlanPrice(priceCents: number | null) {
+  if (priceCents === null) return "Grátis";
+  return `R$ ${(priceCents / 100).toFixed(2).replace(".", ",")}`;
+}
 
 export default function Home() {
   return (
@@ -47,6 +90,9 @@ export default function Home() {
 
       <section className="hero">
         <div className="hero-copy">
+          <a className="pill-badge" href="#ia">
+            <span aria-hidden="true">✨</span> Novo: crie listas com IA
+          </a>
           <p className="eyebrow">Sua compra começa mais organizada</p>
           <h1>A lista de compras simples para usar de verdade.</h1>
           <p className="hero-description">
@@ -68,7 +114,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="list-preview" aria-label="Exemplo de lista de compras">
+        <div className="list-preview float" aria-label="Exemplo de lista de compras">
           <div className="preview-header">
             <div>
               <span className="preview-label">Compra da semana</span>
@@ -104,6 +150,51 @@ export default function Home() {
             <span style={{ width: "25%" }} />
           </div>
           <small>1 de 4 itens no carrinho</small>
+        </div>
+      </section>
+
+      <section className="ai-showcase" id="ia" aria-labelledby="ai-showcase-title">
+        <div className="section-heading">
+          <p className="eyebrow">Novidade</p>
+          <h2 id="ai-showcase-title">Descreva a compra, a IA monta a lista</h2>
+          <p className="ai-showcase-lead">
+            Sem preencher campo por campo: conte o que precisa em uma frase e
+            receba uma lista organizada por setor, pronta para revisar.
+          </p>
+        </div>
+
+        <div className="ai-showcase-grid">
+          <div className="ai-prompt-card">
+            <span className="ai-prompt-label">Seu pedido</span>
+            <p className="ai-prompt-text">
+              &ldquo;Churrasco pra 12 pessoas, orçamento de R$ 500&rdquo;
+            </p>
+            <span className="button button-primary ai-prompt-button" aria-hidden="true">
+              Gerar lista com IA
+            </span>
+          </div>
+
+          <div className="list-preview ai-result-preview" aria-label="Exemplo de lista gerada pela IA">
+            <span className="pill-badge pill-badge-static">
+              <span aria-hidden="true">✨</span> Gerado pela IA
+            </span>
+            <ul className="preview-items ai-preview-items">
+              {aiExampleItems.map((item) => (
+                <li key={item.name}>
+                  <span className="preview-check checked">✓</span>
+                  <span>{item.name}</span>
+                  <strong>{item.quantity}</strong>
+                  <small>{item.sector}</small>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="ai-showcase-cta">
+          <Link className="button button-primary" href="/login">
+            Criar minha lista com IA
+          </Link>
         </div>
       </section>
 
@@ -144,6 +235,38 @@ export default function Home() {
             </li>
           ))}
         </ol>
+      </section>
+
+      <section className="pricing-teaser" aria-labelledby="pricing-teaser-title">
+        <div className="section-heading">
+          <p className="eyebrow">Planos</p>
+          <h2 id="pricing-teaser-title">Escolha o plano ideal para suas compras</h2>
+        </div>
+
+        <div className="plan-grid pricing-teaser-grid">
+          {planTeasers.map((plan) => (
+            <Link
+              href="/planos"
+              key={plan.id}
+              className={`plan-card pricing-teaser-card${plan.recommended ? " plan-card-recommended" : ""}`}
+            >
+              {plan.recommended ? <span className="plan-badge">Recomendado</span> : null}
+              <h3>{plan.name}</h3>
+              <p className="plan-tagline">{plan.tagline}</p>
+              <p className="plan-price">
+                {formatPlanPrice(PLAN_LIMITS[plan.id].priceCents)}
+                {PLAN_LIMITS[plan.id].priceCents !== null ? <span>/mês</span> : null}
+              </p>
+              <p className="pricing-teaser-highlight">{plan.highlight}</p>
+            </Link>
+          ))}
+        </div>
+
+        <div className="ai-showcase-cta">
+          <Link className="button button-secondary" href="/planos">
+            Ver todos os planos
+          </Link>
+        </div>
       </section>
 
       <section className="final-cta">

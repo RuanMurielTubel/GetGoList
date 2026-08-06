@@ -16,7 +16,6 @@ export type PlanLimits = {
   hasAI: boolean;
   hasGestao: boolean;
   showAds: boolean;
-  /** PLACEHOLDER — confirmar valor real antes de lançar cobrança. */
   priceCents: number | null;
 };
 
@@ -43,7 +42,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     hasAI: true,
     hasGestao: true,
     showAds: false,
-    priceCents: 1990,
+    priceCents: 1499,
   },
 };
 

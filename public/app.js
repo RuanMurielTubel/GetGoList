@@ -582,9 +582,16 @@
       if (totalSpentEl) totalSpentEl.textContent = `R$ ${totalSpent.toFixed(2).replace('.', ',')}`;
     }
 
+    function profileDataStorageKey() {
+      // Isolado por UID quando autenticado: sem isso, o nome/bio/foto de
+      // uma conta anterior no mesmo navegador vazava (e podia ser
+      // sobrescrito de volta) pra próxima conta que logasse ali.
+      return currentFirebaseUser ? `profileData:${currentFirebaseUser.uid}` : 'profileData';
+    }
+
     function loadLocalProfileData() {
       try {
-        const raw = localStorage.getItem('profileData');
+        const raw = localStorage.getItem(profileDataStorageKey());
         return raw ? JSON.parse(raw) : { displayName: '', photoDataUrl: '', bio: '' };
       } catch {
         return { displayName: '', photoDataUrl: '', bio: '' };
@@ -593,7 +600,7 @@
 
     function saveLocalProfileData(data) {
       try {
-        localStorage.setItem('profileData', JSON.stringify(data));
+        localStorage.setItem(profileDataStorageKey(), JSON.stringify(data));
       } catch (error) {
         console.error('Erro ao salvar dados de perfil localmente:', error);
       }

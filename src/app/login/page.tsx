@@ -92,7 +92,7 @@ function safeRedirectPath(value: string | null) {
   }
 }
 
-function messageForError(code?: string) {
+function messageForError(code?: string, detail?: string) {
   const messages: Record<string, string> = {
     "auth/email-already-in-use": "Este e-mail já possui uma conta.",
     "auth/invalid-credential": "E-mail ou senha inválidos.",
@@ -120,10 +120,16 @@ function messageForError(code?: string) {
       "O Google não devolveu a autorização ao aplicativo. Tente novamente.",
   };
 
-  return (
-    messages[code ?? ""] ??
-    "Não foi possível concluir. Tente novamente em alguns instantes."
-  );
+  const known = messages[code ?? ""];
+  if (known) return known;
+
+  // Sem tradução mapeada: mostra o código/mensagem crua junto, senão fica
+  // impossível diagnosticar problemas específicos de plataforma (ex.: erros
+  // nativos do Google Sign-In no Android) só pelo relato do usuário.
+  const raw = code || detail;
+  return raw
+    ? `Não foi possível concluir. Tente novamente em alguns instantes. (${raw})`
+    : "Não foi possível concluir. Tente novamente em alguns instantes.";
 }
 
 export default function LoginPage() {
@@ -211,16 +217,16 @@ export default function LoginPage() {
           await signInWithRedirect(firebaseAuth, provider);
           return;
         } catch (redirectError) {
-          const redirectErrObj = redirectError as { code?: string };
+          const redirectErrObj = redirectError as { code?: string; message?: string };
           setFeedback(
-            messageForError(redirectErrObj.code) ||
+            messageForError(redirectErrObj.code, redirectErrObj.message) ||
               "O navegador bloqueou a janela de login. Tente abrir novamente em breve."
           );
           return;
         }
       }
 
-      setFeedback(messageForError(code));
+      setFeedback(messageForError(code, errObj.message));
     } finally {
       setLoading(false);
     }
@@ -299,7 +305,7 @@ export default function LoginPage() {
         error instanceof Error && !code && error.message.startsWith("Não foi possível")
           ? error.message
           : "";
-      setFeedback(controlledMessage || messageForError(code));
+      setFeedback(controlledMessage || messageForError(code, error instanceof Error ? error.message : undefined));
       setLoading(false);
     }
   }
@@ -497,7 +503,7 @@ export default function LoginPage() {
         typeof error === "object" && error && "code" in error
           ? String(error.code)
           : undefined;
-      setFeedback(messageForError(code));
+      setFeedback(messageForError(code, error instanceof Error ? error.message : undefined));
     } finally {
       setLoading(false);
     }

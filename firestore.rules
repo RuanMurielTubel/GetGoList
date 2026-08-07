@@ -11,7 +11,7 @@ service cloud.firestore {
     // não uma assinatura paga. Mesma lista em src/lib/shared/plan-limits.ts
     // (COMPLIMENTARY_CESTAO_EMAILS) e em public/app.js.
     function isComplimentaryCestao(email) {
-      return email in ['gabrielamoraesn@gmail.com', 'tubel.mendes@gmail.com', 'contaparateste.getgolist@outlook.com'];
+      return email in ['gabrielamoraesn@gmail.com', 'tubel.mendes@gmail.com', 'contaparateste.getgolist@outlook.com', 'mariocatrileo@gmail.com'];
     }
 
     // Usuário sem documento de assinatura ainda (conta antiga, ou o

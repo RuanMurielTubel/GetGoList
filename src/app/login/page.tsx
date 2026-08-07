@@ -34,6 +34,51 @@ function strongPasswordMessage(password: string) {
   return "";
 }
 
+const PASSWORD_RULES: Array<{ label: string; test: (value: string) => boolean }> = [
+  { label: "8 ou mais caracteres", test: (value) => value.length >= 8 },
+  { label: "Uma letra minúscula", test: (value) => /[a-z]/.test(value) },
+  { label: "Uma letra maiúscula", test: (value) => /[A-Z]/.test(value) },
+  { label: "Um número", test: (value) => /\d/.test(value) },
+  { label: "Um caractere especial (!, @, # ...)", test: (value) => /[^A-Za-z0-9]/.test(value) },
+];
+
+function PasswordChecklist({ password }: { password: string }) {
+  return (
+    <ul className="password-requirements">
+      {PASSWORD_RULES.map((rule) => {
+        const met = rule.test(password);
+        return (
+          <li className={met ? "is-met" : ""} key={rule.label}>
+            <span className="password-requirement-icon">
+              <svg fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </span>
+            {rule.label}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function EyeIcon({ crossed }: { crossed: boolean }) {
+  if (crossed) {
+    return (
+      <svg fill="none" height="18" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="18">
+        <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 4.22-5.94M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+        <path d="M1 1l22 22" />
+      </svg>
+    );
+  }
+  return (
+    <svg fill="none" height="18" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="18">
+      <path d="M1 12s3-8 11-8 11 8 11 8-3 8-11 8-11-8-11-8Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 function safeRedirectPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return "/index.html";
@@ -89,6 +134,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
@@ -183,6 +230,8 @@ export default function LoginPage() {
     setFeedback("");
     setPassword("");
     setConfirmPassword("");
+    setShowPassword(false);
+    setShowConfirmPassword(false);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -616,37 +665,55 @@ export default function LoginPage() {
 
           <label>
             Senha
-            <input
-              autoComplete={
-                mode === "login" ? "current-password" : "new-password"
-              }
-              minLength={mode === "register" ? 8 : 6}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder={mode === "register" ? "Crie uma senha forte" : "Sua senha"}
-              required
-              type="password"
-              value={password}
-            />
+            <div className="password-field">
+              <input
+                autoComplete={
+                  mode === "login" ? "current-password" : "new-password"
+                }
+                minLength={mode === "register" ? 8 : 6}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={mode === "register" ? "Crie uma senha forte" : "Sua senha"}
+                required
+                type={showPassword ? "text" : "password"}
+                value={password}
+              />
+              <button
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                aria-pressed={showPassword}
+                className="password-toggle"
+                onClick={() => setShowPassword((value) => !value)}
+                type="button"
+              >
+                <EyeIcon crossed={showPassword} />
+              </button>
+            </div>
           </label>
 
-          {mode === "register" && (
-            <p style={{ color: "#5f7185", fontSize: 12, lineHeight: 1.5, margin: "-4px 0 2px" }}>
-              Use 8 ou mais caracteres, com maiúscula, minúscula, número e símbolo.
-            </p>
-          )}
+          {mode === "register" && <PasswordChecklist password={password} />}
 
           {mode === "register" && (
             <label>
               Confirme a senha
-              <input
-                autoComplete="new-password"
-                minLength={8}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Digite a senha novamente"
-                required
-                type="password"
-                value={confirmPassword}
-              />
+              <div className="password-field">
+                <input
+                  autoComplete="new-password"
+                  minLength={8}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Digite a senha novamente"
+                  required
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                />
+                <button
+                  aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
+                  aria-pressed={showConfirmPassword}
+                  className="password-toggle"
+                  onClick={() => setShowConfirmPassword((value) => !value)}
+                  type="button"
+                >
+                  <EyeIcon crossed={showConfirmPassword} />
+                </button>
+              </div>
             </label>
           )}
 

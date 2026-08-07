@@ -926,6 +926,93 @@ footer {
   outline: none;
 }
 
+.password-field {
+  position: relative;
+}
+
+.account-form .password-field input {
+  padding-right: 44px;
+}
+
+.password-toggle {
+  align-items: center;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+}
+
+.password-toggle:hover {
+  background: rgba(16, 35, 63, 0.06);
+  color: var(--ink);
+}
+
+.password-toggle svg {
+  height: 18px;
+  width: 18px;
+}
+
+.password-requirements {
+  display: grid;
+  gap: 5px;
+  list-style: none;
+  margin: -6px 0 2px;
+  padding: 0;
+}
+
+.password-requirements li {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 0.78rem;
+  gap: 7px;
+  transition: color 150ms ease;
+}
+
+.password-requirements li.is-met {
+  color: var(--primary);
+}
+
+.password-requirements .password-requirement-icon {
+  align-items: center;
+  border: 1.5px solid #cbd8e2;
+  border-radius: 50%;
+  display: flex;
+  flex: 0 0 auto;
+  height: 15px;
+  justify-content: center;
+  transition: background-color 150ms ease, border-color 150ms ease;
+  width: 15px;
+}
+
+.password-requirements li.is-met .password-requirement-icon {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.password-requirements .password-requirement-icon svg {
+  height: 9px;
+  opacity: 0;
+  stroke: #fff;
+  stroke-width: 3;
+  transition: opacity 150ms ease;
+  width: 9px;
+}
+
+.password-requirements li.is-met .password-requirement-icon svg {
+  opacity: 1;
+}
+
 .account-form .button,
 .account-card > .button {
   width: 100%;

@@ -50,24 +50,35 @@ async function upsertFromPreapproval(preapprovalId: string) {
     .collection("billing")
     .doc("subscription");
 
-  await reference.set(
-    {
-      plan: status === "cancelled" || status === "expired" ? "free" : plan,
-      status,
-      pendingPlan: null,
-      gateway: "mercadopago",
-      cancelAtPeriodEnd: status === "cancelled",
-      mercadoPago: {
-        preapprovalId: preapproval.id,
-        preapprovalPlanId: preapproval.preapproval_plan_id || null,
-        payerId: preapproval.payer_id ? String(preapproval.payer_id) : null,
-        payerEmail: preapproval.payer_email || null,
-      },
-      updatedAt: FieldValue.serverTimestamp(),
-      updatedBy: "webhook",
+  const updates: Record<string, unknown> = {
+    status,
+    gateway: "mercadopago",
+    cancelAtPeriodEnd: status === "cancelled",
+    mercadoPago: {
+      preapprovalId: preapproval.id,
+      preapprovalPlanId: preapproval.preapproval_plan_id || null,
+      payerId: preapproval.payer_id ? String(preapproval.payer_id) : null,
+      payerEmail: preapproval.payer_email || null,
     },
-    { merge: true },
-  );
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedBy: "webhook",
+  };
+
+  // O plano só é liberado quando o Mercado Pago confirma "authorized"
+  // (mapeado pra "active" acima). "pending" é o estado inicial da
+  // assinatura, criado assim que o checkout começa — liberar o plano
+  // nesse status daria acesso pago sem o pagamento ter sido concluído.
+  if (status === "active") {
+    updates.plan = plan;
+    updates.pendingPlan = null;
+  } else if (status === "cancelled" || status === "expired") {
+    updates.plan = "free";
+    updates.pendingPlan = null;
+  } else {
+    updates.pendingPlan = plan;
+  }
+
+  await reference.set(updates, { merge: true });
 }
 
 async function upsertFromPayment(paymentId: string) {

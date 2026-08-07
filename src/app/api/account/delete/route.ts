@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { adminAuth, adminFirestore, adminStorage } from "@/lib/server/firebase-admin";
+import { cancelPreapproval } from "@/lib/server/mercadopago";
 import {
   authenticatedVerifiedUser,
   verifiedAppRequest,
@@ -10,6 +11,27 @@ import { withinRateLimit } from "@/lib/server/rate-limit";
 export const runtime = "nodejs";
 
 const PROFILE_PHOTO_BUCKET = "getgolist.firebasestorage.app";
+
+async function cancelActiveSubscription(uid: string) {
+  const reference = adminFirestore()
+    .collection("users")
+    .doc(uid)
+    .collection("billing")
+    .doc("subscription");
+  const snapshot = await reference.get();
+  const data = snapshot.data();
+  const preapprovalId = data?.mercadoPago?.preapprovalId;
+  if (!preapprovalId || data?.status === "cancelled") return;
+
+  try {
+    await cancelPreapproval(preapprovalId);
+  } catch (error) {
+    // Best-effort: não bloqueia a exclusão da conta — mas registra pra
+    // permitir cancelamento manual, já que depois disso a referência do
+    // preapprovalId é apagada junto com o resto dos dados do usuário.
+    console.warn("Não foi possível cancelar a assinatura no Mercado Pago antes de excluir a conta.", error);
+  }
+}
 
 async function endOwnedSharedLists(uid: string) {
   const snapshot = await adminFirestore()
@@ -80,6 +102,11 @@ export async function POST(request: Request) {
     if (!(await withinRateLimit(`account-delete:${user.uid}`, 3, 60 * 60 * 1000))) {
       return NextResponse.json({ ok: false }, { status: 429 });
     }
+
+    // Cancela qualquer assinatura ativa antes de apagar os dados —
+    // senão a referência do preapprovalId some e a cobrança recorrente
+    // continua rodando no Mercado Pago para uma conta que não existe mais.
+    await cancelActiveSubscription(user.uid);
 
     // Dados primeiro, conta de autenticação por último: se algo aqui
     // falhar, a conta continua existindo e a operação pode ser refeita.

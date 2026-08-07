@@ -8,6 +8,7 @@ import {
   validateAiReply,
 } from "@/lib/server/ai-list-prompt";
 import { adminFirestore } from "@/lib/server/firebase-admin";
+import { sanitizeListItemSnapshot, type ListItemSnapshot } from "@/lib/server/list-actions";
 import {
   authenticatedVerifiedUser,
   verifiedAppRequest,
@@ -31,7 +32,7 @@ type AiAttemptResult =
 
 async function requestAiList(
   prompt: string,
-  context: { listNames: string[]; currentListName?: string },
+  context: { listNames: string[]; currentListName?: string; currentListItems?: ListItemSnapshot[] },
 ): Promise<AiAttemptResult> {
   let aiResponse: Response;
   try {
@@ -120,7 +121,8 @@ export async function POST(request: Request) {
       ? body.listNames.filter((name: unknown): name is string => typeof name === "string" && name.trim().length > 0)
       : [];
     const currentListName = typeof body.currentListName === "string" ? body.currentListName : undefined;
-    const context = { listNames, currentListName };
+    const currentListItems = sanitizeListItemSnapshot(body.currentListItems);
+    const context = { listNames, currentListName, currentListItems };
 
     // O modelo ocasionalmente foge do formato pedido (sampling não é
     // determinístico); uma segunda tentativa resolve a maioria desses casos

@@ -6,7 +6,7 @@ function createAiError(code, status, detail) {
   return error;
 }
 
-async function generateList({ prompt, authToken, appCheckToken, listNames, currentListName }) {
+async function generateList({ prompt, authToken, appCheckToken, listNames, currentListName, currentListItems }) {
   if (!authToken) throw createAiError('AI_AUTH_REQUIRED');
   if (!appCheckToken) throw createAiError('AI_DEVICE_NOT_VERIFIED');
 
@@ -25,6 +25,7 @@ async function generateList({ prompt, authToken, appCheckToken, listNames, curre
         prompt: safePrompt,
         listNames: Array.isArray(listNames) ? listNames : [],
         currentListName: currentListName || undefined,
+        currentListItems: Array.isArray(currentListItems) ? currentListItems : [],
       }),
     });
   } catch (error) {

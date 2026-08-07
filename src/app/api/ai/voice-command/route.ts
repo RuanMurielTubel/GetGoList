@@ -15,6 +15,7 @@ import {
   validateVoiceReply,
   type VoiceReply,
 } from "@/lib/server/voice-command-prompt";
+import { sanitizeListItemSnapshot, type ListItemSnapshot } from "@/lib/server/list-actions";
 
 export const runtime = "nodejs";
 
@@ -32,7 +33,7 @@ type VoiceAttemptResult =
 
 async function requestVoiceActions(
   transcript: string,
-  context: { listNames: string[]; currentListName?: string },
+  context: { listNames: string[]; currentListName?: string; currentListItems?: ListItemSnapshot[] },
 ): Promise<VoiceAttemptResult> {
   let aiResponse: Response;
   try {
@@ -121,7 +122,8 @@ export async function POST(request: Request) {
       ? body.listNames.filter((name: unknown): name is string => typeof name === "string" && name.trim().length > 0)
       : [];
     const currentListName = typeof body.currentListName === "string" ? body.currentListName : undefined;
-    const context = { listNames, currentListName };
+    const currentListItems = sanitizeListItemSnapshot(body.currentListItems);
+    const context = { listNames, currentListName, currentListItems };
 
     // O modelo ocasionalmente foge do formato pedido; uma segunda
     // tentativa resolve a maioria dos casos sem expor o usuário a um

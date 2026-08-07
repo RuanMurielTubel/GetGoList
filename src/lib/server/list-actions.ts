@@ -34,11 +34,31 @@ export const LIST_ACTION_SCHEMA_INSTRUCTION = [
   'Organize cada produto de "add" em um setor de supermercado coerente, como Hortifruti, Açougue, Bebidas, Padaria, Limpeza, Higiene Pessoal, Congelados, Mercearia, Descartáveis ou Geral — dando preferência aos setores que já aparecem na lista de destino, quando fizerem sentido.',
 ].join(" ");
 
+export type ListItemSnapshot = { name: string; sector: string };
+
+// Recorte leve (só nome + setor) dos itens da lista aberta, mandado junto
+// do pedido pra IA poder decidir reorganizações em massa ("bota tudo no
+// setor certo") — sem isso ela não tem como saber quais itens existem.
+export function sanitizeListItemSnapshot(value: unknown): ListItemSnapshot[] {
+  if (!Array.isArray(value)) return [];
+  const items: ListItemSnapshot[] = [];
+  for (const raw of value.slice(0, 120)) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as { name?: unknown; sector?: unknown };
+    if (typeof item.name !== "string" || !item.name.trim()) continue;
+    items.push({
+      name: item.name.slice(0, 120),
+      sector: typeof item.sector === "string" && item.sector.trim() ? item.sector.slice(0, 60) : "Geral",
+    });
+  }
+  return items;
+}
+
 export function validateListActions(value: unknown): ListAction[] | null {
   if (!Array.isArray(value)) return null;
 
   const actions: ListAction[] = [];
-  for (const rawAction of value.slice(0, 30)) {
+  for (const rawAction of value.slice(0, 120)) {
     if (!rawAction || typeof rawAction !== "object") continue;
     const action = rawAction as {
       type?: unknown;

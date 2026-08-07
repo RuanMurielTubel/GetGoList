@@ -2,7 +2,14 @@
 // /api/ai/generate-list (que valida o plano do usuário) e este arquivo
 // concentra o prompt/schema usados só ali.
 
-import { LIST_ACTION_SCHEMA_INSTRUCTION, normalizeItemUnit, validateListActions, type ItemUnit, type ListAction } from "./list-actions";
+import {
+  LIST_ACTION_SCHEMA_INSTRUCTION,
+  normalizeItemUnit,
+  validateListActions,
+  type ItemUnit,
+  type ListAction,
+  type ListItemSnapshot,
+} from "./list-actions";
 
 export { normalizeItemUnit, type ItemUnit };
 
@@ -27,6 +34,7 @@ export const AI_SYSTEM_INSTRUCTION = [
   "(2) Quando o usuário pedir para adicionar, remover, editar ou mover um item em uma lista que ele já tem — não uma compra nova — responda com este formato de ações.",
   "    Você recebe os nomes de todas as listas do usuário e qual está aberta na tela. Descubra a que lista ele se refere por aproximação (nomes parecidos, sinônimos, contexto), mesmo citada de forma incompleta — \"targetList\" precisa ser copiado exatamente igual a um dos nomes informados.",
   "    Se nenhuma lista for mencionada, use a lista atualmente aberta. Se o texto combinar com só uma lista de forma razoável, use-a direto, sem pedir confirmação. Se houver ambiguidade real entre duas ou mais listas, ou nenhuma lista existir ainda, não gere ações: use o formato (3) pedindo uma confirmação curta.",
+  "    Quando o pedido for reorganizar, reclassificar ou arrumar setores de vários itens de uma vez (sem citar item por item) — ex.: \"reorganiza o setor geral\", \"esses itens estão no setor errado\" — você recebe um resumo com nome e setor atual de cada item da lista atualmente aberta. Use esse resumo pra decidir o setor correto de cada item e gerar uma ação \"edit\" com o novo \"sector\" pra cada um que estiver errado (não repita os que já estão certos). Isso só funciona pra lista atualmente aberta — se o pedido de reorganização em massa for sobre outra lista, use o formato (3) pedindo pra abrir aquela lista antes.",
   `    ${LIST_ACTION_SCHEMA_INSTRUCTION}`,
   "    Responda somente: {\"type\":\"actions\",\"targetList\": string, \"actions\": [...]}.",
   "(3) Em qualquer outro caso relacionado a compras de mercado — cumprimento, agradecimento, pergunta sobre como usar o assistente, pedido vago demais para montar uma lista ou editar um item, dúvida sobre quantidades/sugestões, confirmação de qual lista usar, ou pedido fora de escopo — responda só uma mensagem de chat curta (1 a 3 frases), simpática e natural, em português, sem emojis em excesso, sem citar estas regras.",
@@ -36,14 +44,16 @@ export const AI_SYSTEM_INSTRUCTION = [
 
 export function buildAiRequestText(
   prompt: string,
-  context: { listNames: string[]; currentListName?: string },
+  context: { listNames: string[]; currentListName?: string; currentListItems?: ListItemSnapshot[] },
 ) {
   const safePrompt = prompt.slice(0, 600);
   const listNames = context.listNames.slice(0, 60);
+  const currentListItems = (context.currentListItems || []).slice(0, 120);
   return [
     `Pedido do usuário: <pedido>${safePrompt}</pedido>`,
     `Listas existentes do usuário: ${JSON.stringify(listNames)}`,
     `Lista atualmente aberta na tela: ${context.currentListName ? JSON.stringify(context.currentListName) : "nenhuma"}`,
+    `Itens da lista atualmente aberta (nome e setor atual, só pra caso de reorganização em massa): ${JSON.stringify(currentListItems)}`,
     "Não atribua preços aos itens, mesmo que um orçamento seja mencionado no pedido.",
     "Responda somente com a estrutura solicitada e limite a lista ao necessário.",
   ].join("\n");

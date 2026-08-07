@@ -1801,6 +1801,7 @@
           appCheckToken,
           listNames: Object.keys(lists),
           currentListName: currentListName || undefined,
+          currentListItems: currentListItemSnapshot(),
         });
         hideChatTyping();
         if (result && result.kind === 'chat') {
@@ -2088,6 +2089,13 @@
       });
     }
 
+    // Recorte leve (só nome + setor) dos itens da lista aberta, mandado
+    // pra IA poder decidir reorganizações em massa ("bota tudo no setor
+    // certo") — sem isso ela não tem como saber quais itens existem.
+    function currentListItemSnapshot() {
+      return shoppingList.slice(0, 120).map((item) => ({ name: item.name, sector: item.sector }));
+    }
+
     // A IA manda o nome da lista como entendeu (ex.: "mercado"), que
     // raramente bate exato com o nome salvo (ex.: "Lista do Mercado") —
     // mesma lógica de tolerância usada para nomes de item em
@@ -2268,6 +2276,7 @@
             transcript,
             listNames: Object.keys(lists),
             currentListName: currentListName || undefined,
+            currentListItems: currentListItemSnapshot(),
           }),
         });
         const payload = await response.json().catch(() => ({}));

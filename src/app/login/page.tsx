@@ -136,6 +136,7 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
@@ -232,6 +233,7 @@ export default function LoginPage() {
     setConfirmPassword("");
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setAgreedToTerms(false);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -240,6 +242,11 @@ export default function LoginPage() {
 
     if (mode === "register" && name.trim().length < 2) {
       setFeedback("Digite seu nome.");
+      return;
+    }
+
+    if (mode === "register" && !agreedToTerms) {
+      setFeedback("Você precisa aceitar os Termos de Uso e a Política de Privacidade.");
       return;
     }
 
@@ -717,13 +724,38 @@ export default function LoginPage() {
             </label>
           )}
 
+          {mode === "register" && (
+            <label className="account-consent">
+              <input
+                checked={agreedToTerms}
+                onChange={(event) => setAgreedToTerms(event.target.checked)}
+                required
+                type="checkbox"
+              />
+              <span>
+                Li e concordo com os{" "}
+                <Link href="/termos" rel="noopener noreferrer" target="_blank">
+                  Termos de Uso
+                </Link>{" "}
+                e a{" "}
+                <Link href="/privacidade" rel="noopener noreferrer" target="_blank">
+                  Política de Privacidade
+                </Link>
+                .
+              </span>
+            </label>
+          )}
+
           {feedback && (
             <p className="account-feedback" role="status">
               {feedback}
             </p>
           )}
 
-          <button className="button button-primary" disabled={loading}>
+          <button
+            className="button button-primary"
+            disabled={loading || (mode === "register" && !agreedToTerms)}
+          >
             {loading
               ? "Aguarde..."
               : mode === "login"
@@ -752,7 +784,7 @@ export default function LoginPage() {
             className="button button-google"
             type="button"
             onClick={handleGoogleSignIn}
-            disabled={loading}
+            disabled={loading || (mode === "register" && !agreedToTerms)}
           >
             {loading ? (
               'Aguarde...'
@@ -772,11 +804,13 @@ export default function LoginPage() {
           </button>
         </div>
 
-        <p className="account-terms">
-          Ao usar o GetGoList, você concorda com os{" "}
-          <Link href="/termos">Termos de Uso</Link> e declara ciência da nossa{" "}
-          <Link href="/privacidade">Política de Privacidade e Segurança</Link>.
-        </p>
+        {mode === "login" && (
+          <p className="account-terms">
+            Ao usar o GetGoList, você concorda com os{" "}
+            <Link href="/termos">Termos de Uso</Link> e declara ciência da nossa{" "}
+            <Link href="/privacidade">Política de Privacidade e Segurança</Link>.
+          </p>
+        )}
           </>
         )}
       </section>

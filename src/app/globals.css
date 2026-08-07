@@ -1013,6 +1013,39 @@ footer {
   opacity: 1;
 }
 
+.account-form .account-consent {
+  align-items: flex-start;
+  cursor: pointer;
+  display: flex;
+  font-size: 0.78rem;
+  font-weight: 600;
+  gap: 10px;
+  line-height: 1.5;
+  margin: -2px 0 2px;
+}
+
+.account-form .account-consent input {
+  accent-color: var(--primary);
+  flex: 0 0 auto;
+  height: 18px;
+  margin: 1px 0 0;
+  min-height: 0;
+  padding: 0;
+  width: 18px;
+}
+
+.account-consent span {
+  color: var(--muted);
+}
+
+.account-consent a {
+  color: var(--primary-dark);
+  font-weight: 750;
+  text-decoration: underline;
+  text-decoration-color: rgba(5, 95, 105, 0.3);
+  text-underline-offset: 3px;
+}
+
 .account-form .button,
 .account-card > .button {
   width: 100%;

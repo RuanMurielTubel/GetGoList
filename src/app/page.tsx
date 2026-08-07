@@ -1,31 +1,160 @@
 import Link from "next/link";
 import { PLAN_LIMITS, type PlanId } from "@/lib/shared/plan-limits";
 
-const benefits = [
-  {
-    title: "Compartilhe e colabore",
-    description:
-      "Convide pessoas para atualizar itens e valores da mesma lista em tempo real.",
-    icon: "≡",
-  },
-  {
-    title: "Acompanhe o total",
-    description:
-      "Veja quanto a compra vai custar e compare com o saldo disponível.",
-    icon: "R$",
-  },
-  {
-    title: "Divida a conta",
-    description:
-      "Feche a compra e calcule automaticamente quanto cada participante deve.",
-    icon: "÷",
-  },
+type IconProps = { className?: string };
+
+function IconNoPaper({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <path d="M7 3h8l3 3v15H7z" />
+      <path d="M10 9h5M10 13h5M10 17h3" />
+      <path d="M3 3l18 18" />
+    </svg>
+  );
+}
+
+function IconWithYou({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <rect x="7" y="2.5" width="10" height="19" rx="2.2" />
+      <path d="M11 18h2" />
+    </svg>
+  );
+}
+
+function IconSparkle({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="currentColor" stroke="none">
+      <path d="M12 3c.6 3.6 2.4 5.4 6 6-3.6.6-5.4 2.4-6 6-.6-3.6-2.4-5.4-6-6 3.6-.6 5.4-2.4 6-6Z" />
+    </svg>
+  );
+}
+
+function IconMic({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z" />
+      <path d="M19 11a7 7 0 0 1-14 0M12 18v3" />
+    </svg>
+  );
+}
+
+function IconShield({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <path d="M12 2 4 5v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V5Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function IconFamily({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <circle cx="8" cy="8" r="3" />
+      <circle cx="17" cy="9.5" r="2.3" />
+      <path d="M2.5 20c0-3.6 2.4-6 5.5-6s5.5 2.4 5.5 6" />
+      <path d="M14.8 14.3c2.4.4 3.9 2.3 3.9 5.7" />
+    </svg>
+  );
+}
+
+function IconBolt({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="currentColor" stroke="none">
+      <path d="M13 2 5 14h5.5L9 22l9-12h-5.5L14 2Z" />
+    </svg>
+  );
+}
+
+function IconLeaf({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <path d="M6 20C6 10 12 4 20 4c0 8-6 14-16 16Z" />
+      <path d="M6 20c2-4 5-7 9-9" />
+    </svg>
+  );
+}
+
+function IconFlame({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <path d="M12 3c-3 3-5 5-5 8.5A5 5 0 0 0 12 17a5 5 0 0 0 5-5.5C17 9 15.5 9 15 10c.5-3-1-5.5-3-7Z" />
+    </svg>
+  );
+}
+
+function IconBread({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <ellipse cx="12" cy="14" rx="8" ry="5" />
+      <path d="M6 14c1-3 3-5 6-5s5 2 6 5" />
+    </svg>
+  );
+}
+
+function IconCup({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <path d="M8 3h8l-1 15a3 3 0 0 1-3 3v0a3 3 0 0 1-3-3L8 3Z" />
+      <path d="M7 8h10" />
+    </svg>
+  );
+}
+
+function IconSpray({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <rect x="9" y="8" width="6" height="13" rx="1.5" />
+      <path d="M11 8V5h3l1-2" />
+    </svg>
+  );
+}
+
+function IconCart({ className }: IconProps) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className={className}>
+      <path d="M3 4h2l2.4 12.2a2 2 0 0 0 2 1.8h7.4a2 2 0 0 0 2-1.6L20.5 9H6" />
+      <circle cx="10" cy="21" r="1.4" />
+      <circle cx="17.5" cy="21" r="1.4" />
+    </svg>
+  );
+}
+
+const vantagens = [
+  { title: "Chega de listas de papel", description: "Tudo organizado no celular, sem rabiscos nem folhas perdidas.", icon: IconNoPaper },
+  { title: "Sua lista sempre com você", description: "Sincronizada na sua conta, disponível em qualquer aparelho.", icon: IconWithYou },
+  { title: "A IA organiza tudo sozinha", description: "Produtos separados por setor automaticamente, sem esforço.", icon: IconSparkle },
+  { title: "Fale em vez de digitar", description: "Toque no microfone e monte a lista só de conversar.", icon: IconMic },
+  { title: "Nunca mais esqueça um produto", description: "Revise por setor antes de sair de casa e não deixe nada pra trás.", icon: IconShield },
+  { title: "Compartilhe com a família", description: "Todo mundo vê e edita a mesma lista em tempo real.", icon: IconFamily },
+  { title: "Crie listas em segundos", description: "Descreva a compra numa frase e receba tudo pronto pra revisar.", icon: IconBolt },
+];
+
+const categories = [
+  { label: "Hortifruti", icon: IconLeaf },
+  { label: "Açougue", icon: IconFlame },
+  { label: "Padaria", icon: IconBread },
+  { label: "Bebidas", icon: IconCup },
+  { label: "Limpeza", icon: IconSpray },
 ];
 
 const steps = [
-  "Crie ou escolha uma lista",
-  "Adicione os produtos que precisa",
-  "Marque cada item durante a compra",
+  {
+    title: "Fale ou digite sua lista",
+    description: "Descreva o que precisa em uma frase, por texto ou por voz.",
+    icon: IconMic,
+  },
+  {
+    title: "A IA organiza automaticamente",
+    description: "Cada produto entra no setor certo, com quantidade e unidade.",
+    icon: IconSparkle,
+  },
+  {
+    title: "Vá ao mercado sem esquecer nada",
+    description: "Acompanhe o total, marque os itens e feche a compra tranquilo.",
+    icon: IconCart,
+  },
 ];
 
 const aiExampleItems = [
@@ -91,7 +220,7 @@ export default function Home() {
       <section className="hero">
         <div className="hero-copy">
           <a className="pill-badge" href="#ia">
-            <span aria-hidden="true">✨</span> Novo: crie listas com IA
+            <span aria-hidden="true">✨</span> Novo: crie listas com IA e por voz
           </a>
           <p className="eyebrow">Sua compra começa mais organizada</p>
           <h1>A lista de compras simples para usar de verdade.</h1>
@@ -153,13 +282,25 @@ export default function Home() {
         </div>
       </section>
 
+      <div className="category-strip" aria-label="Setores organizados automaticamente">
+        {categories.map((category) => (
+          <div className="category-chip" key={category.label}>
+            <span className="category-chip-icon" aria-hidden="true">
+              <category.icon />
+            </span>
+            <span>{category.label}</span>
+          </div>
+        ))}
+      </div>
+
       <section className="ai-showcase" id="ia" aria-labelledby="ai-showcase-title">
         <div className="section-heading">
           <p className="eyebrow">Novidade</p>
           <h2 id="ai-showcase-title">Descreva a compra, a IA monta a lista</h2>
           <p className="ai-showcase-lead">
-            Sem preencher campo por campo: conte o que precisa em uma frase e
-            receba uma lista organizada por setor, pronta para revisar.
+            Sem preencher campo por campo: conte o que precisa em uma frase — ou
+            fale em voz alta — e receba uma lista organizada por setor, pronta
+            para revisar.
           </p>
         </div>
 
@@ -200,18 +341,22 @@ export default function Home() {
 
       <section className="benefits" aria-labelledby="benefits-title">
         <div className="section-heading">
-          <p className="eyebrow">O essencial primeiro</p>
-          <h2 id="benefits-title">Tudo para uma compra mais tranquila</h2>
+          <p className="eyebrow">Vantagens</p>
+          <h2 id="benefits-title">Feito pra quem quer resolver rápido</h2>
         </div>
 
         <div className="benefit-grid">
-          {benefits.map((benefit) => (
-            <article className="benefit-card" key={benefit.title}>
+          {vantagens.map((vantagem, index) => (
+            <article
+              className="benefit-card"
+              key={vantagem.title}
+              style={{ animationDelay: `${index * 70}ms` }}
+            >
               <span className="benefit-icon" aria-hidden="true">
-                {benefit.icon}
+                <vantagem.icon />
               </span>
-              <h3>{benefit.title}</h3>
-              <p>{benefit.description}</p>
+              <h3>{vantagem.title}</h3>
+              <p>{vantagem.description}</p>
             </article>
           ))}
         </div>
@@ -220,18 +365,24 @@ export default function Home() {
       <section className="how-it-works" id="como-funciona">
         <div>
           <p className="eyebrow">Comece em segundos</p>
-          <h2>Organização simples do começo ao fim</h2>
+          <h2>Do pedido à compra em 3 passos</h2>
           <p>
-            Acesse suas listas em outros dispositivos, colabore em tempo real e
-            divida o valor da compra com os participantes.
+            Fale ou descreva a compra, deixe a IA organizar por setor e siga
+            direto pro mercado — sem digitar item por item.
           </p>
         </div>
 
-        <ol>
+        <ol className="step-list">
           {steps.map((step, index) => (
-            <li key={step}>
-              <span>{index + 1}</span>
-              {step}
+            <li key={step.title} style={{ animationDelay: `${index * 90}ms` }}>
+              <span className="step-number">{index + 1}</span>
+              <span className="step-icon" aria-hidden="true">
+                <step.icon />
+              </span>
+              <div>
+                <strong>{step.title}</strong>
+                <p>{step.description}</p>
+              </div>
             </li>
           ))}
         </ol>

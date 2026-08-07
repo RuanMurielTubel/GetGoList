@@ -352,8 +352,67 @@ a.pill-badge:hover {
   height: 100%;
 }
 
-.benefits {
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.category-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 0 auto;
+  max-width: 900px;
+  padding: 0 28px 64px;
+}
+
+.category-chip {
+  align-items: center;
   background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: 700;
+  gap: 8px;
+  padding: 6px 16px 6px 6px;
+}
+
+.category-chip-icon {
+  align-items: center;
+  background: rgba(8, 127, 140, 0.12);
+  border-radius: 50%;
+  color: var(--primary-dark);
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.category-chip-icon svg {
+  fill: none;
+  height: 16px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 16px;
+}
+
+.benefits {
+  background:
+    radial-gradient(circle at 10% 8%, rgba(8, 127, 140, 0.08), transparent 24rem),
+    radial-gradient(circle at 92% 92%, rgba(255, 183, 3, 0.1), transparent 24rem),
+    var(--surface);
   border-bottom: 1px solid var(--line);
   border-top: 1px solid var(--line);
   padding: 88px 28px;
@@ -376,30 +435,46 @@ a.pill-badge:hover {
 .benefit-grid {
   display: grid;
   gap: 20px;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   margin: 0 auto;
   max-width: 1124px;
 }
 
 .benefit-card {
+  animation: fade-up 0.6s ease both;
   background: var(--surface-soft);
   border: 1px solid #e3edf3;
   border-radius: 18px;
   padding: 28px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.benefit-card:hover {
+  border-color: #c8dfe3;
+  box-shadow: 0 16px 34px rgba(16, 35, 63, 0.08);
+  transform: translateY(-3px);
 }
 
 .benefit-icon {
   align-items: center;
-  background: #d9eff1;
+  background: rgba(8, 127, 140, 0.12);
   border-radius: 10px;
   color: var(--primary-dark);
   display: inline-flex;
-  font-size: 0.85rem;
-  font-weight: 850;
   height: 38px;
   justify-content: center;
   margin-bottom: 24px;
   width: 38px;
+}
+
+.benefit-icon svg {
+  fill: none;
+  height: 20px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 20px;
 }
 
 .benefit-card h3 {
@@ -428,7 +503,7 @@ a.pill-badge:hover {
   margin-top: 20px;
 }
 
-.how-it-works ol {
+.step-list {
   display: grid;
   gap: 14px;
   list-style: none;
@@ -436,27 +511,70 @@ a.pill-badge:hover {
   padding: 0;
 }
 
-.how-it-works li {
+.step-list li {
   align-items: center;
+  animation: fade-up 0.6s ease both;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
   display: flex;
-  font-weight: 700;
-  gap: 16px;
+  gap: 14px;
   padding: 16px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
-.how-it-works li span {
+.step-list li:hover {
+  border-color: #c8dfe3;
+  box-shadow: 0 14px 30px rgba(16, 35, 63, 0.07);
+  transform: translateY(-2px);
+}
+
+.step-number {
   align-items: center;
   background: var(--primary);
   border-radius: 10px;
   color: #fff;
   display: inline-flex;
   flex: 0 0 auto;
-  height: 34px;
+  font-weight: 800;
+  height: 32px;
   justify-content: center;
-  width: 34px;
+  width: 32px;
+}
+
+.step-icon {
+  align-items: center;
+  background: rgba(8, 127, 140, 0.12);
+  border-radius: 10px;
+  color: var(--primary-dark);
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.step-icon svg {
+  fill: none;
+  height: 20px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 20px;
+}
+
+.step-list li strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: 2px;
+}
+
+.step-list li p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
 }
 
 .ai-showcase {
@@ -1308,6 +1426,17 @@ footer a {
 
   a.pill-badge:hover,
   .pricing-teaser-card:hover {
+    transform: none;
+  }
+
+  .benefit-card,
+  .step-list li {
+    animation: none;
+    opacity: 1;
+  }
+
+  .benefit-card:hover,
+  .step-list li:hover {
     transform: none;
   }
 }

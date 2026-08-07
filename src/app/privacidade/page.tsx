@@ -186,7 +186,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>7. Armazenamento e exclusão</h2>
+          <h2 id="exclusao-de-conta">7. Armazenamento e exclusão</h2>
           <p>
             Os dados são mantidos enquanto a conta estiver ativa ou pelo período
             necessário para prestar o serviço, proteger direitos e cumprir obrigações

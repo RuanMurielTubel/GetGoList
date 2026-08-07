@@ -2100,6 +2100,7 @@ li .item-controls .action-buttons button:last-child {
   outline: none;
   padding: 13px 14px;
   transition: border-color 160ms ease, box-shadow 160ms ease;
+  width: 100%;
 }
 
 .ai-list-form textarea {
@@ -4046,6 +4047,7 @@ body.nav-collapsed .footer {
 .ai-chat-thread .ai-preview-settings input {
   font-size: 12px;
   padding: 9px 10px;
+  width: 100%;
 }
 
 .ai-chat-thread .ai-preview-items {

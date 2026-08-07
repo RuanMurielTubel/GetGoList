@@ -8,13 +8,35 @@ const geist = Geist({
   subsets: ["latin"],
 });
 
+const title = "GetGoList | Sua lista de compras";
+const description =
+  "Organize produtos, quantidades e valores em uma lista de compras simples.";
+
 export const metadata: Metadata = {
-  title: "GetGoList | Sua lista de compras",
-  description:
-    "Organize produtos, quantidades e valores em uma lista de compras simples.",
+  title,
+  description,
+  metadataBase: new URL("https://www.getgolist.com"),
   icons: {
-    icon: [{ url: "/icon.png", type: "image/png" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png" },
+    ],
     apple: [{ url: "/icon.png", type: "image/png" }],
+  },
+  openGraph: {
+    title,
+    description,
+    url: "https://www.getgolist.com",
+    siteName: "GetGoList",
+    images: [{ url: "/icon.png", width: 192, height: 192 }],
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title,
+    description,
+    images: ["/icon.png"],
   },
 };
 

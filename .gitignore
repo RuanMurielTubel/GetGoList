@@ -36,6 +36,12 @@ yarn-error.log*
 # Firebase Android configuration (download from the Firebase Console)
 /android/app/google-services.json
 
+# Assinatura de release do Android -- NUNCA versionar (perder isso significa
+# nunca mais poder atualizar o app publicado na Play Store).
+/android/keystore.properties
+*.jks
+*.keystore
+
 # vercel
 .vercel
 

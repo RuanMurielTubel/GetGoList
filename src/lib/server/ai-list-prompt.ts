@@ -32,11 +32,11 @@ export function buildAiRequestText(prompt: string) {
   ].join("\n");
 }
 
-type ItemUnit = "un" | "kg" | "L";
+export type ItemUnit = "un" | "kg" | "L";
 type AiListItem = { name: string; quantity: number; unit: ItemUnit; sector: string };
 type AiListResult = { listName: string; items: AiListItem[] };
 
-function normalizeItemUnit(value: unknown): ItemUnit {
+export function normalizeItemUnit(value: unknown): ItemUnit {
   return value === "kg" || value === "L" ? value : "un";
 }
 

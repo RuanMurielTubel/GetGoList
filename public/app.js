@@ -1837,6 +1837,258 @@
       showSection('productsSection');
     }
 
+    let voiceRecognition = null;
+    let voiceRecognitionActive = false;
+    let voiceFinalTranscript = '';
+
+    function setVoiceStatus(message, isError = false) {
+      const status = document.getElementById('voiceCommandStatus');
+      if (!status) return;
+      status.textContent = message;
+      status.classList.toggle('is-error', Boolean(isError));
+    }
+
+    function setVoiceTranscript(text) {
+      const transcript = document.getElementById('voiceTranscript');
+      if (transcript) transcript.textContent = text;
+    }
+
+    function normalizeVoiceMatchText(value) {
+      return String(value || '')
+        .toLocaleLowerCase('pt-BR')
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .trim();
+    }
+
+    // Comando de voz manda só o nome falado (ex.: "leite"), que raramente
+    // bate exato com o nome salvo (ex.: "Leite integral") — por isso tenta
+    // igualdade exata primeiro e cai pra correspondência parcial nos dois
+    // sentidos antes de desistir.
+    function findMatchingItemIndex(items, spokenName) {
+      const target = normalizeVoiceMatchText(spokenName);
+      if (!target) return -1;
+      const exactIndex = items.findIndex((item) => normalizeVoiceMatchText(item.name) === target);
+      if (exactIndex !== -1) return exactIndex;
+      return items.findIndex((item) => {
+        const itemName = normalizeVoiceMatchText(item.name);
+        return itemName.includes(target) || target.includes(itemName);
+      });
+    }
+
+    function applyVoiceActions(actions) {
+      if (!currentListName || !lists[currentListName]) {
+        setVoiceStatus('Nenhuma lista está aberta no momento.', true);
+        return;
+      }
+      const today = new Date().toLocaleDateString();
+      let added = 0;
+      let removed = 0;
+      let cleared = false;
+      const notFound = [];
+
+      actions.forEach((action) => {
+        if (action.type === 'clear') {
+          if (isSharedGuest()) {
+            notFound.push('limpar a lista (só o dono pode)');
+            return;
+          }
+          clearCurrentListItems();
+          cleared = true;
+          return;
+        }
+        if (action.type === 'add') {
+          if (shoppingList.length >= MAX_ITEMS_PER_LIST) return;
+          const unit = normalizeItemUnit(action.unit);
+          const quantity = boundedQuantity(action.quantity, unit);
+          const item = {
+            id: createEntityId('item'),
+            name: cleanText(action.name, 120, 'Item'),
+            price: 0,
+            quantity,
+            unit,
+            total: 0,
+            sector: normalizeSectorName(action.sector, 'Geral'),
+            date: today,
+            checked: false,
+          };
+          shoppingList.push(item);
+          listHistory.push({ ...item, id: createEntityId('history') });
+          added += 1;
+          return;
+        }
+        if (action.type === 'remove') {
+          const index = findMatchingItemIndex(shoppingList, action.name);
+          if (index === -1) {
+            notFound.push(action.name);
+            return;
+          }
+          const item = shoppingList[index];
+          lists[currentListName].balance += item.total;
+          shoppingList.splice(index, 1);
+          removed += 1;
+        }
+      });
+
+      try {
+        saveLists();
+      } catch (e) {
+        console.error('Erro ao salvar listas no localStorage:', e);
+      }
+      updateHistory();
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateMonthSelect();
+      updateFooter();
+      updateDashboard();
+
+      const parts = [];
+      if (added) parts.push(`${added} ${added === 1 ? 'item adicionado' : 'itens adicionados'}`);
+      if (removed) parts.push(`${removed} ${removed === 1 ? 'item removido' : 'itens removidos'}`);
+      if (cleared) parts.push('lista limpa');
+      if (notFound.length) parts.push(`não encontrei: ${notFound.join(', ')}`);
+
+      const hasChanges = added || removed || cleared;
+      setVoiceStatus(
+        parts.length ? `${parts.join(' · ')}.` : 'Não entendi o comando. Tente falar de outro jeito.',
+        !hasChanges,
+      );
+    }
+
+    async function processVoiceTranscript(transcript) {
+      const authenticatedUser = await waitForAuthenticatedUser();
+      if (!authenticatedUser) {
+        setVoiceStatus('Entre na sua conta para usar o comando de voz.', true);
+        return;
+      }
+
+      setVoiceStatus('Processando...');
+      const card = document.getElementById('voiceCommandCard');
+      if (card) card.classList.add('processing');
+      try {
+        const [authToken, appCheckToken] = await Promise.all([
+          authenticatedUser.getIdToken(),
+          getFirebaseAppCheckToken(),
+        ]);
+        const response = await fetch('/api/ai/voice-command', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json',
+            'X-Firebase-AppCheck': appCheckToken,
+          },
+          body: JSON.stringify({ transcript }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.ok) {
+          throw Object.assign(new Error(result.code || 'AI_TEMPORARY_ERROR'), { code: result.code });
+        }
+        applyVoiceActions(Array.isArray(result.actions) ? result.actions : []);
+      } catch (error) {
+        console.error('Não foi possível interpretar o comando de voz.', error);
+        const errorCode = error && (error.code || error.message);
+        const message = errorCode === 'AI_PLAN_REQUIRED'
+          ? 'Assine o plano Cestão para usar comandos de voz.'
+          : errorCode === 'AI_AUTH_REQUIRED'
+            ? 'Entre novamente na sua conta para usar o comando de voz.'
+          : errorCode === 'AI_DEVICE_NOT_VERIFIED'
+            ? 'Não foi possível validar este dispositivo. Recarregue a tela e tente novamente.'
+          : errorCode === 'AI_LIMIT_REACHED'
+            ? 'Muitos comandos de voz seguidos. Aguarde um pouco e tente novamente.'
+          : errorCode === 'AI_NETWORK'
+            ? 'Sem conexão com a IA. Verifique sua internet e tente novamente.'
+          : errorCode === 'AI_NOT_CONFIGURED'
+            ? 'O comando de voz está aguardando ativação. Tente novamente mais tarde.'
+          : errorCode === 'AI_EMPTY_RESULT'
+            ? 'Não entendi o comando. Tente falar de outro jeito.'
+            : 'Não foi possível processar o comando agora. Tente novamente.';
+        setVoiceStatus(message, true);
+      } finally {
+        if (card) card.classList.remove('processing');
+      }
+    }
+
+    function initVoiceCommand() {
+      const button = document.getElementById('voiceCommandButton');
+      const card = document.getElementById('voiceCommandCard');
+      if (!button || !card) return;
+
+      const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognitionCtor || isNativeAppShell) {
+        card.hidden = true;
+        return;
+      }
+
+      voiceRecognition = new SpeechRecognitionCtor();
+      voiceRecognition.lang = 'pt-BR';
+      voiceRecognition.continuous = true;
+      voiceRecognition.interimResults = true;
+
+      voiceRecognition.addEventListener('start', () => {
+        voiceRecognitionActive = true;
+        card.classList.add('listening');
+        setVoiceStatus('Estou ouvindo...');
+      });
+
+      voiceRecognition.addEventListener('result', (event) => {
+        let finalText = '';
+        let interimText = '';
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            finalText += result[0].transcript;
+          } else {
+            interimText += result[0].transcript;
+          }
+        }
+        if (finalText) {
+          voiceFinalTranscript = `${voiceFinalTranscript} ${finalText}`.trim();
+        }
+        setVoiceTranscript(`${voiceFinalTranscript} ${interimText}`.trim());
+      });
+
+      voiceRecognition.addEventListener('error', (event) => {
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          setVoiceStatus('Permita o uso do microfone nas configurações do navegador para falar sua lista.', true);
+        } else if (event.error === 'no-speech') {
+          setVoiceStatus('Não ouvi nada. Toque no microfone e tente novamente.', true);
+        } else {
+          setVoiceStatus('Não foi possível usar o microfone agora. Tente novamente.', true);
+        }
+      });
+
+      voiceRecognition.addEventListener('end', () => {
+        voiceRecognitionActive = false;
+        card.classList.remove('listening');
+        const transcript = voiceFinalTranscript.trim();
+        voiceFinalTranscript = '';
+        if (transcript) {
+          processVoiceTranscript(transcript);
+        }
+      });
+
+      card.hidden = false;
+      button.addEventListener('click', async () => {
+        if (voiceRecognitionActive) {
+          voiceRecognition.stop();
+          return;
+        }
+        const authenticatedUser = await waitForAuthenticatedUser();
+        if (!authenticatedUser) {
+          setVoiceStatus('Entre na sua conta para usar o comando de voz.', true);
+          return;
+        }
+        voiceFinalTranscript = '';
+        setVoiceTranscript('');
+        try {
+          voiceRecognition.start();
+        } catch (error) {
+          console.warn('Não foi possível iniciar o reconhecimento de voz.', error);
+        }
+      });
+    }
+
     function availableSectorNames() {
       const currentList = lists[currentListName] || {};
       const itemSectors = Array.isArray(currentList.items)
@@ -2879,14 +3131,20 @@
       alert(`${selectedItems.length} ${selectedItems.length === 1 ? 'item movido' : 'itens movidos'} para “${targetListName}”.`);
     }
 
+    // Compartilhada entre o botão "Limpar histórico" (com confirmação) e
+    // o comando de voz "limpar a lista" (a própria fala já é a confirmação).
+    function clearCurrentListItems() {
+      listHistory = [];
+      shoppingList = [];
+      lists[currentListName].history = listHistory;
+      lists[currentListName].items = shoppingList;
+      lists[currentListName].balance = lists[currentListName].initialBalance;
+    }
+
     function clearHistory() {
       if (confirm('Tem certeza que deseja limpar o histórico desta lista? Esta ação não pode ser desfeita.')) {
         console.log("Limpando histórico da lista:", currentListName);
-        listHistory = [];
-        shoppingList = [];
-        lists[currentListName].history = listHistory;
-        lists[currentListName].items = shoppingList;
-        lists[currentListName].balance = lists[currentListName].initialBalance;
+        clearCurrentListItems();
         try {
           saveLists();
         } catch (e) {
@@ -5081,6 +5339,7 @@
     updatePlanUi();
     setupDialogOverlayClose();
     setupEventHandlers();
+    initVoiceCommand();
     setupListButtons();
     updateSharedModeUi();
     updateHistory();

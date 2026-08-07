@@ -1943,6 +1943,13 @@
           prompt.style.height = 'auto';
           prompt.style.height = `${Math.min(prompt.scrollHeight, 70)}px`;
         });
+        prompt.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+          event.preventDefault();
+          if (!prompt.disabled && prompt.value.trim()) {
+            generateAiList();
+          }
+        });
       }
     }
 

@@ -111,7 +111,11 @@
     }
 
     function updateAdVisibility() {
-      const showAds = currentPlanLimits().showAds;
+      // AdSense é feito pra sites, não pra dentro de um app empacotado — por
+      // política do próprio AdSense/Play Store, o app Android nunca carrega
+      // anúncio, independente do plano. Só o site continua mostrando ads
+      // pro plano free/cesta normalmente.
+      const showAds = currentPlanLimits().showAds && !isNativeAppShell;
       document.querySelectorAll('.ad-slot').forEach((slot) => {
         slot.classList.toggle('ad-slot-hidden', !showAds);
       });

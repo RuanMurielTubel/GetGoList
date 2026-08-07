@@ -1692,6 +1692,61 @@
       setAiListStatus('Sugestão descartada. Você pode pedir uma nova lista.');
     }
 
+    // Bate-papo curto (saudação, agradecimento, mensagem vaga) é respondido
+    // na hora, sem chamar o DeepSeek: mais rápido e evita gastar a API com
+    // um "oi". Só segue para a IA de verdade quando dá pra entender que é
+    // um pedido de lista.
+    function normalizeForSmallTalk(text) {
+      return text
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .toLowerCase()
+        .replace(/[!?.,;:]+$/g, '')
+        .trim();
+    }
+
+    const SMALL_TALK_GREETINGS = new Set([
+      'ola', 'oi', 'oii', 'oie', 'opa', 'eai', 'e ai', 'salve', 'fala',
+      'bom dia', 'boa tarde', 'boa noite', 'tudo bem', 'tudo bom',
+      'tudo certo', 'como vai', 'oi tudo bem', 'ola tudo bem', 'hello', 'hey',
+    ]);
+
+    const SMALL_TALK_THANKS = new Set([
+      'obrigado', 'obrigada', 'obg', 'vlw', 'valeu', 'brigado', 'brigada',
+      'perfeito', 'otimo', 'show', 'muito obrigado', 'muito obrigada',
+      'thanks', 'obrigadao', 'valeu demais',
+    ]);
+
+    const SMALL_TALK_GREETING_REPLIES = [
+      'Olá! 👋 Como posso te ajudar hoje?',
+      'Oi! 😊 Em que posso ajudar você hoje?',
+      'Olá! Estou aqui para ajudar. O que você gostaria de fazer?',
+    ];
+
+    const SMALL_TALK_THANKS_REPLIES = [
+      'Disponha! 😊 Se precisar de qualquer coisa, é só me chamar.',
+      'Eu que agradeço! Qualquer coisa, estou por aqui.',
+      'Fico feliz em ajudar! Precisando, é só chamar.',
+    ];
+
+    const SMALL_TALK_CLARIFY_REPLIES = [
+      'Claro! Você pode me contar um pouco mais sobre o que deseja fazer?',
+      'Sem problemas! Me explique um pouco melhor para eu poder ajudar.',
+      'Legal! Me conta mais detalhes do que você precisa organizar?',
+    ];
+
+    function pickRandom(list) {
+      return list[Math.floor(Math.random() * list.length)];
+    }
+
+    function detectSmallTalkReply(rawPrompt) {
+      const normalized = normalizeForSmallTalk(rawPrompt);
+      if (!normalized) return null;
+      if (SMALL_TALK_GREETINGS.has(normalized)) return pickRandom(SMALL_TALK_GREETING_REPLIES);
+      if (SMALL_TALK_THANKS.has(normalized)) return pickRandom(SMALL_TALK_THANKS_REPLIES);
+      return null;
+    }
+
     async function generateAiList(event) {
       if (event) event.preventDefault();
       const promptInput = document.getElementById('aiListPrompt');
@@ -1707,9 +1762,19 @@
         setAiListStatus('Volte para “Minhas listas” antes de criar uma lista particular com a IA.', true);
         return;
       }
-      if (prompt.length < 8) {
-        setAiListStatus('Descreva um pouco melhor a compra que deseja montar.', true);
-        if (promptInput) promptInput.focus();
+      const smallTalkReply = detectSmallTalkReply(prompt);
+      if (smallTalkReply || prompt.length < 8) {
+        addChatBubble(prompt, 'user');
+        if (promptInput) {
+          promptInput.value = '';
+          promptInput.style.height = 'auto';
+        }
+        setAiListStatus('');
+        showChatTyping();
+        window.setTimeout(() => {
+          hideChatTyping();
+          addChatBubble(smallTalkReply || pickRandom(SMALL_TALK_CLARIFY_REPLIES), 'bot');
+        }, 450);
         return;
       }
       const now = Date.now();

@@ -5,7 +5,7 @@ import {
   DEEPSEEK_MODEL,
   buildAiRequestText,
   parseGeneratedText,
-  validateAiListResult,
+  validateAiReply,
 } from "@/lib/server/ai-list-prompt";
 import { adminFirestore } from "@/lib/server/firebase-admin";
 import {
@@ -26,7 +26,7 @@ function deepSeekApiKey() {
 }
 
 type AiAttemptResult =
-  | { ok: true; result: ReturnType<typeof validateAiListResult> }
+  | { ok: true; result: NonNullable<ReturnType<typeof validateAiReply>> }
   | { ok: false; code: string; status: number };
 
 async function requestAiList(prompt: string): Promise<AiAttemptResult> {
@@ -79,7 +79,7 @@ async function requestAiList(prompt: string): Promise<AiAttemptResult> {
     return { ok: false, code: "AI_EMPTY_RESULT", status: 502 };
   }
 
-  const result = validateAiListResult(parsed);
+  const result = validateAiReply(parsed);
   if (!result) {
     console.warn("Resposta da IA não bateu com o formato esperado.", responseText.slice(0, 500));
     return { ok: false, code: "AI_EMPTY_RESULT", status: 502 };
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
 
     const body = await request.json().catch(() => ({}));
     const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
-    if (prompt.length < 8) {
+    if (!prompt) {
       return NextResponse.json({ ok: false, code: "AI_EMPTY_RESULT" }, { status: 400 });
     }
 

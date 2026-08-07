@@ -1729,12 +1729,6 @@
       'Fico feliz em ajudar! Precisando, é só chamar.',
     ];
 
-    const SMALL_TALK_CLARIFY_REPLIES = [
-      'Claro! Você pode me contar um pouco mais sobre o que deseja fazer?',
-      'Sem problemas! Me explique um pouco melhor para eu poder ajudar.',
-      'Legal! Me conta mais detalhes do que você precisa organizar?',
-    ];
-
     function pickRandom(list) {
       return list[Math.floor(Math.random() * list.length)];
     }
@@ -1762,8 +1756,11 @@
         setAiListStatus('Volte para “Minhas listas” antes de criar uma lista particular com a IA.', true);
         return;
       }
+      if (!prompt) {
+        return;
+      }
       const smallTalkReply = detectSmallTalkReply(prompt);
-      if (smallTalkReply || prompt.length < 8) {
+      if (smallTalkReply) {
         addChatBubble(prompt, 'user');
         if (promptInput) {
           promptInput.value = '';
@@ -1773,7 +1770,7 @@
         showChatTyping();
         window.setTimeout(() => {
           hideChatTyping();
-          addChatBubble(smallTalkReply || pickRandom(SMALL_TALK_CLARIFY_REPLIES), 'bot');
+          addChatBubble(smallTalkReply, 'bot');
         }, 450);
         return;
       }
@@ -1807,14 +1804,19 @@
           authToken,
           appCheckToken,
         });
-        const suggestion = normalizedAiSuggestion(result);
-        if (!suggestion.items.length) {
-          throw new Error('AI_EMPTY_RESULT');
-        }
         hideChatTyping();
-        addChatBubble('Prontinho! Organizei os itens por setor — revise antes de criar:', 'bot');
-        renderAiListPreview(suggestion);
-        setAiListStatus('Lista pronta para revisão. Nenhum item foi salvo ainda.');
+        if (result && result.kind === 'chat') {
+          addChatBubble(cleanText(result.message, 500) || 'Certo!', 'bot');
+          setAiListStatus('');
+        } else {
+          const suggestion = normalizedAiSuggestion(result);
+          if (!suggestion.items.length) {
+            throw new Error('AI_EMPTY_RESULT');
+          }
+          addChatBubble('Prontinho! Organizei os itens por setor — revise antes de criar:', 'bot');
+          renderAiListPreview(suggestion);
+          setAiListStatus('Lista pronta para revisão. Nenhum item foi salvo ainda.');
+        }
       } catch (error) {
         console.error('Não foi possível gerar a lista inteligente.', error);
         const errorCode = error && (error.code || error.message);

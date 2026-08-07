@@ -63,7 +63,7 @@ export function limitsForPlan(plan: string | undefined | null): PlanLimits {
 export const COMPLIMENTARY_CESTAO_EMAILS = [
   "gabrielamoraesn@gmail.com",
   "tubel.mendes@gmail.com",
-  "admin@getgolist.com",
+  "contaparateste.getgolist@outlook.com",
 ];
 
 export function effectivePlan(storedPlan: string | undefined | null, email: string | undefined | null): PlanId {

@@ -1,5 +1,5 @@
     let lists = {};
-    let currentListName = "Lista 1";
+    let currentListName = "Sua lista";
     let selectedDivideListName = "";
     let shoppingList = [];
     let listHistory = [];
@@ -1550,8 +1550,8 @@
       // pior, mesclar de volta na nuvem — listas de uma conta diferente
       // que usou este mesmo navegador antes. loadListsFromLocalCache()
       // cuida disso assim que o estado de autenticação é conhecido.
-      lists = { "Lista 1": { items: [], history: [], balance: 0, initialBalance: 0 } };
-      currentListName = "Lista 1";
+      lists = { "Sua lista": { items: [], history: [], balance: 0, initialBalance: 0 } };
+      currentListName = "Sua lista";
       shoppingList = lists[currentListName].items;
       listHistory = lists[currentListName].history;
 
@@ -1585,7 +1585,7 @@
         lists[safeListName(listName)] = normalizeListData(storedLists[listName]);
       });
 
-      currentListName = Object.keys(lists)[0] || "Lista 1";
+      currentListName = Object.keys(lists)[0] || "Sua lista";
       if (!lists[currentListName]) {
         lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
       }
@@ -5181,7 +5181,7 @@
         console.log("Trocado para nova lista atual:", currentListName);
       } else if (Object.keys(lists).length === 0) {
         console.warn("Nenhuma lista restante após exclusão. Criando lista padrão.");
-        currentListName = "Lista 1";
+        currentListName = "Sua lista";
         lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
       }
       if (divideListWasDeleted) {
@@ -5230,7 +5230,7 @@
         console.log("Trocado para nova lista atual:", currentListName);
       } else if (Object.keys(lists).length === 0) {
         console.warn("Nenhuma lista restante após exclusão. Criando lista padrão.");
-        currentListName = "Lista 1";
+        currentListName = "Sua lista";
         lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
       }
       if (divideListWasDeleted) {
@@ -5308,7 +5308,7 @@
         lists = newNames;
         if (!lists[currentListName]) {
           console.warn(`Lista atual "${currentListName}" não encontrada após renomeação. Redefinindo para a primeira lista disponível.`);
-          currentListName = Object.keys(lists)[0] || "Lista 1";
+          currentListName = Object.keys(lists)[0] || "Sua lista";
           if (!lists[currentListName]) {
             lists[currentListName] = { items: [], history: [], balance: 0, initialBalance: 0 };
             console.log(`Criada lista padrão: ${currentListName}`);

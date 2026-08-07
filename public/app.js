@@ -33,6 +33,7 @@
     let allowEndedSharedDivision = false;
     let aiSuggestedItems = [];
     let lastAiGenerationAt = 0;
+    let knownSharedLists = [];
     let currentSubscription = null;
     let subscriptionUnsubscribe = null;
     let checkoutReturnPending = false;
@@ -1019,7 +1020,9 @@
         } else {
           clearRememberedSharedList();
         }
+        knownSharedLists = accountSharedLists;
         updateSharedModeUi();
+        renderHomeLists();
       } catch (error) {
         console.warn('Não foi possível sincronizar os atalhos compartilhados da conta.', error);
       }
@@ -1240,7 +1243,7 @@
         shareButton.style.display = limits.canShare ? '' : 'none';
       }
 
-      const aiListCreator = document.querySelector('.ai-list-creator');
+      const aiListCreator = document.getElementById('aiListForm');
       const aiLockedBanner = document.getElementById('aiLockedBanner');
       const aiListPrompt = document.getElementById('aiListPrompt');
       const generateAiListButton = document.getElementById('generateAiListButton');
@@ -1595,6 +1598,7 @@
     function updateDashboard() {
       updateStats();
       updateCharts();
+      renderHomeLists();
     }
 
     function setAiListStatus(message = '', isError = false) {
@@ -1720,7 +1724,13 @@
 
       lastAiGenerationAt = now;
       if (button) button.disabled = true;
+      addChatBubble(prompt, 'user');
+      if (promptInput) {
+        promptInput.value = '';
+        promptInput.style.height = 'auto';
+      }
       setAiListStatus('Organizando quantidades, produtos e setores…');
+      showChatTyping();
 
       try {
         const [authToken, appCheckToken] = await Promise.all([
@@ -1736,6 +1746,8 @@
         if (!suggestion.items.length) {
           throw new Error('AI_EMPTY_RESULT');
         }
+        hideChatTyping();
+        addChatBubble('Prontinho! Organizei os itens por setor — revise antes de criar:', 'bot');
         renderAiListPreview(suggestion);
         setAiListStatus('Lista pronta para revisão. Nenhum item foi salvo ainda.');
       } catch (error) {
@@ -1760,6 +1772,8 @@
           : errorCode === 'AI_EMPTY_RESULT'
             ? 'A IA não conseguiu formar uma lista. Tente descrever a compra de outro jeito.'
             : 'Não foi possível montar a lista agora. Tente novamente em instantes.';
+        hideChatTyping();
+        addChatBubble(message, 'bot error');
         setAiListStatus(message, true);
       } finally {
         if (button) button.disabled = false;
@@ -1835,6 +1849,128 @@
       updateDashboard();
       discardAiListPreview();
       showSection('productsSection');
+    }
+
+    // ---------------------------------------------------------------------
+    // Assistente de IA flutuante: abre/fecha/minimiza o painel e espelha o
+    // status de texto/voz como bolhas de conversa.
+    // ---------------------------------------------------------------------
+    function aiChatEl(id) {
+      return document.getElementById(id);
+    }
+
+    function addChatBubble(text, role = 'bot') {
+      const thread = aiChatEl('aiChatThread');
+      if (!thread || !text) return null;
+      const bubble = document.createElement('div');
+      bubble.className = `ai-chat-bubble ${role}`;
+      bubble.textContent = text;
+      thread.appendChild(bubble);
+      thread.scrollTop = thread.scrollHeight;
+      return bubble;
+    }
+
+    let aiChatTypingEl = null;
+
+    function showChatTyping() {
+      const thread = aiChatEl('aiChatThread');
+      if (!thread || aiChatTypingEl) return;
+      aiChatTypingEl = document.createElement('div');
+      aiChatTypingEl.className = 'ai-chat-typing';
+      aiChatTypingEl.innerHTML = '<span></span><span></span><span></span>';
+      thread.appendChild(aiChatTypingEl);
+      thread.scrollTop = thread.scrollHeight;
+    }
+
+    function hideChatTyping() {
+      if (aiChatTypingEl) {
+        aiChatTypingEl.remove();
+        aiChatTypingEl = null;
+      }
+    }
+
+    function openAiChatPanel() {
+      const panel = aiChatEl('aiChatPanel');
+      const fab = aiChatEl('aiFabButton');
+      const pill = aiChatEl('aiChatPill');
+      const unread = aiChatEl('aiChatPillUnread');
+      if (!panel) return;
+      panel.hidden = false;
+      requestAnimationFrame(() => panel.classList.add('is-open'));
+      if (fab) fab.hidden = true;
+      if (pill) pill.hidden = true;
+      if (unread) unread.hidden = true;
+      const prompt = aiChatEl('aiListPrompt');
+      if (prompt) prompt.focus();
+    }
+
+    function minimizeAiChatPanel() {
+      const panel = aiChatEl('aiChatPanel');
+      const pill = aiChatEl('aiChatPill');
+      const fab = aiChatEl('aiFabButton');
+      if (panel) panel.classList.remove('is-open');
+      if (fab) fab.hidden = true;
+      if (pill) pill.hidden = false;
+      setTimeout(() => {
+        if (panel && !panel.classList.contains('is-open')) panel.hidden = true;
+      }, 220);
+    }
+
+    function closeAiChatPanel() {
+      const panel = aiChatEl('aiChatPanel');
+      const pill = aiChatEl('aiChatPill');
+      const fab = aiChatEl('aiFabButton');
+      if (panel) panel.classList.remove('is-open');
+      if (pill) pill.hidden = true;
+      if (fab) fab.hidden = false;
+      setTimeout(() => {
+        if (panel && !panel.classList.contains('is-open')) panel.hidden = true;
+      }, 220);
+    }
+
+    function initAiChatPanel() {
+      const fab = aiChatEl('aiFabButton');
+      const pill = aiChatEl('aiChatPill');
+      const minimizeButton = aiChatEl('aiChatMinimizeButton');
+      const closeButton = aiChatEl('aiChatCloseButton');
+      const prompt = aiChatEl('aiListPrompt');
+      if (fab) fab.addEventListener('click', openAiChatPanel);
+      if (pill) pill.addEventListener('click', openAiChatPanel);
+      if (minimizeButton) minimizeButton.addEventListener('click', minimizeAiChatPanel);
+      if (closeButton) closeButton.addEventListener('click', closeAiChatPanel);
+      if (prompt) {
+        prompt.addEventListener('input', () => {
+          prompt.style.height = 'auto';
+          prompt.style.height = `${Math.min(prompt.scrollHeight, 70)}px`;
+        });
+      }
+    }
+
+    function openAiChatForVoice() {
+      openAiChatPanel();
+      const voiceButton = aiChatEl('voiceCommandButton');
+      if (voiceButton && !voiceButton.disabled) voiceButton.click();
+    }
+
+    function initHomeQuickActions() {
+      const bindings = [
+        ['homeQuickAskAi', openAiChatPanel],
+        ['homeFeatureAi', openAiChatPanel],
+        ['homeQuickAddItem', () => showSection('productsSection')],
+        ['homeQuickNewList', createNewListDialog],
+        ['homeQuickDivide', () => showSection('divideSection')],
+        ['homeFeatureDivide', () => showSection('divideSection')],
+        ['homeQuickShare', showShareDialog],
+        ['homeFeatureShare', showShareDialog],
+        ['homeFeatureVoice', openAiChatForVoice],
+        ['homeFeatureHistory', () => showSection('historySection')],
+        ['homeFeatureLists', () => showSection('shoppingSection')],
+        ['homeListsSeeAll', () => showSection('shoppingSection')],
+      ];
+      bindings.forEach(([id, handler]) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('click', handler);
+      });
     }
 
     let voiceRecognition = null;
@@ -1963,7 +2099,9 @@
         return;
       }
 
+      addChatBubble(transcript, 'user');
       setVoiceStatus('Processando...');
+      showChatTyping();
       const card = document.getElementById('voiceCommandCard');
       if (card) card.classList.add('processing');
       try {
@@ -1985,6 +2123,11 @@
           throw Object.assign(new Error(result.code || 'AI_TEMPORARY_ERROR'), { code: result.code });
         }
         applyVoiceActions(Array.isArray(result.actions) ? result.actions : []);
+        hideChatTyping();
+        const voiceStatusEl = document.getElementById('voiceCommandStatus');
+        if (voiceStatusEl) {
+          addChatBubble(voiceStatusEl.textContent, voiceStatusEl.classList.contains('is-error') ? 'bot error' : 'bot');
+        }
       } catch (error) {
         console.error('Não foi possível interpretar o comando de voz.', error);
         const errorCode = error && (error.code || error.message);
@@ -2003,6 +2146,8 @@
           : errorCode === 'AI_EMPTY_RESULT'
             ? 'Não entendi o comando. Tente falar de outro jeito.'
             : 'Não foi possível processar o comando agora. Tente novamente.';
+        hideChatTyping();
+        addChatBubble(message, 'bot error');
         setVoiceStatus(message, true);
       } finally {
         if (card) card.classList.remove('processing');
@@ -2254,10 +2399,22 @@
       const avgMonthly = Object.keys(monthlyTotals).length > 0 ? 
         Object.values(monthlyTotals).reduce((sum, val) => sum + val, 0) / Object.keys(monthlyTotals).length : 0;
 
+      const spentLabel = `R$ ${totalSpent.toFixed(2).replace('.', ',')}`;
+      const avgLabel = `R$ ${avgMonthly.toFixed(2).replace('.', ',')}`;
+
       document.getElementById('totalLists').textContent = totalLists;
       document.getElementById('totalItems').textContent = totalItems;
-      document.getElementById('totalSpent').textContent = `R$ ${totalSpent.toFixed(2).replace('.', ',')}`;
-      document.getElementById('avgMonthly').textContent = `R$ ${avgMonthly.toFixed(2).replace('.', ',')}`;
+      document.getElementById('totalSpent').textContent = spentLabel;
+      document.getElementById('avgMonthly').textContent = avgLabel;
+
+      const homeStatLists = document.getElementById('homeStatLists');
+      const homeStatItems = document.getElementById('homeStatItems');
+      const homeStatSpent = document.getElementById('homeStatSpent');
+      const homeStatAvg = document.getElementById('homeStatAvg');
+      if (homeStatLists) homeStatLists.textContent = totalLists;
+      if (homeStatItems) homeStatItems.textContent = totalItems;
+      if (homeStatSpent) homeStatSpent.textContent = spentLabel;
+      if (homeStatAvg) homeStatAvg.textContent = avgLabel;
     }
 
     function updateCharts() {
@@ -4594,6 +4751,22 @@
       }
     }
 
+    function selectList(listName) {
+      if (!lists[listName]) return;
+      currentListName = listName;
+      shoppingList = lists[currentListName].items;
+      listHistory = lists[currentListName].history;
+      allSelected = false;
+      populateSectorSelect();
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateMonthSelect();
+      updateFooter();
+      updateDashboard();
+      setupListButtons();
+    }
+
     function setupListButtons() {
       const currentListSelect = document.getElementById('currentListSelect');
       const currentListHeading = document.getElementById('currentListHeading');
@@ -4610,21 +4783,83 @@
 
       if (currentListHeading) currentListHeading.textContent = currentListName;
       currentListSelect.onchange = () => {
-        const listName = currentListSelect.value;
-        if (!lists[listName]) return;
-        currentListName = listName;
-        shoppingList = lists[currentListName].items;
-        listHistory = lists[currentListName].history;
-        allSelected = false;
-        populateSectorSelect();
-        updateList();
-        updateTotal();
-        updateBalance();
-        updateMonthSelect();
-        updateFooter();
-        updateDashboard();
-        setupListButtons();
+        selectList(currentListSelect.value);
       };
+    }
+
+    function renderHomeLists() {
+      const grid = document.getElementById('homeListsGrid');
+      if (!grid) return;
+      grid.replaceChildren();
+
+      if (sharedListId) {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'home-list-card';
+        const itemCount = Array.isArray(shoppingList) ? shoppingList.length : 0;
+        card.innerHTML = `
+          <span class="badge">Compartilhada</span>
+          <h3></h3>
+          <p></p>
+        `;
+        card.querySelector('h3').textContent = currentListName;
+        card.querySelector('p').textContent = `${itemCount} ${itemCount === 1 ? 'item' : 'itens'} · em colaboração`;
+        card.addEventListener('click', () => showSection('productsSection'));
+        grid.appendChild(card);
+
+        const backCard = document.createElement('button');
+        backCard.type = 'button';
+        backCard.className = 'home-list-card new-list';
+        backCard.textContent = '← Minhas listas';
+        backCard.addEventListener('click', openPrivateLists);
+        grid.appendChild(backCard);
+        return;
+      }
+
+      const ownListNames = Object.keys(lists);
+      if (!ownListNames.length && !knownSharedLists.length) {
+        const empty = document.createElement('div');
+        empty.className = 'home-lists-empty';
+        empty.textContent = 'Você ainda não tem listas. Crie a primeira em segundos.';
+        grid.appendChild(empty);
+      }
+
+      ownListNames.slice(0, 5).forEach((listName) => {
+        const list = lists[listName];
+        const itemCount = Array.isArray(list.items) ? list.items.length : 0;
+        const balance = typeof list.balance === 'number' ? list.balance : 0;
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'home-list-card';
+        card.innerHTML = '<h3></h3><p></p>';
+        card.querySelector('h3').textContent = listName;
+        card.querySelector('p').textContent = `${itemCount} ${itemCount === 1 ? 'item' : 'itens'} · saldo R$ ${balance.toFixed(2).replace('.', ',')}`;
+        card.addEventListener('click', () => {
+          selectList(listName);
+          showSection('productsSection');
+        });
+        grid.appendChild(card);
+      });
+
+      knownSharedLists.slice(0, 4).forEach((sharedList) => {
+        if (!sharedList || !sharedList.id || !sharedList.name) return;
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'home-list-card';
+        card.innerHTML = '<span class="badge">Compartilhada</span><h3></h3><p>Toque para abrir</p>';
+        card.querySelector('h3').textContent = sharedList.name;
+        card.addEventListener('click', () => {
+          window.location.assign(`/index.html?sharedList=${encodeURIComponent(sharedList.id)}`);
+        });
+        grid.appendChild(card);
+      });
+
+      const newListCard = document.createElement('button');
+      newListCard.type = 'button';
+      newListCard.className = 'home-list-card new-list';
+      newListCard.textContent = '+ Nova lista';
+      newListCard.addEventListener('click', createNewListDialog);
+      grid.appendChild(newListCard);
     }
 
     function createNewListDialog() {
@@ -5340,6 +5575,8 @@
     setupDialogOverlayClose();
     setupEventHandlers();
     initVoiceCommand();
+    initAiChatPanel();
+    initHomeQuickActions();
     setupListButtons();
     updateSharedModeUi();
     updateHistory();

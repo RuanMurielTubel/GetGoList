@@ -1070,7 +1070,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="/app-theme.css?v=20260803-prices-v1">
+  <link rel="stylesheet" href="/app-theme.css?v=20260807-ai-assistant-v1">
 </head>
 <body>
   <!-- Botão de menu flutuante -->
@@ -1120,65 +1120,72 @@
       </div>
     </header>
     
-    <!-- Seção: Início com criação inteligente -->
+    <!-- Seção: Início -->
     <div id="homeSection" class="section active">
-      <div class="ai-home-grid">
-        <section class="ai-list-creator" aria-labelledby="aiListTitle">
-          <div class="ai-list-hero">
-            <span class="ai-badge"><span aria-hidden="true">✦</span> GetGoList IA</span>
-            <h2 id="aiListTitle">Conte o que você vai fazer. A lista nasce pronta.</h2>
-            <p>Descreva uma compra, evento ou rotina. A IA organiza os itens por setor para você revisar antes de salvar.</p>
-          </div>
+      <div class="home-stat-strip">
+        <div class="home-stat-tile"><div class="v" id="homeStatLists">0</div><div class="l">Listas criadas</div></div>
+        <div class="home-stat-tile"><div class="v" id="homeStatItems">0</div><div class="l">Itens cadastrados</div></div>
+        <div class="home-stat-tile"><div class="v" id="homeStatSpent">R$ 0,00</div><div class="l">Total gasto</div></div>
+        <div class="home-stat-tile"><div class="v" id="homeStatAvg">R$ 0,00</div><div class="l">Média mensal</div></div>
+      </div>
 
-          <form id="aiListForm" class="ai-list-form">
-            <label for="aiListPrompt">O que você precisa organizar?</label>
-            <textarea id="aiListPrompt" maxlength="600" rows="4" placeholder="Ex.: churrasco para 12 pessoas, com bebidas sem álcool e acompanhamentos"></textarea>
-            <button type="submit" class="ai-generate-button" id="generateAiListButton">
-              <span aria-hidden="true">✦</span>
-              <span>Montar lista com IA</span>
-            </button>
-            <p class="ai-disclaimer">Atenção! Seu pedido é processado pelo DeepSeek — evite incluir dados pessoais, sensíveis ou confidenciais. <a href="/privacidade#inteligencia-artificial">Saiba como tratamos esses dados</a>.</p>
-            <p class="ai-status" id="aiListStatus" role="status" aria-live="polite"></p>
-          </form>
-          <div class="ai-locked-banner" id="aiLockedBanner" hidden>
-            <span aria-hidden="true">🔒</span>
-            <div>
-              <strong>Criação de listas com IA é exclusiva do plano Cestão</strong>
-              <p>Assine o Cestão para descrever sua compra em texto livre e receber a lista pronta, organizada por setor.</p>
-            </div>
-            <a href="/planos">Ver planos</a>
-          </div>
-        </section>
+      <div class="home-quick-row">
+        <button type="button" class="home-quick-pill ai" id="homeQuickAskAi"><span class="ic" aria-hidden="true">✦</span>Perguntar à IA</button>
+        <button type="button" class="home-quick-pill" id="homeQuickNewList">+ Nova lista</button>
+        <button type="button" class="home-quick-pill" id="homeQuickAddItem">+ Adicionar item</button>
+        <button type="button" class="home-quick-pill" id="homeQuickDivide">Dividir conta</button>
+        <button type="button" class="home-quick-pill" id="homeQuickShare">Compartilhar lista</button>
+      </div>
+
+      <div class="home-section-label">
+        <h2>Suas listas</h2>
+        <button type="button" class="link-button" id="homeListsSeeAll">Ver todas</button>
+      </div>
+      <div class="home-lists-grid" id="homeListsGrid"></div>
+
+      <div class="home-section-label"><h2>O que você quer fazer agora?</h2></div>
+      <div class="home-feature-grid">
+        <button type="button" class="home-feature-card highlight" id="homeFeatureAi">
+          <span class="ic" aria-hidden="true">✦</span>
+          <h3>Criar lista com IA</h3>
+          <p>Descreva o que vai fazer e a IA monta a lista pronta, organizada por setor.</p>
+          <span class="cta">Conversar com a IA →</span>
+        </button>
+        <button type="button" class="home-feature-card" id="homeFeatureVoice">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg></span>
+          <h3>Comando de voz</h3>
+          <p>Fale os itens em voz alta enquanto está com as mãos ocupadas.</p>
+          <span class="cta">Usar o microfone →</span>
+        </button>
+        <button type="button" class="home-feature-card" id="homeFeatureHistory">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+          <h3>Histórico</h3>
+          <p>Reveja compras anteriores e acompanhe a evolução dos gastos.</p>
+          <span class="cta">Ver histórico →</span>
+        </button>
+        <button type="button" class="home-feature-card" id="homeFeatureDivide">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>
+          <h3>Dividir conta</h3>
+          <p>Rateie o valor da compra entre quem participou, sem planilha.</p>
+          <span class="cta">Dividir agora →</span>
+        </button>
+        <button type="button" class="home-feature-card" id="homeFeatureShare">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6 15.4 6.4M8.6 13.4l6.8 4.2"/></svg></span>
+          <h3>Compartilhar lista</h3>
+          <p>Convide alguém para editar a lista com você em tempo real.</p>
+          <span class="cta">Compartilhar →</span>
+        </button>
+        <button type="button" class="home-feature-card" id="homeFeatureLists">
+          <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v5"/></svg></span>
+          <h3>Todas as listas</h3>
+          <p>Veja, renomeie ou arquive suas listas de compra.</p>
+          <span class="cta">Gerenciar →</span>
+        </button>
       </div>
 
       <div class="ad-slot" id="adSlotHome">
         <ins class="adsbygoogle" style="display:block" data-ad-format="auto" data-full-width-responsive="true"></ins>
       </div>
-
-      <section class="ai-list-preview" id="aiListPreview" aria-labelledby="aiPreviewTitle" hidden>
-        <div class="ai-preview-heading">
-          <div>
-            <small>Revise antes de criar</small>
-            <h3 id="aiPreviewTitle">Sua lista inteligente</h3>
-          </div>
-          <span id="aiPreviewItemCount">0 itens</span>
-        </div>
-        <div class="ai-preview-settings">
-          <label>
-            Nome da lista
-            <input id="aiPreviewListName" type="text" maxlength="80">
-          </label>
-          <label>
-            Orçamento
-            <input id="aiPreviewBudget" type="text" inputmode="decimal" placeholder="R$ 0,00">
-          </label>
-        </div>
-        <div class="ai-preview-items" id="aiPreviewItems"></div>
-        <div class="ai-preview-actions">
-          <button type="button" class="ai-secondary-button" id="discardAiListButton">Descartar</button>
-          <button type="button" class="ai-create-list-button" id="createAiListButton">Criar esta lista</button>
-        </div>
-      </section>
     </div>
 
     <!-- Seção: Gestão (antigo painel inicial) -->
@@ -1291,29 +1298,6 @@
           <span><span id="productItemCount">0 itens</span> &middot; Saldo R$ <span id="productBalance">0,00</span></span>
         </div>
         <button type="button" id="manageListsButton">Trocar ou gerenciar lista</button>
-      </div>
-
-      <div class="voice-command-card" id="voiceCommandCard" hidden>
-        <div class="list-items-card-heading">
-          <small>Adicionar por voz</small>
-          <h3>Fale sua lista</h3>
-        </div>
-        <div class="voice-command-body">
-          <button type="button" id="voiceCommandButton" aria-label="Falar comando de voz">
-            <svg aria-hidden="true" viewBox="0 0 24 24" class="voice-command-icon">
-              <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
-              <path d="M19 11a7 7 0 0 1-14 0M12 18v3"/>
-            </svg>
-            <span class="voice-command-waves" aria-hidden="true">
-              <span></span><span></span><span></span>
-            </span>
-          </button>
-          <div class="voice-command-feedback">
-            <p id="voiceCommandStatus">Toque no microfone e fale sua lista.</p>
-            <p id="voiceTranscript" class="voice-transcript"></p>
-          </div>
-        </div>
-        <p class="ai-disclaimer">Atenção! Sua fala é convertida em texto pelo navegador e o texto é processado pelo DeepSeek — evite incluir dados pessoais, sensíveis ou confidenciais. <a href="/privacidade#inteligencia-artificial">Saiba como tratamos esses dados</a>.</p>
       </div>
 
       <div class="list-items-card">
@@ -1666,13 +1650,99 @@
     </div>
   </div>
 
+  <!-- Assistente de IA flutuante -->
+  <button type="button" class="ai-fab" id="aiFabButton" aria-label="Abrir assistente de IA">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.6 4.9L18 9.5l-4.4 1.6L12 16l-1.6-4.9L6 9.5l4.4-1.6L12 3Z"/><path d="M19 15l.8 2.3L22 18l-2.2.7L19 21l-.8-2.3L16 18l2.2-.7L19 15Z"/></svg>
+  </button>
+
+  <button type="button" class="ai-chat-pill" id="aiChatPill" hidden aria-label="Continuar conversa com a IA">
+    <span class="mark" aria-hidden="true">✦</span>
+    <span class="txt">GetGoList IA</span>
+    <span class="unread" id="aiChatPillUnread" hidden></span>
+  </button>
+
+  <div class="ai-chat-panel" id="aiChatPanel" role="dialog" aria-label="Assistente GetGoList IA" hidden>
+    <div class="ai-chat-head">
+      <div class="mark" aria-hidden="true">✦</div>
+      <div class="ai-chat-head-who">
+        <strong>GetGoList IA</strong>
+        <small><span class="dot" aria-hidden="true"></span> sempre disponível</small>
+      </div>
+      <div class="ai-chat-head-actions">
+        <button type="button" id="aiChatMinimizeButton" aria-label="Minimizar assistente">–</button>
+        <button type="button" id="aiChatCloseButton" aria-label="Fechar assistente">×</button>
+      </div>
+    </div>
+
+    <div class="ai-chat-thread" id="aiChatThread">
+      <div class="ai-chat-bubble bot">Oi! Posso montar sua lista de compras ou adicionar itens por voz. Descreva o que você vai fazer, ou toque no microfone.</div>
+
+      <section class="ai-list-preview" id="aiListPreview" aria-labelledby="aiPreviewTitle" hidden>
+        <div class="ai-preview-heading">
+          <div>
+            <small>Revise antes de criar</small>
+            <h3 id="aiPreviewTitle">Sua lista inteligente</h3>
+          </div>
+          <span id="aiPreviewItemCount">0 itens</span>
+        </div>
+        <div class="ai-preview-settings">
+          <label>
+            Nome da lista
+            <input id="aiPreviewListName" type="text" maxlength="80">
+          </label>
+          <label>
+            Orçamento
+            <input id="aiPreviewBudget" type="text" inputmode="decimal" placeholder="R$ 0,00">
+          </label>
+        </div>
+        <div class="ai-preview-items" id="aiPreviewItems"></div>
+        <div class="ai-preview-actions">
+          <button type="button" class="ai-secondary-button" id="discardAiListButton">Descartar</button>
+          <button type="button" class="ai-create-list-button" id="createAiListButton">Criar esta lista</button>
+        </div>
+      </section>
+    </div>
+
+    <form id="aiListForm" class="ai-chat-compose">
+      <div class="ai-locked-banner" id="aiLockedBanner" hidden>
+        <span aria-hidden="true">🔒</span>
+        <div>
+          <strong>Assistente de IA é exclusivo do plano Cestão</strong>
+          <p>Assine o Cestão para criar listas por texto ou voz.</p>
+        </div>
+        <a href="/planos">Ver planos</a>
+      </div>
+      <div class="ai-chat-compose-row">
+        <textarea id="aiListPrompt" maxlength="600" rows="1" placeholder="Descreva sua compra ou peça um ajuste…" aria-label="Mensagem para a IA"></textarea>
+        <div class="voice-command-card" id="voiceCommandCard" hidden>
+          <button type="button" id="voiceCommandButton" aria-label="Falar comando de voz">
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="voice-command-icon">
+              <path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
+              <path d="M19 11a7 7 0 0 1-14 0M12 18v3"/>
+            </svg>
+            <span class="voice-command-waves" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+          </button>
+        </div>
+        <button type="submit" class="ai-send-btn" id="generateAiListButton" aria-label="Enviar">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 11l18-8-8 18-2-8-8-2Z"/></svg>
+        </button>
+      </div>
+      <p id="voiceCommandStatus"></p>
+      <p id="voiceTranscript" class="voice-transcript"></p>
+      <p class="ai-status" id="aiListStatus" role="status" aria-live="polite"></p>
+      <p class="ai-disclaimer">Processado pelo DeepSeek — evite dados pessoais ou sensíveis. <a href="/privacidade#inteligencia-artificial">Saiba mais</a>.</p>
+    </form>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-app-check-compat.js"></script>
-  <script src="/app.js?v=20260803-prices-v1"></script>
-  <script type="module" src="/ai-list.js?v=20260803-prices-v1"></script>
+  <script src="/app.js?v=20260807-ai-assistant-v1"></script>
+  <script type="module" src="/ai-list.js?v=20260807-ai-assistant-v1"></script>
 
 </body>
 </html>

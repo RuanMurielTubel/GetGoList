@@ -12,8 +12,8 @@ import {
   VOICE_COMMAND_SYSTEM_INSTRUCTION,
   buildVoiceCommandRequestText,
   parseGeneratedText,
-  validateVoiceActions,
-  type VoiceAction,
+  validateVoiceReply,
+  type VoiceReply,
 } from "@/lib/server/voice-command-prompt";
 
 export const runtime = "nodejs";
@@ -27,10 +27,13 @@ function deepSeekApiKey() {
 }
 
 type VoiceAttemptResult =
-  | { ok: true; actions: VoiceAction[] }
+  | { ok: true; reply: VoiceReply }
   | { ok: false; code: string; status: number };
 
-async function requestVoiceActions(transcript: string): Promise<VoiceAttemptResult> {
+async function requestVoiceActions(
+  transcript: string,
+  context: { listNames: string[]; currentListName?: string },
+): Promise<VoiceAttemptResult> {
   let aiResponse: Response;
   try {
     aiResponse = await fetch(DEEPSEEK_ENDPOINT, {
@@ -43,7 +46,7 @@ async function requestVoiceActions(transcript: string): Promise<VoiceAttemptResu
         model: DEEPSEEK_MODEL,
         messages: [
           { role: "system", content: VOICE_COMMAND_SYSTEM_INSTRUCTION },
-          { role: "user", content: buildVoiceCommandRequestText(transcript) },
+          { role: "user", content: buildVoiceCommandRequestText(transcript, context) },
         ],
         response_format: { type: "json_object" },
         max_tokens: 1200,
@@ -80,13 +83,13 @@ async function requestVoiceActions(transcript: string): Promise<VoiceAttemptResu
     return { ok: false, code: "AI_EMPTY_RESULT", status: 502 };
   }
 
-  const actions = validateVoiceActions(parsed);
-  if (!actions) {
+  const reply = validateVoiceReply(parsed);
+  if (!reply) {
     console.warn("Resposta da IA de voz não bateu com o formato esperado.", responseText.slice(0, 500));
     return { ok: false, code: "AI_EMPTY_RESULT", status: 502 };
   }
 
-  return { ok: true, actions };
+  return { ok: true, reply };
 }
 
 export async function POST(request: Request) {
@@ -114,20 +117,25 @@ export async function POST(request: Request) {
     if (transcript.length < 2) {
       return NextResponse.json({ ok: false, code: "AI_EMPTY_RESULT" }, { status: 400 });
     }
+    const listNames = Array.isArray(body.listNames)
+      ? body.listNames.filter((name: unknown): name is string => typeof name === "string" && name.trim().length > 0)
+      : [];
+    const currentListName = typeof body.currentListName === "string" ? body.currentListName : undefined;
+    const context = { listNames, currentListName };
 
     // O modelo ocasionalmente foge do formato pedido; uma segunda
     // tentativa resolve a maioria dos casos sem expor o usuário a um
     // erro por uma falha passageira.
-    let attempt = await requestVoiceActions(transcript);
+    let attempt = await requestVoiceActions(transcript, context);
     if (!attempt.ok && attempt.code === "AI_EMPTY_RESULT") {
-      attempt = await requestVoiceActions(transcript);
+      attempt = await requestVoiceActions(transcript, context);
     }
 
     if (!attempt.ok) {
       return NextResponse.json({ ok: false, code: attempt.code }, { status: attempt.status });
     }
 
-    return NextResponse.json({ ok: true, actions: attempt.actions });
+    return NextResponse.json({ ok: true, result: attempt.reply });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "UNAUTHORIZED") {

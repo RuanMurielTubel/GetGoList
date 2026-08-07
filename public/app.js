@@ -1752,10 +1752,6 @@
         setAiListStatus('Entre na sua conta para criar listas com a IA.', true);
         return;
       }
-      if (sharedListId) {
-        setAiListStatus('Volte para “Minhas listas” antes de criar uma lista particular com a IA.', true);
-        return;
-      }
       if (!prompt) {
         return;
       }
@@ -1803,11 +1799,17 @@
           prompt,
           authToken,
           appCheckToken,
+          listNames: Object.keys(lists),
+          currentListName: currentListName || undefined,
         });
         hideChatTyping();
         if (result && result.kind === 'chat') {
           addChatBubble(cleanText(result.message, 500) || 'Certo!', 'bot');
           setAiListStatus('');
+        } else if (result && result.kind === 'actions') {
+          const { summary, isError } = applyResolvedActions(result.targetList, result.actions || []);
+          addChatBubble(summary, isError ? 'bot error' : 'bot');
+          setAiListStatus(summary, isError);
         } else {
           const suggestion = normalizedAiSuggestion(result);
           if (!suggestion.items.length) {
@@ -2086,16 +2088,46 @@
       });
     }
 
-    function applyVoiceActions(actions) {
-      if (!currentListName || !lists[currentListName]) {
-        setVoiceStatus('Nenhuma lista está aberta no momento.', true);
-        return;
+    // A IA manda o nome da lista como entendeu (ex.: "mercado"), que
+    // raramente bate exato com o nome salvo (ex.: "Lista do Mercado") —
+    // mesma lógica de tolerância usada para nomes de item em
+    // findMatchingItemIndex, mas comparando contra as listas do usuário.
+    function resolveListKeyFuzzy(hint) {
+      const target = normalizeVoiceMatchText(hint);
+      if (!target) return null;
+      const names = Object.keys(lists);
+      const exact = names.find((name) => normalizeVoiceMatchText(name) === target);
+      if (exact) return exact;
+      return names.find((name) => {
+        const normalized = normalizeVoiceMatchText(name);
+        return normalized.includes(target) || target.includes(normalized);
+      }) || null;
+    }
+
+    // Núcleo compartilhado entre o comando de voz e o chat de texto: os dois
+    // mandam a IA decidir a lista-alvo e uma sequência de ações, e os dois
+    // aplicam do mesmo jeito. Troca a lista atual quando a lista resolvida
+    // for diferente da que está aberta, aplica as ações, e devolve um
+    // resumo pronto pra virar bolha/status — sem decidir sozinho onde
+    // exibir isso, já que os dois chamadores mostram de formas diferentes.
+    function applyResolvedActions(targetListHint, actions) {
+      const originallyOpenListName = currentListName;
+      const resolvedKey = resolveListKeyFuzzy(targetListHint) || (lists[currentListName] ? currentListName : null);
+      if (!resolvedKey || !lists[resolvedKey]) {
+        return { summary: 'Não encontrei essa lista. Abra ou crie a lista antes de tentar de novo.', isError: true };
       }
+      if (resolvedKey !== currentListName) {
+        selectList(resolvedKey);
+      }
+
       const today = new Date().toLocaleDateString();
       let added = 0;
       let removed = 0;
+      let edited = 0;
+      let moved = 0;
       let cleared = false;
       const notFound = [];
+      const movedToLists = new Set();
 
       actions.forEach((action) => {
         if (action.type === 'clear') {
@@ -2134,9 +2166,45 @@
             return;
           }
           const item = shoppingList[index];
-          lists[currentListName].balance += item.total;
+          lists[resolvedKey].balance += item.total;
           shoppingList.splice(index, 1);
           removed += 1;
+          return;
+        }
+        if (action.type === 'edit') {
+          const index = findMatchingItemIndex(shoppingList, action.name);
+          if (index === -1) {
+            notFound.push(action.name);
+            return;
+          }
+          const item = shoppingList[index];
+          if (action.newName) item.name = cleanText(action.newName, 120, item.name);
+          if (action.sector) item.sector = normalizeSectorName(action.sector, item.sector);
+          const unit = action.unit ? normalizeItemUnit(action.unit) : item.unit;
+          if (typeof action.quantity === 'number') item.quantity = boundedQuantity(action.quantity, unit);
+          item.unit = unit;
+          edited += 1;
+          return;
+        }
+        if (action.type === 'move') {
+          const index = findMatchingItemIndex(shoppingList, action.name);
+          if (index === -1) {
+            notFound.push(action.name);
+            return;
+          }
+          const destKey = resolveListKeyFuzzy(action.toList);
+          if (!destKey || destKey === resolvedKey) {
+            notFound.push(`mover ${action.name} (lista de destino não encontrada)`);
+            return;
+          }
+          const item = shoppingList[index];
+          lists[resolvedKey].balance += item.total;
+          shoppingList.splice(index, 1);
+          const movedItem = { ...item, id: createEntityId('item'), date: today };
+          lists[destKey].items.push(movedItem);
+          lists[destKey].history.push({ ...movedItem, id: createEntityId('history') });
+          moved += 1;
+          movedToLists.add(destKey);
         }
       });
 
@@ -2156,14 +2224,20 @@
       const parts = [];
       if (added) parts.push(`${added} ${added === 1 ? 'item adicionado' : 'itens adicionados'}`);
       if (removed) parts.push(`${removed} ${removed === 1 ? 'item removido' : 'itens removidos'}`);
+      if (edited) parts.push(`${edited} ${edited === 1 ? 'item alterado' : 'itens alterados'}`);
+      if (moved) {
+        const destinations = Array.from(movedToLists).join(', ');
+        parts.push(`${moved} ${moved === 1 ? 'item movido' : 'itens movidos'} para ${destinations}`);
+      }
       if (cleared) parts.push('lista limpa');
       if (notFound.length) parts.push(`não encontrei: ${notFound.join(', ')}`);
 
-      const hasChanges = added || removed || cleared;
-      setVoiceStatus(
-        parts.length ? `${parts.join(' · ')}.` : 'Não entendi o comando. Tente falar de outro jeito.',
-        !hasChanges,
-      );
+      const hasChanges = added || removed || edited || moved || cleared;
+      const listLabel = resolvedKey === originallyOpenListName ? '' : ` na lista "${resolvedKey}"`;
+      const summary = parts.length
+        ? `${parts.join(' · ')}${listLabel}.`
+        : 'Não entendi o comando. Tente falar de outro jeito.';
+      return { summary, isError: !hasChanges };
     }
 
     async function processVoiceTranscript(transcript) {
@@ -2190,17 +2264,25 @@
             'Content-Type': 'application/json',
             'X-Firebase-AppCheck': appCheckToken,
           },
-          body: JSON.stringify({ transcript }),
+          body: JSON.stringify({
+            transcript,
+            listNames: Object.keys(lists),
+            currentListName: currentListName || undefined,
+          }),
         });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.ok) {
-          throw Object.assign(new Error(result.code || 'AI_TEMPORARY_ERROR'), { code: result.code });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.ok) {
+          throw Object.assign(new Error(payload.code || 'AI_TEMPORARY_ERROR'), { code: payload.code });
         }
-        applyVoiceActions(Array.isArray(result.actions) ? result.actions : []);
         hideChatTyping();
-        const voiceStatusEl = document.getElementById('voiceCommandStatus');
-        if (voiceStatusEl) {
-          addChatBubble(voiceStatusEl.textContent, voiceStatusEl.classList.contains('is-error') ? 'bot error' : 'bot');
+        const result = payload.result || {};
+        if (result.kind === 'clarify') {
+          setVoiceStatus(result.message, false);
+          addChatBubble(result.message, 'bot');
+        } else {
+          const { summary, isError } = applyResolvedActions(result.targetList, result.actions || []);
+          setVoiceStatus(summary, isError);
+          addChatBubble(summary, isError ? 'bot error' : 'bot');
         }
       } catch (error) {
         console.error('Não foi possível interpretar o comando de voz.', error);

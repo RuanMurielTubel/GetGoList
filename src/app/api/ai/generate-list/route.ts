@@ -29,7 +29,10 @@ type AiAttemptResult =
   | { ok: true; result: NonNullable<ReturnType<typeof validateAiReply>> }
   | { ok: false; code: string; status: number };
 
-async function requestAiList(prompt: string): Promise<AiAttemptResult> {
+async function requestAiList(
+  prompt: string,
+  context: { listNames: string[]; currentListName?: string },
+): Promise<AiAttemptResult> {
   let aiResponse: Response;
   try {
     aiResponse = await fetch(DEEPSEEK_ENDPOINT, {
@@ -42,7 +45,7 @@ async function requestAiList(prompt: string): Promise<AiAttemptResult> {
         model: DEEPSEEK_MODEL,
         messages: [
           { role: "system", content: AI_SYSTEM_INSTRUCTION },
-          { role: "user", content: buildAiRequestText(prompt) },
+          { role: "user", content: buildAiRequestText(prompt, context) },
         ],
         response_format: { type: "json_object" },
         max_tokens: 2500,
@@ -113,14 +116,19 @@ export async function POST(request: Request) {
     if (!prompt) {
       return NextResponse.json({ ok: false, code: "AI_EMPTY_RESULT" }, { status: 400 });
     }
+    const listNames = Array.isArray(body.listNames)
+      ? body.listNames.filter((name: unknown): name is string => typeof name === "string" && name.trim().length > 0)
+      : [];
+    const currentListName = typeof body.currentListName === "string" ? body.currentListName : undefined;
+    const context = { listNames, currentListName };
 
     // O modelo ocasionalmente foge do formato pedido (sampling não é
     // determinístico); uma segunda tentativa resolve a maioria desses casos
     // sem expor o usuário a um erro por uma falha passageira. Erros de
     // auth/rede/limite não se beneficiam de retry, então saem direto.
-    let attempt = await requestAiList(prompt);
+    let attempt = await requestAiList(prompt, context);
     if (!attempt.ok && attempt.code === "AI_EMPTY_RESULT") {
-      attempt = await requestAiList(prompt);
+      attempt = await requestAiList(prompt, context);
     }
 
     if (!attempt.ok) {

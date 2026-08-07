@@ -6,7 +6,7 @@ function createAiError(code, status, detail) {
   return error;
 }
 
-async function generateList({ prompt, authToken, appCheckToken }) {
+async function generateList({ prompt, authToken, appCheckToken, listNames, currentListName }) {
   if (!authToken) throw createAiError('AI_AUTH_REQUIRED');
   if (!appCheckToken) throw createAiError('AI_DEVICE_NOT_VERIFIED');
 
@@ -21,7 +21,11 @@ async function generateList({ prompt, authToken, appCheckToken }) {
         'Content-Type': 'application/json',
         'X-Firebase-AppCheck': appCheckToken,
       },
-      body: JSON.stringify({ prompt: safePrompt }),
+      body: JSON.stringify({
+        prompt: safePrompt,
+        listNames: Array.isArray(listNames) ? listNames : [],
+        currentListName: currentListName || undefined,
+      }),
     });
   } catch (error) {
     throw createAiError('AI_NETWORK', 0, error && error.message);

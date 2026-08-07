@@ -1330,6 +1330,10 @@ h1#mainTitle {
   min-width: 0;
 }
 
+.voice-command-card .ai-disclaimer {
+  margin-top: 14px;
+}
+
 #voiceCommandStatus {
   color: var(--gg-primary-dark);
   font-weight: 700;

@@ -51,6 +51,7 @@ export default function PrivacyPage() {
             <li><strong>Assinatura e pagamento:</strong> plano contratado, status da assinatura, datas de início e renovação, e identificador, valor e status de cada pagamento processado pelo Mercado Pago. O GetGoList não recebe nem armazena número de cartão.</li>
             <li><strong>Segurança e funcionamento:</strong> tokens de autenticação, registros técnicos, informações do dispositivo e sinais usados para prevenir abuso e acessos indevidos.</li>
             <li><strong>Criação com inteligência artificial:</strong> descrição da compra, número de pessoas, orçamento opcional e a sugestão de lista gerada.</li>
+            <li><strong>Comando de voz:</strong> quando você usa o assistente de voz, o navegador converte sua fala em texto; o GetGoList recebe e processa apenas o texto resultante, nunca o áudio.</li>
             <li><strong>Anúncios:</strong> nos planos Free e Cesta, o Google AdSense pode usar identificadores e cookies para exibir e medir anúncios. Veja a seção 6-A.</li>
             <li><strong>Dados locais:</strong> preferências e cópias temporárias podem ficar armazenadas no navegador ou no aplicativo para melhorar o funcionamento e a continuidade de uso.</li>
           </ul>
@@ -72,6 +73,7 @@ export default function PrivacyPage() {
             <li>Enviar confirmação de e-mail, recuperação de senha, convites e divisões de conta.</li>
             <li>Manter o serviço disponível, corrigir falhas, combater fraude e melhorar a segurança.</li>
             <li>Gerar uma sugestão de produtos e setores quando você solicitar a criação de uma lista com inteligência artificial.</li>
+            <li>Interpretar comandos de voz para incluir, remover ou limpar itens da lista aberta, quando você usa o assistente de voz.</li>
             <li>Processar a assinatura de um plano pago, confirmar pagamentos e aplicar automaticamente os limites e recursos do plano contratado.</li>
             <li>Exibir e medir anúncios nos planos Free e Cesta.</li>
             <li>Cumprir obrigações legais e atender solicitações legítimas de titulares ou autoridades.</li>
@@ -99,7 +101,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2 id="inteligencia-artificial">5. Criação de listas com inteligência artificial</h2>
+          <h2 id="inteligencia-artificial">5. Criação e edição de listas com inteligência artificial</h2>
           <p>
             O recurso GetGoList IA envia ao DeepSeek somente o texto digitado
             para descrever a compra, o número de pessoas e o orçamento opcional. O
@@ -125,6 +127,18 @@ export default function PrivacyPage() {
             sugestão: o GetGoList não atribui preços inventados, mostra uma prévia e só
             salva a lista depois da confirmação do usuário.
           </p>
+          <p>
+            O assistente de voz funciona do mesmo jeito: pede permissão do
+            microfone ao seu navegador, converte a fala em texto localmente e
+            envia só esse texto para identificar os produtos, quantidades e a
+            ação desejada (incluir, remover ou limpar a lista). O GetGoList não
+            grava nem armazena áudio. A conversão de voz em texto é feita pelo
+            próprio navegador (no Chrome, isso pode envolver processamento nos
+            servidores do Google) — os mesmos cuidados da seção acima sobre não
+            informar dados pessoais, sensíveis ou confidenciais valem também ao
+            ditar. O recurso está disponível apenas em navegadores compatíveis
+            com reconhecimento de voz.
+          </p>
         </section>
 
         <section>
@@ -135,8 +149,8 @@ export default function PrivacyPage() {
           </p>
           <ul>
             <li><strong>Google Firebase:</strong> autenticação, banco de dados, armazenamento de fotos e proteção do aplicativo.</li>
-            <li><strong>DeepSeek:</strong> geração das sugestões de listas solicitadas pelo usuário.</li>
-            <li><strong>Google:</strong> login com Google e mecanismos de proteção como reCAPTCHA e Play Integrity.</li>
+            <li><strong>DeepSeek:</strong> geração das sugestões de listas e interpretação dos comandos de voz solicitados pelo usuário.</li>
+            <li><strong>Google:</strong> login com Google, mecanismos de proteção como reCAPTCHA e Play Integrity, e conversão de voz em texto pelo navegador quando o assistente de voz é usado.</li>
             <li><strong>Vercel:</strong> hospedagem e entrega do site e das rotas do sistema.</li>
             <li><strong>Titan/GoDaddy:</strong> envio de mensagens transacionais pelo domínio getgolist.com.</li>
             <li><strong>Mercado Pago:</strong> processamento dos pagamentos e da cobrança recorrente das assinaturas Cesta e Cestão.</li>

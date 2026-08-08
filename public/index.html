@@ -1394,127 +1394,94 @@
     </div>
 
     <div id="profileSection" class="section">
-      <div class="profile-workspace">
-        <section class="profile-identity-card" aria-labelledby="profileName">
-          <div class="profile-avatar-wrap">
-            <button type="button" class="profile-avatar" id="profileAvatar" aria-label="Foto de perfil">
-              <span id="profileInitials">GV</span>
-            </button>
-          </div>
-          <div class="profile-info">
+      <div class="account-page">
+
+        <header class="account-header">
+          <button type="button" class="profile-avatar" id="profileAvatar" aria-label="Foto de perfil">
+            <span id="profileInitials">GV</span>
+          </button>
+          <div class="account-header-info">
             <small>Minha conta</small>
             <h2 id="profileName">Visitante</h2>
             <p id="profileEmail">Sem login</p>
             <span class="profile-status" id="profileStatus">Entre para ativar o perfil</span>
           </div>
-        </section>
+        </header>
 
-        <div class="profile-content-grid">
-          <section class="profile-editor-card">
-            <div class="profile-section-heading">
-              <div>
-                <small>Dados do perfil</small>
-                <h3>Como você aparece no GetGoList</h3>
-              </div>
-              <span>O nome é sincronizado; bio e foto personalizada ficam neste dispositivo.</span>
-            </div>
-            <div class="profile-grid">
-              <div class="profile-field">
-                <label for="displayNameInput">Nome de exibição</label>
-                <input id="displayNameInput" type="text" maxlength="80" autocomplete="name" placeholder="Digite seu nome" />
-              </div>
-              <div class="profile-field">
-                <label for="profileBioInput">Sobre você <span>opcional</span></label>
-                <textarea id="profileBioInput" maxlength="300" placeholder="Conte brevemente como você usa suas listas"></textarea>
-              </div>
-              <div class="profile-photo-control">
-                <div>
-                  <strong>Foto do perfil</strong>
-                  <span id="photoUploadHint">Usamos a foto do Google automaticamente. Envio de foto personalizada em breve.</span>
-                </div>
-                <input id="photoFileInput" type="file" accept="image/png, image/jpeg" style="display:none" />
-              </div>
-            </div>
-            <div class="profile-actions">
-              <button class="profile-primary-button" id="saveProfileEditsButton">Salvar alterações</button>
-              <button class="profile-secondary-button" id="loadCurrentProfileButton">Descartar alterações</button>
-            </div>
-          </section>
-
-          <aside class="profile-summary-card">
-            <div class="profile-section-heading compact">
-              <div>
-                <small>Sua atividade</small>
-                <h3>Resumo das compras</h3>
-              </div>
-            </div>
-            <div class="profile-stats">
-              <div class="profile-stat">
-                <span class="profile-stat-icon" aria-hidden="true">&#9776;</span>
-                <div><strong id="profileTotalLists">0</strong><span>Listas criadas</span></div>
-              </div>
-              <div class="profile-stat">
-                <span class="profile-stat-icon" aria-hidden="true">&#10003;</span>
-                <div><strong id="profileTotalItems">0</strong><span>Itens adicionados</span></div>
-              </div>
-              <div class="profile-stat">
-                <span class="profile-stat-icon currency" aria-hidden="true">R$</span>
-                <div><strong id="profileTotalSpent">R$ 0,00</strong><span>Gasto total</span></div>
-              </div>
-            </div>
-            <p class="profile-note">Sua foto do Google aparece somente como identificação do perfil. Senhas e dados de acesso nunca ficam visíveis.</p>
-          </aside>
-        </div>
-
-        <section class="profile-plan-card">
-          <div class="profile-section-heading">
-            <div>
-              <small>Assinatura</small>
-              <h3>Seu plano no GetGoList</h3>
-            </div>
+        <section class="account-block">
+          <div class="account-block-title">
+            <h3>Meu plano</h3>
             <span id="planUsageText"></span>
           </div>
-          <div class="plan-summary-row">
+
+          <div class="account-plan-line">
             <span class="plan-summary-badge" id="planBadge">Free</span>
             <span id="planStatusText">Plano gratuito ativo.</span>
           </div>
-          <div class="plan-access-details">
+          <div class="account-plan-meta">
             <span id="planAccessTypeText">Tipo de acesso: Gratuito</span>
-            <span id="planPeriodText" hidden></span>
             <span id="planDaysRemainingText" class="plan-days-remaining" hidden></span>
           </div>
-          <div class="profile-actions" id="planRenewalActions" hidden>
+          <span class="account-plan-period" id="planPeriodText" hidden></span>
+
+          <div class="account-actions" id="planRenewalActions" hidden>
             <button class="profile-primary-button" id="planRenewPixButton">Renovar por 30 dias via PIX</button>
-            <button class="profile-secondary-button" id="planSubscribeButton">Assinar plano mensal</button>
+            <button class="account-link-button" id="planSubscribeButton">Assinar plano mensal</button>
           </div>
-          <div class="profile-actions">
+          <div class="account-actions">
             <button class="profile-primary-button" id="planUpgradeButton">Ver planos</button>
-            <button class="profile-secondary-button" id="planCancelButton" style="display:none">Cancelar assinatura</button>
+            <button class="account-link-button" id="planCancelButton" style="display:none">Cancelar assinatura</button>
           </div>
-          <div class="plan-payment-history">
-            <h4>Histórico de pagamentos</h4>
-            <ul id="planPaymentHistoryList">
+
+          <details class="account-details">
+            <summary>Histórico de pagamentos</summary>
+            <ul id="planPaymentHistoryList" class="account-payment-list">
               <li class="plan-payment-empty">Nenhum pagamento registrado ainda.</li>
             </ul>
+          </details>
+        </section>
+
+        <section class="account-block">
+          <div class="account-block-title">
+            <h3>Meu perfil</h3>
+            <button type="button" class="account-link-button" id="editProfileToggle">Editar perfil</button>
+          </div>
+
+          <p class="account-stats-line">
+            <strong id="profileTotalLists">0</strong> listas ·
+            <strong id="profileTotalItems">0</strong> itens ·
+            <strong id="profileTotalSpent">R$ 0,00</strong> gastos
+          </p>
+
+          <div class="account-editor" id="profileEditor" hidden>
+            <div class="profile-field">
+              <label for="displayNameInput">Nome de exibição</label>
+              <input id="displayNameInput" type="text" maxlength="80" autocomplete="name" placeholder="Digite seu nome" />
+            </div>
+            <div class="profile-field">
+              <label for="profileBioInput">Sobre você <span>opcional</span></label>
+              <textarea id="profileBioInput" maxlength="300" placeholder="Conte brevemente como você usa suas listas"></textarea>
+            </div>
+            <div class="profile-photo-control">
+              <div>
+                <strong>Foto do perfil</strong>
+                <span id="photoUploadHint">Usamos a foto do Google automaticamente. Envio de foto personalizada em breve.</span>
+              </div>
+              <input id="photoFileInput" type="file" accept="image/png, image/jpeg" style="display:none" />
+            </div>
+            <div class="account-actions">
+              <button class="profile-primary-button" id="saveProfileEditsButton">Salvar alterações</button>
+              <button class="account-link-button" id="loadCurrentProfileButton">Cancelar</button>
+            </div>
           </div>
         </section>
 
-        <section class="profile-account-card">
-          <div class="profile-section-heading">
-            <div>
-              <small>Conta e privacidade</small>
-              <h3>Seus dados e sua conta</h3>
-            </div>
-          </div>
-          <div class="profile-actions profile-actions-start">
-            <a class="profile-secondary-button" href="/privacidade" target="_blank" rel="noopener">Política de Privacidade</a>
-            <a class="profile-secondary-button" href="/termos" target="_blank" rel="noopener">Termos de Uso</a>
-          </div>
-          <p class="profile-note">Excluir sua conta apaga permanentemente suas listas, sua assinatura e seu histórico de pagamentos. Listas que você compartilhou deixam de ser controladas por você, mas continuam acessíveis para os demais colaboradores.</p>
-          <div class="profile-actions">
-            <button class="profile-danger-button" id="deleteAccountButton">Excluir conta</button>
-          </div>
-        </section>
+        <footer class="account-footer">
+          <a href="/privacidade" target="_blank" rel="noopener">Política de Privacidade</a>
+          <a href="/termos" target="_blank" rel="noopener">Termos de Uso</a>
+          <button type="button" class="account-footer-danger" id="deleteAccountButton">Excluir conta</button>
+        </footer>
+
       </div>
     </div>
 

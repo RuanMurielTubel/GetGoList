@@ -492,8 +492,17 @@
         if (sidebarGreeting) {
           sidebarGreeting.textContent = `Olá, ${displayName}`;
         }
-        updateProfileStats();
       }
+      // Antes só rodava pro visitante (bloco else acima) — o resumo de
+      // listas/itens/gastos nunca era atualizado pra quem estava logado.
+      updateProfileStats();
+    }
+
+    function setProfileEditorOpen(open) {
+      const editor = document.getElementById('profileEditor');
+      const toggle = document.getElementById('editProfileToggle');
+      if (editor) editor.hidden = !open;
+      if (toggle) toggle.textContent = open ? 'Fechar' : 'Editar perfil';
     }
 
     function saveProfileEdits() {
@@ -3387,6 +3396,7 @@
       if (sectionId === 'profileSection') {
         updateProfileSection();
         loadPaymentHistory();
+        setProfileEditorOpen(false);
       }
       if (sectionId === 'divideSection') {
         document.getElementById('divisionResult').innerHTML = '';
@@ -6210,7 +6220,17 @@
         saveProfileEditsButton.addEventListener('click', saveProfileEdits);
       }
       if (loadCurrentProfileButton) {
-        loadCurrentProfileButton.addEventListener('click', loadCurrentProfile);
+        loadCurrentProfileButton.addEventListener('click', () => {
+          loadCurrentProfile();
+          setProfileEditorOpen(false);
+        });
+      }
+      const editProfileToggle = document.getElementById('editProfileToggle');
+      if (editProfileToggle) {
+        editProfileToggle.addEventListener('click', () => {
+          const editor = document.getElementById('profileEditor');
+          setProfileEditorOpen(!(editor && !editor.hidden));
+        });
       }
       if (createNewListButton) {
         createNewListButton.addEventListener('click', createNewList);

@@ -2754,65 +2754,39 @@ li .item-controls .action-buttons button:last-child {
   font-size: 13px;
 }
 
-/* Perfil alinhado ao restante do produto */
-.profile-workspace {
+/* Perfil alinhado ao restante do produto — enxuto de propósito: só dois
+   focos (Meu plano / Meu perfil), sem card-dentro-de-card. */
+.account-page {
   display: grid;
-  gap: 16px;
+  gap: 36px;
+  margin: 0 auto;
+  max-width: 620px;
 }
 
-.profile-identity-card {
+.account-header {
   align-items: center;
-  background: linear-gradient(135deg, var(--gg-primary-dark), var(--gg-primary));
-  border-radius: 20px;
-  box-shadow: var(--gg-shadow);
-  color: #fff;
   display: flex;
-  gap: 18px;
-  min-height: 150px;
-  overflow: hidden;
-  padding: 22px;
-  position: relative;
-}
-
-.profile-identity-card::after {
-  background: rgba(255, 183, 3, .95);
-  border-radius: 999px;
-  content: "";
-  height: 7px;
-  position: absolute;
-  right: 28px;
-  top: 0;
-  width: 86px;
-}
-
-.profile-avatar-wrap {
-  flex: 0 0 auto;
-  position: relative;
+  gap: 16px;
 }
 
 .profile-avatar,
 button.profile-avatar {
   align-items: center;
-  background: #fff;
-  border: 4px solid rgba(255, 255, 255, .82);
+  background: var(--gg-primary-pale);
+  border: none;
   border-radius: 50%;
-  box-shadow: 0 12px 30px rgba(0, 42, 48, .25);
   color: var(--gg-primary-dark);
   cursor: pointer;
   display: flex;
-  font-size: 28px;
+  flex: 0 0 auto;
+  font-size: 22px;
   font-weight: 850;
-  height: 94px;
+  height: 60px;
   justify-content: center;
   margin: 0;
   overflow: hidden;
   padding: 0;
-  width: 94px;
-}
-
-button.profile-avatar:hover {
-  box-shadow: 0 14px 34px rgba(0, 42, 48, .32);
-  transform: translateY(-1px);
+  width: 60px;
 }
 
 .profile-avatar img {
@@ -2821,89 +2795,72 @@ button.profile-avatar:hover {
   width: 100%;
 }
 
-.profile-photo-badge {
-  align-items: center;
-  background: var(--gg-accent);
-  border: 3px solid var(--gg-primary);
-  border-radius: 50%;
-  bottom: 1px;
-  color: #263238;
-  display: flex;
-  font-size: 18px;
-  font-weight: 850;
-  height: 28px;
-  justify-content: center;
-  pointer-events: none;
-  position: absolute;
-  right: 0;
-  width: 28px;
-}
-
-.profile-info {
+.account-header-info {
   min-width: 0;
 }
 
-.profile-info > small {
-  color: rgba(255, 255, 255, .72);
+.account-header-info > small {
+  color: var(--gg-primary);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: .09em;
+  letter-spacing: .08em;
   text-transform: uppercase;
 }
 
-.profile-info h2 {
-  color: #fff;
-  font-size: clamp(24px, 4vw, 31px);
-  letter-spacing: -.04em;
-  margin: 5px 0 4px;
+.account-header-info h2 {
+  color: var(--gg-ink);
+  font-size: clamp(20px, 3.4vw, 25px);
+  letter-spacing: -.03em;
+  margin: 3px 0 1px;
   overflow-wrap: anywhere;
 }
 
-.profile-info p {
-  color: rgba(255, 255, 255, .82);
+.account-header-info p {
+  color: var(--gg-muted);
   font-size: 13px;
-  margin: 0 0 10px;
+  margin: 0;
   overflow-wrap: anywhere;
 }
 
 .profile-status {
-  background: rgba(255, 255, 255, .13);
-  border: 1px solid rgba(255, 255, 255, .18);
-  border-radius: 999px;
-  color: #fff;
-  display: inline-flex;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 6px 10px;
+  color: var(--gg-muted);
+  display: inline-block;
+  font-size: 11.5px;
+  margin-top: 2px;
 }
 
-.profile-content-grid {
+.account-block {
   display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(0, 1.55fr) minmax(250px, .75fr);
+  gap: 4px;
 }
 
-.profile-editor-card,
-.profile-summary-card,
-.profile-plan-card,
-.profile-account-card {
-  background: var(--gg-surface);
-  border: 1px solid var(--gg-line);
-  border-radius: 18px;
-  box-shadow: var(--gg-shadow-sm);
-  padding: 20px;
+.account-block-title {
+  align-items: baseline;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 10px;
 }
 
-.profile-plan-card,
-.profile-account-card {
-  margin-top: 16px;
+.account-block-title h3 {
+  color: var(--gg-ink);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  margin: 0;
 }
 
-.plan-summary-row {
+.account-block-title > span {
+  color: var(--gg-muted);
+  font-size: 12px;
+}
+
+.account-plan-line {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
 .plan-summary-badge {
@@ -2912,23 +2869,23 @@ button.profile-avatar:hover {
   color: var(--gg-primary-dark);
   font-size: 12px;
   font-weight: 800;
-  padding: 6px 14px;
+  padding: 5px 13px;
   text-transform: uppercase;
 }
 
-.plan-summary-row > span:not(.plan-summary-badge) {
-  color: var(--gg-muted);
-  font-size: 13px;
+.account-plan-line > span:not(.plan-summary-badge) {
+  color: var(--gg-ink);
+  font-size: 14px;
 }
 
-.plan-access-details {
+.account-plan-meta {
+  align-items: center;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.plan-access-details span {
+.account-plan-meta > span:first-child {
   color: var(--gg-muted);
   font-size: 12.5px;
 }
@@ -2938,8 +2895,9 @@ button.profile-avatar:hover {
   border-radius: 999px;
   color: var(--gg-primary-dark) !important;
   display: inline-block;
+  font-size: 11.5px;
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 3px 9px;
   width: fit-content;
 }
 
@@ -2948,31 +2906,131 @@ button.profile-avatar:hover {
   color: #a15c00 !important;
 }
 
+.plan-days-remaining[hidden] {
+  display: none;
+}
+
+.account-plan-period {
+  color: var(--gg-muted);
+  display: block;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.account-plan-period[hidden] {
+  display: none;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: 16px;
+}
+
+.account-actions[hidden] {
+  display: none;
+}
+
 #planRenewalActions {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
-.plan-payment-history {
-  border-top: 1px solid var(--gg-line);
+.profile-primary-button {
+  align-items: center;
+  background: var(--gg-primary);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 42px;
+  padding: 9px 18px;
+  text-decoration: none;
+  transition: background-color .18s ease, transform .18s ease;
+}
+
+.profile-primary-button:hover {
+  background: var(--gg-primary-dark);
+  transform: translateY(-1px);
+}
+
+/* Ações secundárias viram link de texto, não outra caixa — reduz o
+   número de botões "pesados" visíveis ao mesmo tempo. */
+.account-link-button {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  border-radius: 6px;
+  border: none;
+  box-shadow: none;
+  color: var(--gg-primary-dark);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  min-height: 0;
+  padding: 9px 2px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Repete "background: none" aqui (não só no estado base) porque o
+   seletor genérico `button:hover` (index.html) tem especificidade maior
+   que uma classe simples parada — button+:hover = 1 elemento + 1
+   pseudo-classe, contra 1 classe da .account-link-button; sem isso, o
+   botão herdava o preenchimento verde/teal do botão genérico no hover. */
+.account-link-button:hover,
+.account-link-button:focus,
+.account-link-button:active {
+  background: none;
+  color: var(--gg-primary);
+}
+
+.account-link-button:focus {
+  outline: none;
+}
+
+.account-link-button:focus-visible {
+  outline: 2px solid var(--gg-primary);
+  outline-offset: 2px;
+}
+
+.account-details {
   margin-top: 18px;
-  padding-top: 16px;
 }
 
-.plan-payment-history h4 {
-  color: var(--gg-ink);
+.account-details summary {
+  color: var(--gg-primary-dark);
+  cursor: pointer;
   font-size: 13px;
-  margin: 0 0 10px;
+  font-weight: 700;
+  list-style: none;
 }
 
-.plan-payment-history ul {
+.account-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.account-details summary::before {
+  content: "▸ ";
+}
+
+.account-details[open] summary::before {
+  content: "▾ ";
+}
+
+.account-payment-list {
   display: grid;
   gap: 8px;
   list-style: none;
-  margin: 0;
+  margin: 12px 0 0;
   padding: 0;
 }
 
-.plan-payment-history li {
+.account-payment-list li {
   color: var(--gg-ink);
   display: flex;
   font-size: 13px;
@@ -2983,46 +3041,24 @@ button.profile-avatar:hover {
   color: var(--gg-muted);
 }
 
-.profile-section-heading {
-  align-items: start;
-  border-bottom: 1px solid var(--gg-line);
-  display: flex;
-  gap: 18px;
-  justify-content: space-between;
-  margin-bottom: 18px;
-  padding-bottom: 15px;
-}
-
-.profile-section-heading small {
-  color: var(--gg-primary);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
-.profile-section-heading h3 {
-  color: var(--gg-ink);
-  font-size: 19px;
-  letter-spacing: -.025em;
-  margin: 4px 0 0;
-}
-
-.profile-section-heading > span {
+.account-stats-line {
   color: var(--gg-muted);
-  font-size: 12px;
-  line-height: 1.4;
-  max-width: 190px;
-  text-align: right;
+  font-size: 13px;
+  margin: 0;
 }
 
-.profile-section-heading.compact {
-  display: block;
+.account-stats-line strong {
+  color: var(--gg-ink);
 }
 
-.profile-grid {
+.account-editor {
   display: grid;
-  gap: 15px;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.account-editor[hidden] {
+  display: none;
 }
 
 .profile-field {
@@ -3063,7 +3099,7 @@ button.profile-avatar:hover {
 }
 
 .profile-field textarea {
-  min-height: 108px;
+  min-height: 90px;
   resize: vertical;
 }
 
@@ -3089,148 +3125,46 @@ button.profile-avatar:hover {
   line-height: 1.4;
 }
 
-.profile-actions {
+.account-footer {
+  align-items: center;
   border-top: 1px solid var(--gg-line);
   display: flex;
-  gap: 9px;
-  justify-content: flex-end;
-  margin-top: 18px;
-  padding-top: 16px;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding-top: 20px;
 }
 
-.profile-actions-start {
-  justify-content: flex-start;
-}
-
-.profile-actions button,
-.profile-photo-control button {
-  margin: 0;
-}
-
-/* Estilo autocontido (não depende do seletor de elemento `button`) pra
-   funcionar tanto em <button> quanto em <a> — os links de Privacidade/
-   Termos usam <a> de propósito, pra abrir em nova aba corretamente. */
-.profile-primary-button,
-.profile-secondary-button,
-.profile-danger-button {
-  align-items: center;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  box-shadow: var(--gg-shadow-sm);
-  display: inline-flex;
-  font: inherit;
-  justify-content: center;
-  min-height: 44px;
-  padding: 10px 16px;
-  text-decoration: none;
-  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
-}
-
-.profile-primary-button:hover,
-.profile-secondary-button:hover,
-.profile-danger-button:hover {
-  transform: translateY(-1px);
-}
-
-.profile-primary-button {
-  background: var(--gg-primary);
-  color: #fff;
-  font-weight: 800;
-}
-
-.profile-primary-button:hover {
-  background: var(--gg-primary-dark);
-}
-
-.profile-secondary-button {
-  background: #eef3f6;
-  border: 1px solid var(--gg-line);
-  color: var(--gg-ink);
-  font-weight: 750;
-}
-
-.profile-danger-button {
-  background: #fdecec;
-  border: 1px solid #f3b9b9;
-  color: #b3261e;
-  font-weight: 750;
-}
-
-.profile-danger-button:hover {
-  background: #f8d7d7;
-}
-
-.profile-stats {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: 1fr;
-}
-
-.profile-stat {
-  align-items: center;
-  background: #f8fbfc;
-  border: 1px solid var(--gg-line);
-  border-radius: 13px;
-  display: flex;
-  gap: 11px;
-  padding: 13px;
-  text-align: left;
-}
-
-.profile-stat-icon {
-  align-items: center;
-  background: var(--gg-primary-pale);
-  border-radius: 10px;
-  color: var(--gg-primary-dark);
-  display: flex;
-  flex: 0 0 38px;
-  font-size: 17px;
-  font-weight: 850;
-  height: 38px;
-  justify-content: center;
-}
-
-.profile-stat-icon.currency {
-  font-size: 10px;
-}
-
-.profile-stat strong {
-  color: var(--gg-ink);
-  display: block;
-  font-size: 18px;
-  line-height: 1.15;
-}
-
-.profile-stat div > span {
+.account-footer a {
   color: var(--gg-muted);
-  display: block;
-  font-size: 11px;
-  margin-top: 3px;
+  font-size: 12.5px;
+  text-decoration: none;
 }
 
-.profile-note {
-  background: #fff8df;
-  border: 1px solid #f1dd91;
-  border-radius: 11px;
-  color: #6c5709;
-  font-size: 11px;
-  line-height: 1.5;
-  margin: 14px 0 0;
-  padding: 11px;
+.account-footer a:hover {
+  color: var(--gg-primary-dark);
+  text-decoration: underline;
 }
 
-@media (max-width: 900px) {
-  .profile-content-grid {
-    grid-template-columns: 1fr;
-  }
+.account-footer-danger {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: #b3261e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  margin-left: auto;
+  min-height: 0;
+  padding: 0;
+}
 
-  .profile-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .profile-stat {
-    align-items: flex-start;
-  }
+.account-footer-danger:hover,
+.account-footer-danger:focus,
+.account-footer-danger:active {
+  background: none;
+  text-decoration: underline;
 }
 
 @media (max-width: 760px) {
@@ -3243,51 +3177,21 @@ button.profile-avatar:hover {
     width: calc(100% - 10px) !important;
   }
 
-  .profile-identity-card {
-    align-items: flex-start;
-    min-height: 0;
-    padding: 18px;
+  .account-page {
+    gap: 30px;
   }
 
-  .profile-avatar,
-  button.profile-avatar {
-    height: 76px;
-    width: 76px;
-  }
-
-  .profile-content-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .profile-editor-card,
-  .profile-summary-card {
-    padding: 16px;
-  }
-
-  .profile-section-heading {
-    display: block;
-  }
-
-  .profile-section-heading > span {
-    display: block;
-    margin-top: 7px;
-    max-width: none;
-    text-align: left;
-  }
-
-  .profile-photo-control,
-  .profile-actions {
-    align-items: stretch;
+  .account-actions {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .profile-photo-control button,
-  .profile-actions button {
+  .account-actions .profile-primary-button {
     width: 100%;
   }
 
-  .profile-stats {
-    grid-template-columns: 1fr;
+  .account-footer-danger {
+    margin-left: 0;
   }
 }
 

@@ -1070,7 +1070,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="/app-theme.css?v=20260807-ai-assistant-v19">
+  <link rel="stylesheet" href="/app-theme.css?v=20260807-ai-assistant-v21">
 </head>
 <body>
   <!-- Botão de menu flutuante -->
@@ -1581,6 +1581,27 @@
       <button type="button" class="dialog-tertiary-button" id="insufficientBalanceCancelButton">Cancelar</button>
     </div>
   </div>
+  <div id="lowBalanceDialog" class="dialog">
+    <div class="dialog-content insufficient-balance-dialog-content">
+      <span class="insufficient-balance-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      </span>
+      <h3 id="lowBalanceDialogTitle">Saldo quase no fim</h3>
+      <p id="lowBalanceDialogMessage">Restam menos de 10% do saldo da lista "<strong id="lowBalanceDialogListName"></strong>".</p>
+      <div class="insufficient-balance-figures">
+        <div>
+          <span>Saldo atual</span>
+          <strong id="lowBalanceDialogBalance">R$ 0,00</strong>
+        </div>
+        <div>
+          <span>Orçamento definido</span>
+          <strong id="lowBalanceDialogInitial">R$ 0,00</strong>
+        </div>
+      </div>
+      <button type="button" id="lowBalanceIncreaseButton">Aumentar saldo da lista</button>
+      <button type="button" class="dialog-secondary-button" id="lowBalanceContinueButton">Continuar assim</button>
+    </div>
+  </div>
   <div id="deleteListDialog" class="dialog">
     <div class="dialog-content">
       <h3>Excluir Lista</h3>
@@ -1764,8 +1785,8 @@
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-app-check-compat.js"></script>
-  <script src="/app.js?v=20260807-ai-assistant-v19"></script>
-  <script type="module" src="/ai-list.js?v=20260807-ai-assistant-v19"></script>
+  <script src="/app.js?v=20260807-ai-assistant-v21"></script>
+  <script type="module" src="/ai-list.js?v=20260807-ai-assistant-v21"></script>
 
 </body>
 </html>

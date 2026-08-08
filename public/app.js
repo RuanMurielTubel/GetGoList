@@ -3149,6 +3149,22 @@
       if (typeof dismiss === 'function') dismiss();
     }
 
+    function showLowBalanceDialog({ balance, initialBalance, listName, negative }) {
+      const dialog = document.getElementById('lowBalanceDialog');
+      const titleEl = document.getElementById('lowBalanceDialogTitle');
+      const messageEl = document.getElementById('lowBalanceDialogListName');
+      const balanceEl = document.getElementById('lowBalanceDialogBalance');
+      const initialEl = document.getElementById('lowBalanceDialogInitial');
+      if (!dialog || !titleEl || !messageEl || !balanceEl || !initialEl) {
+        return;
+      }
+      titleEl.textContent = negative ? 'Saldo negativo' : 'Saldo quase no fim';
+      messageEl.textContent = listName;
+      balanceEl.textContent = `R$ ${balance.toFixed(2).replace('.', ',')}`;
+      initialEl.textContent = `R$ ${initialBalance.toFixed(2).replace('.', ',')}`;
+      dialog.style.display = 'flex';
+    }
+
     function openBudgetDialog() {
       if (isSharedGuest()) {
         return;
@@ -4099,10 +4115,16 @@
         alertElement.textContent = 'Atenção: você já ultrapassou o saldo estabelecido!';
         alertElement.classList.add('active');
         hasShownLowBalanceAlert = true;
+        if (!isSharedGuest()) {
+          showLowBalanceDialog({ balance, initialBalance, listName: currentListName, negative: true });
+        }
       } else if (initialBalance > 0 && balance <= initialBalance * 0.1 && balance >= 0 && !hasShownLowBalanceAlert) {
         alertElement.textContent = 'Atenção: Seu saldo está baixo. Restam menos de 10% do valor inicial.';
         alertElement.classList.add('active');
         hasShownLowBalanceAlert = true;
+        if (!isSharedGuest()) {
+          showLowBalanceDialog({ balance, initialBalance, listName: currentListName, negative: false });
+        }
       } else if (balance > initialBalance * 0.1 || initialBalance === 0) {
         alertElement.classList.remove('active');
         alertElement.textContent = 'Atenção: Seu saldo está baixo. Restam menos de 10% do valor inicial.';
@@ -5526,6 +5548,8 @@
         });
       }
       const setBalanceButton = document.getElementById('setBalanceButton');
+      const lowBalanceIncreaseButton = document.getElementById('lowBalanceIncreaseButton');
+      const lowBalanceContinueButton = document.getElementById('lowBalanceContinueButton');
       const insufficientBalanceDefineButton = document.getElementById('insufficientBalanceDefineButton');
       const insufficientBalanceContinueButton = document.getElementById('insufficientBalanceContinueButton');
       const insufficientBalanceCancelButton = document.getElementById('insufficientBalanceCancelButton');
@@ -5598,6 +5622,15 @@
 
       if (setBalanceButton) {
         setBalanceButton.addEventListener('click', setBalance);
+      }
+      if (lowBalanceIncreaseButton) {
+        lowBalanceIncreaseButton.addEventListener('click', () => {
+          closeDialog('lowBalanceDialog');
+          openBudgetDialog();
+        });
+      }
+      if (lowBalanceContinueButton) {
+        lowBalanceContinueButton.addEventListener('click', () => closeDialog('lowBalanceDialog'));
       }
       if (insufficientBalanceDefineButton) {
         insufficientBalanceDefineButton.addEventListener('click', () => {

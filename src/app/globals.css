@@ -1322,6 +1322,22 @@ footer a {
   font-size: 0.82rem;
 }
 
+.plan-customer-data {
+  margin: 24px auto;
+  max-width: 480px;
+}
+
+.plan-customer-data h2 {
+  font-size: 1.1rem;
+  margin: 0 0 4px;
+}
+
+.plan-customer-data p {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 14px;
+}
+
 .plan-pix-checkout {
   background: var(--surface-soft);
   border: 1px solid #e3edf3;

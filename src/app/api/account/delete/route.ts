@@ -1,36 +1,37 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { adminAuth, adminFirestore, adminStorage } from "@/lib/server/firebase-admin";
-import { cancelPreapproval } from "@/lib/server/mercadopago";
+import { cancelSubscription } from "@/lib/server/asaas";
 import {
   authenticatedVerifiedUser,
   verifiedAppRequest,
 } from "@/lib/server/request-auth";
 import { withinRateLimit } from "@/lib/server/rate-limit";
+import { subscriptionReference } from "@/lib/server/subscription";
 
 export const runtime = "nodejs";
 
 const PROFILE_PHOTO_BUCKET = "getgolist.firebasestorage.app";
 
 async function cancelActiveSubscription(uid: string) {
-  const reference = adminFirestore()
-    .collection("users")
-    .doc(uid)
-    .collection("billing")
-    .doc("subscription");
+  const reference = subscriptionReference(uid);
   const snapshot = await reference.get();
   const data = snapshot.data();
-  const preapprovalId = data?.mercadoPago?.preapprovalId;
-  if (!preapprovalId || data?.status === "cancelled") return;
+  const subscriptionId = data?.asaas?.subscriptionId;
+  if (!subscriptionId || data?.status === "cancelled") return;
 
   try {
-    await cancelPreapproval(preapprovalId);
+    await cancelSubscription(subscriptionId, { immediate: true });
   } catch (error) {
     // Best-effort: não bloqueia a exclusão da conta — mas registra pra
     // permitir cancelamento manual, já que depois disso a referência do
-    // preapprovalId é apagada junto com o resto dos dados do usuário.
-    console.warn("Não foi possível cancelar a assinatura no Mercado Pago antes de excluir a conta.", error);
+    // subscriptionId é apagada junto com o resto dos dados do usuário.
+    console.warn("Não foi possível cancelar a assinatura na Asaas antes de excluir a conta.", error);
   }
+
+  // Remove a entrada de lookup uid<-subscriptionId pra não deixar um id
+  // órfão apontando pra uma conta que não existe mais.
+  await adminFirestore().collection("asaasSubscriptions").doc(subscriptionId).delete().catch(() => {});
 }
 
 async function endOwnedSharedLists(uid: string) {
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
 
     // Cancela qualquer assinatura ativa antes de apagar os dados —
     // senão a referência do preapprovalId some e a cobrança recorrente
-    // continua rodando no Mercado Pago para uma conta que não existe mais.
+    // continua rodando na Asaas para uma conta que não existe mais.
     await cancelActiveSubscription(user.uid);
 
     // Dados primeiro, conta de autenticação por último: se algo aqui

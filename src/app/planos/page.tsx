@@ -38,6 +38,10 @@ export default function PlanosPage() {
   const [pixBusyPlan, setPixBusyPlan] = useState<PlanId | null>(null);
   const [pixCheckout, setPixCheckout] = useState<PixCheckoutData | null>(null);
   const [feedback, setFeedback] = useState("");
+  // A Asaas exige nome + CPF/CNPJ pra cadastrar o cliente (o Mercado Pago
+  // não pedia isso) — coletado uma vez aqui antes de qualquer cobrança.
+  const [customerName, setCustomerName] = useState("");
+  const [customerDocument, setCustomerDocument] = useState("");
 
   useEffect(() => {
     let planUnsubscribe: (() => void) | null = null;
@@ -91,6 +95,19 @@ export default function PlanosPage() {
     };
   }, []);
 
+  function validateCustomerData(): boolean {
+    const digits = customerDocument.replace(/\D/g, "");
+    if (customerName.trim().length < 2) {
+      setFeedback("Informe seu nome completo antes de continuar.");
+      return false;
+    }
+    if (digits.length !== 11 && digits.length !== 14) {
+      setFeedback("Informe um CPF ou CNPJ válido antes de continuar.");
+      return false;
+    }
+    return true;
+  }
+
   async function handlePixPurchase(plan: PlanId) {
     if (plan !== "cesta" && plan !== "cestao") return;
     if (!user) {
@@ -98,6 +115,7 @@ export default function PlanosPage() {
       return;
     }
     setFeedback("");
+    if (!validateCustomerData()) return;
     setPixCheckout(null);
     setPixBusyPlan(plan);
     try {
@@ -112,7 +130,7 @@ export default function PlanosPage() {
           "X-Firebase-AppCheck": appCheckToken,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, name: customerName.trim(), cpfCnpj: customerDocument }),
       });
       if (response.status === 503) {
         setFeedback("O pagamento via PIX ainda está sendo configurado. Volte em breve.");
@@ -175,7 +193,9 @@ export default function PlanosPage() {
       return;
     }
 
+    if (!validateCustomerData()) return;
     setBusyPlan(plan);
+    setPixCheckout(null);
     try {
       const [token, appCheckToken] = await Promise.all([
         user.getIdToken(),
@@ -188,19 +208,26 @@ export default function PlanosPage() {
           "X-Firebase-AppCheck": appCheckToken,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, name: customerName.trim(), cpfCnpj: customerDocument }),
       });
       if (response.status === 503) {
         setFeedback("Os pagamentos ainda estão sendo configurados. Volte em breve para assinar.");
         return;
       }
       const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.checkoutUrl) {
+      if (!response.ok) {
         throw new Error("CHECKOUT_FAILED");
       }
-      window.location.href = result.checkoutUrl;
+      // A assinatura é cobrada por PIX a cada mês — a primeira cobrança já
+      // vem pronta pra pagar aqui mesmo, reaproveitando a tela de QR code.
+      if (result.pix?.qrCode) {
+        setPixCheckout(result.pix as PixCheckoutData);
+      } else {
+        setFeedback("Assinatura criada. A primeira cobrança aparece em instantes — atualize a página se não vir aqui.");
+      }
     } catch {
       setFeedback("Não foi possível iniciar o pagamento agora. Tente novamente.");
+    } finally {
       setBusyPlan(null);
     }
   }
@@ -237,6 +264,33 @@ export default function PlanosPage() {
                       : `faltam ${daysRemaining} ${daysRemaining === 1 ? "dia" : "dias"}.`
                 }`}
           </p>
+        ) : null}
+
+        {authChecked && user ? (
+          <section className="plan-customer-data account-form">
+            <h2>Seus dados para pagamento</h2>
+            <p>A Asaas, processadora de pagamentos, exige nome e CPF/CNPJ para gerar a cobrança.</p>
+            <label>
+              Nome completo
+              <input
+                type="text"
+                value={customerName}
+                onChange={(event) => setCustomerName(event.target.value)}
+                autoComplete="name"
+                placeholder="Seu nome completo"
+              />
+            </label>
+            <label>
+              CPF ou CNPJ
+              <input
+                type="text"
+                inputMode="numeric"
+                value={customerDocument}
+                onChange={(event) => setCustomerDocument(event.target.value)}
+                placeholder="Somente números"
+              />
+            </label>
+          </section>
         ) : null}
 
         {authChecked ? (

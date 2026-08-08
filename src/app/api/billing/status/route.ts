@@ -45,6 +45,7 @@ export async function GET(request: Request) {
       return {
         paymentId: paymentData.paymentId,
         plan: paymentData.plan,
+        provider: paymentData.provider || "mercadopago",
         purchaseType: paymentData.purchaseType || "subscription",
         amountCents: paymentData.amountCents || 0,
         currency: paymentData.currency || "BRL",

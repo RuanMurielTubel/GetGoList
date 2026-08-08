@@ -48,7 +48,7 @@ export default function PrivacyPage() {
             <li><strong>Listas:</strong> nomes das listas, saldo ou orçamento, produtos, setores, quantidades, preços, itens marcados e histórico de alterações.</li>
             <li><strong>Colaboração:</strong> pessoas autorizadas, participantes que acessaram, data do acesso e identificação de quem fez uma alteração.</li>
             <li><strong>Divisão de conta:</strong> e-mails dos destinatários, quantidade de participantes, valores e chave PIX ou dados de pagamento informados pelo usuário.</li>
-            <li><strong>Assinatura e pagamento:</strong> plano contratado, status da assinatura, datas de início e renovação, e identificador, valor e status de cada pagamento processado pelo Mercado Pago. O GetGoList não recebe nem armazena número de cartão.</li>
+            <li><strong>Assinatura e pagamento:</strong> plano contratado, status da assinatura, datas de início e renovação, CPF/CNPJ e identificador, valor e status de cada pagamento processado pela Asaas. O GetGoList não recebe nem armazena número de cartão.</li>
             <li><strong>Segurança e funcionamento:</strong> tokens de autenticação, registros técnicos, informações do dispositivo e sinais usados para prevenir abuso e acessos indevidos.</li>
             <li><strong>Criação com inteligência artificial:</strong> descrição da compra, número de pessoas, orçamento opcional e a sugestão de lista gerada.</li>
             <li><strong>Comando de voz:</strong> quando você usa o assistente de voz, o navegador converte sua fala em texto; o GetGoList recebe e processa apenas o texto resultante, nunca o áudio.</li>
@@ -57,10 +57,12 @@ export default function PrivacyPage() {
           </ul>
           <p>
             O GetGoList não solicita nem armazena dados de cartão. Os pagamentos das
-            assinaturas Cesta e Cestão são processados pelo Mercado Pago, que atua
-            como operador desses dados conforme sua própria política de privacidade.
-            Nas mensagens de divisão de conta, a chave PIX ou os dados informados são
-            apenas repassados, por escolha do usuário, e não passam pelo Mercado Pago.
+            assinaturas Cesta e Cestão, incluindo a compra avulsa de 30 dias via PIX,
+            são processados pela Asaas, que atua como operadora desses dados
+            (incluindo nome e CPF/CNPJ, exigidos por ela para gerar a cobrança)
+            conforme sua própria política de privacidade. Nas mensagens de divisão
+            de conta, a chave PIX ou os dados informados são apenas repassados, por
+            escolha do usuário, e não passam pela Asaas.
           </p>
         </section>
 
@@ -153,7 +155,7 @@ export default function PrivacyPage() {
             <li><strong>Google:</strong> login com Google, mecanismos de proteção como reCAPTCHA e Play Integrity, e conversão de voz em texto pelo navegador quando o assistente de voz é usado.</li>
             <li><strong>Vercel:</strong> hospedagem e entrega do site e das rotas do sistema.</li>
             <li><strong>Titan/GoDaddy:</strong> envio de mensagens transacionais pelo domínio getgolist.com.</li>
-            <li><strong>Mercado Pago:</strong> processamento dos pagamentos e da cobrança recorrente das assinaturas Cesta e Cestão.</li>
+            <li><strong>Asaas:</strong> processamento dos pagamentos via PIX, incluindo a compra avulsa de 30 dias e a cobrança recorrente das assinaturas Cesta e Cestão.</li>
             <li><strong>Google AdSense:</strong> exibição e medição de anúncios nos planos Free e Cesta.</li>
           </ul>
           <p>

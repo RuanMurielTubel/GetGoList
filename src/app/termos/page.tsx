@@ -70,15 +70,16 @@ export default function TermsPage() {
           <p>
             As assinaturas dos planos Cesta e Cestão são cobradas mensalmente, com
             renovação automática a cada 30 dias, até que sejam canceladas. O
-            pagamento é processado pelo Mercado Pago, por cartão, PIX ou outro meio
-            disponibilizado por ele; o GetGoList não recebe nem armazena dados do seu
-            cartão.
+            pagamento é processado pela Asaas, via PIX; o GetGoList não recebe nem
+            armazena dados do seu cartão, quando aplicável.
           </p>
           <p>
             O plano contratado é ativado automaticamente assim que o pagamento é
-            confirmado pelo Mercado Pago. Em caso de falha na confirmação de um
-            pagamento recorrente, podemos suspender os benefícios do plano pago até
-            a regularização, rebaixando a conta ao plano Free.
+            confirmado pela Asaas. Em caso de falha na confirmação de um pagamento
+            recorrente, podemos suspender os benefícios do plano pago até a
+            regularização, rebaixando a conta ao plano Free. Também é possível
+            adquirir acesso avulso de 30 dias via PIX, sem criar assinatura
+            recorrente.
           </p>
         </section>
 
@@ -152,7 +153,7 @@ export default function TermsPage() {
             imprecisões; a decisão de compra é sempre sua. Fazemos esforços
             razoáveis para manter o serviço disponível, mas não garantimos
             disponibilidade ininterrupta e não respondemos por indisponibilidades
-            causadas por terceiros, como o Mercado Pago, o Google ou provedores de
+            causadas por terceiros, como a Asaas, o Google ou provedores de
             infraestrutura.
           </p>
         </section>

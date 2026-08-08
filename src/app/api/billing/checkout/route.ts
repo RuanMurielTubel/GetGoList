@@ -1,15 +1,22 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { adminFirestore } from "@/lib/server/firebase-admin";
-import { cancelPreapproval, createSubscriptionCheckout } from "@/lib/server/mercadopago";
+import { cancelSubscription, createSubscription, ensureCustomer } from "@/lib/server/asaas";
 import {
   authenticatedVerifiedUser,
   verifiedAppRequest,
 } from "@/lib/server/request-auth";
 import { withinRateLimit } from "@/lib/server/rate-limit";
+import { subscriptionReference } from "@/lib/server/subscription";
 import { COMPLIMENTARY_CESTAO_EMAILS } from "@/lib/shared/plan-limits";
 
 export const runtime = "nodejs";
+
+function isValidCpfCnpj(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const digits = value.replace(/\D/g, "");
+  return digits.length === 11 || digits.length === 14;
+}
 
 export async function POST(request: Request) {
   try {
@@ -29,60 +36,88 @@ export async function POST(request: Request) {
     if (!plan) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
+    const name = typeof body.name === "string" ? body.name.trim().slice(0, 150) : "";
+    const cpfCnpj = body.cpfCnpj;
+    if (!name || !isValidCpfCnpj(cpfCnpj)) {
+      return NextResponse.json({ ok: false, code: "INVALID_CUSTOMER_DATA" }, { status: 400 });
+    }
 
     if (!(await withinRateLimit(`billing-checkout:${user.uid}`, 10, 15 * 60 * 1000))) {
       return NextResponse.json({ ok: false }, { status: 429 });
     }
 
-    const reference = adminFirestore()
-      .collection("users")
-      .doc(user.uid)
-      .collection("billing")
-      .doc("subscription");
-
+    const reference = subscriptionReference(user.uid);
     const snapshot = await reference.get();
     const existing = snapshot.data();
 
     // Trocar de plano (upgrade/downgrade entre pagos) reusa este mesmo
-    // endpoint: cancela a assinatura anterior no Mercado Pago antes de
-    // criar a nova. Falha ao cancelar não bloqueia — a assinatura antiga
-    // fica órfã no MP, mas o webhook da nova assinatura ainda ativa o
-    // plano corretamente.
-    const previousPreapprovalId = existing?.mercadoPago?.preapprovalId;
-    if (previousPreapprovalId && existing?.status !== "cancelled") {
+    // endpoint: cancela a assinatura anterior na Asaas antes de criar a
+    // nova. Falha ao cancelar não bloqueia — a assinatura antiga fica
+    // órfã lá, mas o webhook da nova assinatura ainda ativa o plano
+    // corretamente.
+    const previousSubscriptionId = existing?.asaas?.subscriptionId as string | undefined;
+    if (previousSubscriptionId && existing?.status !== "cancelled") {
       try {
-        await cancelPreapproval(previousPreapprovalId);
+        await cancelSubscription(previousSubscriptionId, { immediate: true });
       } catch (error) {
-        console.warn("Não foi possível cancelar a assinatura anterior no Mercado Pago.", error);
+        console.warn("Não foi possível cancelar a assinatura anterior na Asaas.", error);
       }
     }
 
-    const { checkoutUrl, preapprovalId } = await createSubscriptionCheckout({
-      uid: user.uid,
-      email: user.email,
-      plan,
-    });
+    let customerId = existing?.asaas?.customerId as string | undefined;
+    if (!customerId) {
+      customerId = await ensureCustomer({ uid: user.uid, name, cpfCnpj, email: user.email });
+    }
+
+    const subscription = await createSubscription({ customerId, uid: user.uid, plan });
 
     await reference.set(
       {
         pendingPlan: plan,
         status: "pending",
-        gateway: "mercadopago",
-        mercadoPago: {
-          preapprovalId,
-          preapprovalPlanId: null,
-          payerId: null,
-          payerEmail: user.email,
-          lastPaymentId: null,
-          lastPaymentStatus: null,
+        gateway: "asaas",
+        asaas: {
+          customerId,
+          subscriptionId: subscription.subscriptionId,
+          lastPaymentId: subscription.paymentId,
+          lastPaymentStatus: subscription.paymentId ? "PENDING" : null,
         },
+        pix: subscription.qrCode
+          ? {
+              paymentId: subscription.paymentId,
+              plan,
+              status: "pending",
+              qrCode: subscription.qrCode,
+              qrCodeBase64: subscription.qrCodeBase64,
+              ticketUrl: "",
+              expiresAt: subscription.expiresAt,
+            }
+          : null,
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: "checkout",
       },
       { merge: true },
     );
 
-    return NextResponse.json({ ok: true, checkoutUrl });
+    // Tabela de lookup pra resolver o uid a partir de um id de assinatura
+    // quando chega um webhook de cobrança recorrente (ver webhook/route.ts).
+    await adminFirestore()
+      .collection("asaasSubscriptions")
+      .doc(subscription.subscriptionId)
+      .set({ uid: user.uid, plan, createdAt: FieldValue.serverTimestamp() });
+
+    return NextResponse.json({
+      ok: true,
+      subscriptionId: subscription.subscriptionId,
+      pix: subscription.qrCode
+        ? {
+            paymentId: subscription.paymentId,
+            qrCode: subscription.qrCode,
+            qrCodeBase64: subscription.qrCodeBase64,
+            expiresAt: subscription.expiresAt,
+          }
+        : null,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "UNAUTHORIZED") {

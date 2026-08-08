@@ -63,11 +63,9 @@ export async function ensureSubscriptionDoc(uid: string) {
       currentPeriodStart: null,
       renewsAt: null,
       gateway: null,
-      mercadoPago: {
-        preapprovalId: null,
-        preapprovalPlanId: null,
-        payerId: null,
-        payerEmail: null,
+      asaas: {
+        customerId: null,
+        subscriptionId: null,
         lastPaymentId: null,
         lastPaymentStatus: null,
       },

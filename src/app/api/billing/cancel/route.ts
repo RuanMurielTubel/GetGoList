@@ -1,12 +1,12 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { adminFirestore } from "@/lib/server/firebase-admin";
-import { cancelPreapproval } from "@/lib/server/mercadopago";
+import { cancelSubscription } from "@/lib/server/asaas";
 import {
   authenticatedVerifiedUser,
   verifiedAppRequest,
 } from "@/lib/server/request-auth";
 import { withinRateLimit } from "@/lib/server/rate-limit";
+import { subscriptionReference } from "@/lib/server/subscription";
 
 export const runtime = "nodejs";
 
@@ -22,21 +22,17 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const downgradeToFree = body.downgradeToFree === true;
 
-    const reference = adminFirestore()
-      .collection("users")
-      .doc(user.uid)
-      .collection("billing")
-      .doc("subscription");
+    const reference = subscriptionReference(user.uid);
 
     const snapshot = await reference.get();
     const existing = snapshot.data();
-    const preapprovalId = existing?.mercadoPago?.preapprovalId;
+    const subscriptionId = existing?.asaas?.subscriptionId;
 
-    if (preapprovalId && existing?.status !== "cancelled") {
+    if (subscriptionId && existing?.status !== "cancelled") {
       try {
-        await cancelPreapproval(preapprovalId);
+        await cancelSubscription(subscriptionId, { immediate: downgradeToFree });
       } catch (error) {
-        console.warn("Não foi possível cancelar a assinatura no Mercado Pago.", error);
+        console.warn("Não foi possível cancelar a assinatura na Asaas.", error);
       }
     }
 

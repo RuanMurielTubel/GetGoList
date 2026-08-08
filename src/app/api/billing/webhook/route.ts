@@ -1,204 +1,217 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import {
-  fetchPayment,
-  fetchPreapproval,
-  parseExternalReference,
-  verifyWebhookSignature,
-} from "@/lib/server/mercadopago";
+import { adminFirestore } from "@/lib/server/firebase-admin";
+import { parseExternalReference, verifyWebhookToken, type AsaasPayment } from "@/lib/server/asaas";
 import { subscriptionReference } from "@/lib/server/subscription";
 
 export const runtime = "nodejs";
 
 const PIX_ACCESS_DAYS = 30;
 
-// Auth diferente de todo o resto da API: o Mercado Pago não manda token de
-// usuário Firebase nem App Check — a autenticidade vem só da assinatura
-// HMAC (x-signature/x-request-id) verificada contra MERCADOPAGO_WEBHOOK_SECRET.
-//
-// Mapeamento de status "preapproval" (assinatura) do MP -> nosso status:
-// authorized -> active | pending -> pending | paused -> expired | cancelled -> cancelled.
-//
-// Para eventos type=payment, o pagamento carrega `external_reference` no
-// formato "uid:plano" (parcela de assinatura, herdado da preapproval,
-// comportamento documentado do Mercado Pago) ou "uid:plano:pix" (compra
-// avulsa, criada por createPixPayment) — ver parseExternalReference.
-function mapPreapprovalStatus(status: string | undefined): "active" | "pending" | "expired" | "cancelled" {
-  switch (status) {
-    case "authorized":
-      return "active";
-    case "paused":
-      return "expired";
-    case "cancelled":
-      return "cancelled";
-    default:
-      return "pending";
+type AsaasWebhookPayload = {
+  event: string;
+  payment?: AsaasPayment;
+  subscription?: { id: string; status?: string };
+};
+
+// Eventos de cobrança que indicam pagamento efetivamente recebido — só
+// esses liberam acesso. PAYMENT_CREATED/PAYMENT_OVERDUE/etc. são
+// reconhecidos mas não concedem nada.
+const PAID_PAYMENT_EVENTS = new Set(["PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"]);
+const SUBSCRIPTION_ENDED_EVENTS = new Set(["SUBSCRIPTION_INACTIVATED", "SUBSCRIPTION_DELETED"]);
+
+/**
+ * Resolve o uid dono de uma cobrança. Cobrança avulsa carrega
+ * externalReference "uid:plano:pix" direto. Cobrança gerada por uma
+ * assinatura (a partir do 2º ciclo) pode não herdar esse campo — nesse
+ * caso usamos `payment.subscription` pra consultar a tabela de lookup
+ * gravada na criação da assinatura (checkout/route.ts).
+ */
+async function resolvePaymentOwner(
+  payment: AsaasPayment,
+): Promise<{ uid: string; plan: "cesta" | "cestao"; purchaseType: "subscription" | "pix" } | null> {
+  const direct = parseExternalReference(payment.externalReference);
+  if (direct) return direct;
+
+  if (payment.subscription) {
+    const lookup = await adminFirestore().collection("asaasSubscriptions").doc(payment.subscription).get();
+    const data = lookup.data();
+    if (data?.uid && (data.plan === "cesta" || data.plan === "cestao")) {
+      return { uid: data.uid, plan: data.plan, purchaseType: "subscription" };
+    }
   }
+  return null;
 }
 
-async function upsertFromPreapproval(preapprovalId: string) {
-  const preapproval = await fetchPreapproval(preapprovalId);
-  const parsed = parseExternalReference(preapproval.external_reference);
-  if (!parsed) {
-    console.warn("Webhook de preapproval com external_reference inválido, ignorando.", preapprovalId);
+async function handlePaymentEvent(event: string, payment: AsaasPayment) {
+  const owner = await resolvePaymentOwner(payment);
+  if (!owner) {
+    console.warn("Webhook de cobrança sem referência resolvível, ignorando.", payment.id);
     return;
   }
-  const { uid, plan } = parsed;
-  const status = mapPreapprovalStatus(preapproval.status);
-
+  const { uid, purchaseType } = owner;
   const reference = subscriptionReference(uid);
+  const paymentReference = reference.collection("payments").doc(payment.id);
 
-  const updates: Record<string, unknown> = {
-    status,
-    gateway: "mercadopago",
-    cancelAtPeriodEnd: status === "cancelled",
-    mercadoPago: {
-      preapprovalId: preapproval.id,
-      preapprovalPlanId: preapproval.preapproval_plan_id || null,
-      payerId: preapproval.payer_id ? String(preapproval.payer_id) : null,
-      payerEmail: preapproval.payer_email || null,
-    },
-    updatedAt: FieldValue.serverTimestamp(),
-    updatedBy: "webhook",
-  };
-
-  // O plano só é liberado quando o Mercado Pago confirma "authorized"
-  // (mapeado pra "active" acima). "pending" é o estado inicial da
-  // assinatura, criado assim que o checkout começa — liberar o plano
-  // nesse status daria acesso pago sem o pagamento ter sido concluído.
-  // accessType "subscription" não usa accessStartedAt/accessEndsAt (quem
-  // controla a validade é o status da preapproval, não uma data local) —
-  // por isso os dois ficam null aqui, diferente de trial/pix.
-  if (status === "active") {
-    updates.plan = plan;
-    updates.pendingPlan = null;
-    updates.accessType = "subscription";
-    updates.accessStartedAt = null;
-    updates.accessEndsAt = null;
-  } else if (status === "cancelled" || status === "expired") {
-    updates.plan = "free";
-    updates.pendingPlan = null;
-    updates.accessType = "free";
-    updates.accessStartedAt = null;
-    updates.accessEndsAt = null;
-  } else {
-    updates.pendingPlan = plan;
-  }
-
-  await reference.set(updates, { merge: true });
-  if (status === "active" || status === "cancelled" || status === "expired") {
-    await reference.collection("accessEvents").add({
-      type: status === "active" ? "subscription_started" : "subscription_cancelled_to_free",
-      occurredAt: FieldValue.serverTimestamp(),
-      details: { plan, preapprovalId },
-    });
-  }
-}
-
-async function upsertFromPayment(paymentId: string) {
-  const payment = await fetchPayment(paymentId);
-  const parsed = parseExternalReference(payment.external_reference);
-  if (!parsed) {
-    console.warn("Webhook de pagamento com external_reference inválido, ignorando.", paymentId);
-    return;
-  }
-  const { uid } = parsed;
-  // O sufixo ":pix" no external_reference é a fonte primária; metadata é
-  // reforço (fica registrada direto no pagamento pelo Mercado Pago, então
-  // sobrevive mesmo que o formato do external_reference mude no futuro).
-  const isPixOneOff = parsed.purchaseType === "pix" || payment.metadata?.purchase_type === "pix_one_off";
-
-  const reference = subscriptionReference(uid);
-  const paymentReference = reference.collection("payments").doc(String(payment.id));
+  // Idempotência: usa uma flag própria (accessGranted), não uma comparação
+  // de status — a Asaas pode mandar mais de um evento "pago" pro mesmo
+  // pagamento (ex.: CONFIRMED e depois RECEIVED), e comparar só o texto do
+  // status deixaria passar uma segunda concessão de acesso nesse caso.
+  const existingPayment = await paymentReference.get();
+  const alreadyGranted = existingPayment.exists && existingPayment.data()?.accessGranted === true;
 
   const subscriptionSnapshot = await reference.get();
   const subscriptionData = subscriptionSnapshot.data();
-  const plan = (subscriptionData?.pendingPlan || subscriptionData?.plan || parsed.plan) as "cesta" | "cestao";
+  const plan = (subscriptionData?.pendingPlan || subscriptionData?.plan || owner.plan) as "cesta" | "cestao";
+  const isPaid = PAID_PAYMENT_EVENTS.has(event);
+  const willGrantNow = isPaid && !alreadyGranted;
 
   await paymentReference.set(
     {
-      paymentId: String(payment.id),
+      paymentId: payment.id,
       plan,
-      purchaseType: isPixOneOff ? "pix" : "subscription",
-      amountCents: Math.round((payment.transaction_amount || 0) * 100),
-      currency: payment.currency_id || "BRL",
+      purchaseType,
+      provider: "asaas",
+      amountCents: Math.round((payment.value || 0) * 100),
+      currency: "BRL",
       status: payment.status,
-      statusDetail: (payment.status_detail || "").slice(0, 120),
-      paidAt: payment.date_approved ? new Date(payment.date_approved) : null,
+      billingType: payment.billingType || null,
+      accessGranted: alreadyGranted || willGrantNow,
       createdAt: FieldValue.serverTimestamp(),
-      rawWebhookType: "payment",
+      rawWebhookEvent: event,
     },
     { merge: true },
   );
 
-  if (isPixOneOff) {
-    const pixUpdates: Record<string, unknown> = {
-      updatedAt: FieldValue.serverTimestamp(),
-      updatedBy: "webhook",
-    };
-    if (payment.status === "approved") {
-      // Pagamento confirmado: concede os 30 dias e limpa o QR code
-      // pendente (já foi usado). Só agora o acesso é liberado de verdade.
-      const now = Timestamp.now();
-      const accessEndsAt = Timestamp.fromMillis(now.toMillis() + PIX_ACCESS_DAYS * 24 * 60 * 60 * 1000);
-      pixUpdates.plan = plan;
-      pixUpdates.accessType = "pix";
-      pixUpdates.status = "active";
-      pixUpdates.accessStartedAt = now;
-      pixUpdates.accessEndsAt = accessEndsAt;
-      pixUpdates.pendingPlan = null;
-      pixUpdates.pix = null;
-    } else {
-      // Não aprovado ainda (ou recusado/cancelado): só atualiza o status
-      // dentro de pix pra o cliente saber, sem tocar em plan/accessType.
-      pixUpdates["pix.status"] = payment.status;
-    }
-    await reference.update(pixUpdates);
-    if (payment.status === "approved") {
-      await reference.collection("accessEvents").add({
-        type: "pix_purchased",
-        occurredAt: FieldValue.serverTimestamp(),
-        details: { plan, paymentId: String(payment.id) },
+  if (!willGrantNow) {
+    // Ou já tinha concedido antes (reenvio do mesmo evento), ou ainda não
+    // está pago — só atualiza o status visível pro cliente, sem repetir
+    // nenhum efeito colateral de acesso.
+    if (purchaseType === "pix" && !alreadyGranted) {
+      // Dotted path só funciona com update() (o doc já existe, criado por
+      // checkout-pix antes de qualquer webhook poder chegar) — set() com
+      // merge trataria "pix.status" como nome de campo literal, não como
+      // caminho aninhado.
+      await reference.update({
+        "pix.status": payment.status,
+        asaas: { lastPaymentId: payment.id, lastPaymentStatus: payment.status },
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: "webhook",
       });
     }
     return;
   }
 
+  if (purchaseType === "pix") {
+    const now = Timestamp.now();
+    const accessEndsAt = Timestamp.fromMillis(now.toMillis() + PIX_ACCESS_DAYS * 24 * 60 * 60 * 1000);
+    await reference.set(
+      {
+        plan,
+        accessType: "pix",
+        status: "active",
+        accessStartedAt: now,
+        accessEndsAt,
+        pendingPlan: null,
+        pix: null,
+        asaas: { lastPaymentId: payment.id, lastPaymentStatus: payment.status },
+        updatedAt: FieldValue.serverTimestamp(),
+        updatedBy: "webhook",
+      },
+      { merge: true },
+    );
+    await reference.collection("accessEvents").add({
+      type: "pix_purchased",
+      occurredAt: FieldValue.serverTimestamp(),
+      details: { plan, paymentId: payment.id },
+    });
+    return;
+  }
+
+  // purchaseType "subscription": cada cobrança paga do ciclo mantém o
+  // acesso ativo. PAYMENT_OVERDUE não derruba o acesso na hora (mesma
+  // tolerância que já existia com o Mercado Pago) — só
+  // SUBSCRIPTION_INACTIVATED/SUBSCRIPTION_DELETED derrubam, tratados em
+  // handleSubscriptionEvent.
   await reference.set(
     {
-      mercadoPago: {
-        lastPaymentId: String(payment.id),
-        lastPaymentStatus: payment.status,
-      },
+      plan,
+      accessType: "subscription",
+      status: "active",
+      accessStartedAt: null,
+      accessEndsAt: null,
+      pendingPlan: null,
+      pix: null,
+      asaas: { lastPaymentId: payment.id, lastPaymentStatus: payment.status },
       updatedAt: FieldValue.serverTimestamp(),
       updatedBy: "webhook",
     },
     { merge: true },
   );
+  await reference.collection("accessEvents").add({
+    type: "subscription_started",
+    occurredAt: FieldValue.serverTimestamp(),
+    details: { plan, paymentId: payment.id },
+  });
+}
+
+async function handleSubscriptionEvent(event: string, subscriptionEvent: { id: string; status?: string }) {
+  if (!SUBSCRIPTION_ENDED_EVENTS.has(event)) {
+    return;
+  }
+  const lookup = await adminFirestore().collection("asaasSubscriptions").doc(subscriptionEvent.id).get();
+  const uid = lookup.data()?.uid as string | undefined;
+  if (!uid) {
+    console.warn("Webhook de assinatura sem uid correspondente, ignorando.", subscriptionEvent.id);
+    return;
+  }
+
+  const reference = subscriptionReference(uid);
+  const snapshot = await reference.get();
+  const data = snapshot.data();
+  // Idempotência: se já está free, não regrava nem duplica o evento de
+  // auditoria pra um reenvio do mesmo webhook.
+  if (data?.accessType === "free") {
+    return;
+  }
+
+  await reference.set(
+    {
+      plan: "free",
+      accessType: "free",
+      status: "active",
+      pendingPlan: null,
+      cancelAtPeriodEnd: false,
+      updatedAt: FieldValue.serverTimestamp(),
+      updatedBy: "webhook",
+    },
+    { merge: true },
+  );
+  await reference.collection("accessEvents").add({
+    type: "subscription_cancelled_to_free",
+    occurredAt: FieldValue.serverTimestamp(),
+    details: { subscriptionId: subscriptionEvent.id, event },
+  });
 }
 
 export async function POST(request: Request) {
   try {
-    const url = new URL(request.url);
-    const dataId = url.searchParams.get("data.id") || url.searchParams.get("id") || "";
-    const type = url.searchParams.get("type") || url.searchParams.get("topic") || "";
-
-    const verified = verifyWebhookSignature({
-      xSignature: request.headers.get("x-signature"),
-      xRequestId: request.headers.get("x-request-id"),
-      dataId,
-    });
-    if (!verified) {
+    if (!verifyWebhookToken(request.headers.get("asaas-access-token"))) {
       return NextResponse.json({ ok: false }, { status: 401 });
     }
 
-    if (type === "preapproval" || type === "subscription_preapproval") {
-      await upsertFromPreapproval(dataId);
-    } else if (type === "payment") {
-      await upsertFromPayment(dataId);
+    const payload = (await request.json().catch(() => null)) as AsaasWebhookPayload | null;
+    if (!payload?.event) {
+      return NextResponse.json({ ok: false }, { status: 400 });
     }
-    // Outros tipos de evento são reconhecidos e ignorados de propósito —
-    // sempre 200 rápido evita reenvio (retry storm) do Mercado Pago.
+
+    if (payload.payment) {
+      await handlePaymentEvent(payload.event, payload.payment);
+    } else if (payload.subscription) {
+      await handleSubscriptionEvent(payload.event, payload.subscription);
+    }
+    // Outros eventos (split, reembolso parcial, chargeback, etc.) são
+    // reconhecidos e ignorados de propósito.
 
     return NextResponse.json({ ok: true });
   } catch (error) {
@@ -206,9 +219,9 @@ export async function POST(request: Request) {
     if (message.includes("NOT_CONFIGURED")) {
       return NextResponse.json({ ok: false }, { status: 503 });
     }
-    console.error("Falha ao processar webhook do Mercado Pago.", error);
-    // 200 mesmo em erro interno: um 5xx faria o Mercado Pago reenviar
-    // indefinidamente o mesmo evento problemático.
+    console.error("Falha ao processar webhook da Asaas.", error);
+    // 200 mesmo em erro interno evita reenvio indefinido do mesmo evento
+    // problemático (mesmo padrão já usado com o Mercado Pago).
     return NextResponse.json({ ok: false });
   }
 }

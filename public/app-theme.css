@@ -2489,6 +2489,44 @@ li .item-controls .action-buttons button:last-child {
   transform: none;
 }
 
+.dialog-danger-button {
+  background: var(--gg-danger);
+}
+
+.dialog-danger-button:hover {
+  background: #8f1c2c;
+}
+
+.confirm-action-dialog-content {
+  text-align: center;
+}
+
+.confirm-action-dialog-content .confirm-action-icon {
+  background: var(--gg-primary-pale);
+  color: var(--gg-primary-dark);
+}
+
+.confirm-action-dialog-content .confirm-action-icon.is-danger {
+  background: var(--gg-danger-pale);
+  color: var(--gg-danger);
+}
+
+.confirm-action-dialog-content #confirmActionMessage {
+  color: var(--gg-muted);
+  line-height: 1.5;
+  margin: 0 0 18px;
+  white-space: pre-line;
+}
+
+.confirm-action-dialog-content button {
+  display: block;
+  width: 100%;
+}
+
+.confirm-action-dialog-content button + button {
+  margin-top: 9px;
+}
+
 .insufficient-balance-dialog-content {
   text-align: center;
 }

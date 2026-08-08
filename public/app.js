@@ -1371,7 +1371,13 @@
 
     async function handleCancelSubscription() {
       if (!currentFirebaseUser) return;
-      if (!confirm('Deseja cancelar sua assinatura? Os benefícios do plano pago continuam até o fim do período já pago.')) {
+      const confirmed = await showConfirmDialog({
+        title: 'Cancelar assinatura',
+        message: 'Deseja cancelar sua assinatura? Os benefícios do plano pago continuam até o fim do período já pago.',
+        confirmLabel: 'Cancelar assinatura',
+        cancelLabel: 'Manter assinatura',
+      });
+      if (!confirmed) {
         return;
       }
       const cancelButton = document.getElementById('planCancelButton');
@@ -1402,7 +1408,13 @@
 
     async function handleDeleteAccount() {
       if (!currentFirebaseUser) return;
-      if (!confirm('Excluir sua conta é permanente: suas listas, assinatura e histórico de pagamentos serão apagados e não podem ser recuperados. Listas que você compartilhou continuam acessíveis para os demais colaboradores, sem o seu controle. Deseja continuar?')) {
+      const confirmed = await showConfirmDialog({
+        title: 'Excluir conta',
+        message: 'Excluir sua conta é permanente: suas listas, assinatura e histórico de pagamentos serão apagados e não podem ser recuperados. Listas que você compartilhou continuam acessíveis para os demais colaboradores, sem o seu controle. Deseja continuar?',
+        confirmLabel: 'Excluir conta',
+        danger: true,
+      });
+      if (!confirmed) {
         return;
       }
       const deleteButton = document.getElementById('deleteAccountButton');
@@ -2518,7 +2530,7 @@
       updateList();
     }
 
-    function deleteCustomSector(sectorName) {
+    async function deleteCustomSector(sectorName) {
       const normalizedSector = normalizeSectorName(sectorName);
       const currentList = lists[currentListName];
       if (!normalizedSector || !currentList || isPredefinedSectorName(normalizedSector)) {
@@ -2540,7 +2552,13 @@
           ? ` Os ${affectedCount} produtos serão movidos para “Geral”.`
           : '';
 
-      if (!confirm(`Excluir o setor “${normalizedSector}”?${migrationMessage}`)) {
+      const confirmedSectorDeletion = await showConfirmDialog({
+        title: 'Excluir setor',
+        message: `Excluir o setor "${normalizedSector}"?${migrationMessage}`,
+        confirmLabel: 'Excluir setor',
+        danger: true,
+      });
+      if (!confirmedSectorDeletion) {
         return;
       }
 
@@ -3149,6 +3167,42 @@
       if (typeof dismiss === 'function') dismiss();
     }
 
+    let pendingConfirmActionResolve = null;
+
+    // Substitui o confirm() nativo do navegador por um diálogo no padrão
+    // visual do app. Retorna uma Promise<boolean> (true = confirmado),
+    // então basta usar `if (await showConfirmDialog({...})) { ... }`.
+    function showConfirmDialog({ title = 'Confirmar ação', message = '', confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', danger = false } = {}) {
+      return new Promise((resolve) => {
+        const dialog = document.getElementById('confirmActionDialog');
+        const titleEl = document.getElementById('confirmActionTitle');
+        const messageEl = document.getElementById('confirmActionMessage');
+        const confirmButton = document.getElementById('confirmActionConfirmButton');
+        const cancelButton = document.getElementById('confirmActionCancelButton');
+        const iconEl = dialog ? dialog.querySelector('.confirm-action-icon') : null;
+        if (!dialog || !titleEl || !messageEl || !confirmButton || !cancelButton) {
+          // Rede de segurança caso o HTML do diálogo não tenha carregado.
+          resolve(confirm(message));
+          return;
+        }
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        confirmButton.textContent = confirmLabel;
+        confirmButton.classList.toggle('dialog-danger-button', danger);
+        cancelButton.textContent = cancelLabel;
+        if (iconEl) iconEl.classList.toggle('is-danger', danger);
+        pendingConfirmActionResolve = resolve;
+        dialog.style.display = 'flex';
+      });
+    }
+
+    function resolvePendingConfirmAction(result) {
+      const resolve = pendingConfirmActionResolve;
+      pendingConfirmActionResolve = null;
+      closeDialog('confirmActionDialog');
+      if (typeof resolve === 'function') resolve(result);
+    }
+
     function showLowBalanceDialog({ balance, initialBalance, listName, negative }) {
       const dialog = document.getElementById('lowBalanceDialog');
       const titleEl = document.getElementById('lowBalanceDialogTitle');
@@ -3380,13 +3434,19 @@
       updateList();
     }
 
-    function removeItem(index) {
+    async function removeItem(index) {
       const item = shoppingList[index];
       if (!item) {
         return;
       }
-      const itemName = item.name ? ` “${item.name}”` : '';
-      if (!confirm(`Deseja realmente excluir o item${itemName}? Esta ação não pode ser desfeita.`)) {
+      const itemName = item.name ? ` "${item.name}"` : '';
+      const confirmedRemoval = await showConfirmDialog({
+        title: 'Excluir item',
+        message: `Deseja realmente excluir o item${itemName}? Esta ação não pode ser desfeita.`,
+        confirmLabel: 'Excluir item',
+        danger: true,
+      });
+      if (!confirmedRemoval) {
         return;
       }
       lists[currentListName].balance += item.total;
@@ -3417,34 +3477,41 @@
       updateList();
     }
 
-    function deleteSelectedListItems() {
+    async function deleteSelectedListItems() {
       const checkboxes = document.querySelectorAll('input[name="listItem"]:checked');
       if (checkboxes.length === 0) {
         alert('Selecione pelo menos um item para excluir!');
         return;
       }
-      if (confirm('Tem certeza que deseja excluir os itens selecionados da lista? Esta ação não pode ser desfeita.')) {
-        const indices = Array.from(checkboxes).map(cb => parseInt(cb.value));
-        indices.sort((a, b) => b - a);
-        indices.forEach(index => {
-          const item = shoppingList[index];
-          lists[currentListName].balance += item.total;
-          console.log(`Excluindo item da lista no índice: ${index}`);
-          shoppingList.splice(index, 1);
-        });
-        try {
-          saveLists();
-        } catch (e) {
-          console.error("Erro ao salvar listas no localStorage:", e);
-        }
-        allSelected = false;
-        updateList();
-        updateTotal();
-        updateBalance();
-        updateFooter();
-        updateDashboard();
-        console.log("Itens selecionados da lista excluídos com sucesso");
+      const confirmedDeletion = await showConfirmDialog({
+        title: 'Excluir itens selecionados',
+        message: 'Tem certeza que deseja excluir os itens selecionados da lista? Esta ação não pode ser desfeita.',
+        confirmLabel: 'Excluir itens',
+        danger: true,
+      });
+      if (!confirmedDeletion) {
+        return;
       }
+      const indices = Array.from(checkboxes).map(cb => parseInt(cb.value));
+      indices.sort((a, b) => b - a);
+      indices.forEach(index => {
+        const item = shoppingList[index];
+        lists[currentListName].balance += item.total;
+        console.log(`Excluindo item da lista no índice: ${index}`);
+        shoppingList.splice(index, 1);
+      });
+      try {
+        saveLists();
+      } catch (e) {
+        console.error("Erro ao salvar listas no localStorage:", e);
+      }
+      allSelected = false;
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateFooter();
+      updateDashboard();
+      console.log("Itens selecionados da lista excluídos com sucesso");
     }
 
     function getSelectedListItemIndices() {
@@ -3494,7 +3561,7 @@
       dialog.style.display = 'flex';
     }
 
-    function moveSelectedListItems() {
+    async function moveSelectedListItems() {
       const selectedIndices = getSelectedListItemIndices();
       const targetSelect = document.getElementById('moveItemsTargetListSelect');
       const targetListName = safeListName(targetSelect?.value, '');
@@ -3517,10 +3584,15 @@
       const selectedItems = selectedIndices.map((index) => shoppingList[index]).filter(Boolean);
       const movedTotal = selectedItems.reduce((sum, item) => sum + boundedNumber(item.total, 0, 1000000000, 0), 0);
       const budgetWarning = movedTotal > targetList.balance
-        ? `\n\nAtenção: o total ultrapassa o saldo disponível em “${targetListName}” e deixará o saldo negativo.`
+        ? `\n\nAtenção: o total ultrapassa o saldo disponível em "${targetListName}" e deixará o saldo negativo.`
         : '';
       const itemLabel = selectedItems.length === 1 ? 'este item' : `estes ${selectedItems.length} itens`;
-      if (!confirm(`Mover ${itemLabel} para “${targetListName}”?${budgetWarning}`)) {
+      const confirmedMove = await showConfirmDialog({
+        title: 'Mover itens',
+        message: `Mover ${itemLabel} para "${targetListName}"?${budgetWarning}`,
+        confirmLabel: 'Mover itens',
+      });
+      if (!confirmedMove) {
         return;
       }
 
@@ -3558,49 +3630,63 @@
       lists[currentListName].balance = lists[currentListName].initialBalance;
     }
 
-    function clearHistory() {
-      if (confirm('Tem certeza que deseja limpar o histórico desta lista? Esta ação não pode ser desfeita.')) {
-        console.log("Limpando histórico da lista:", currentListName);
-        clearCurrentListItems();
-        try {
-          saveLists();
-        } catch (e) {
-          console.error("Erro ao salvar listas no localStorage:", e);
-        }
-        updateHistory();
-        updateList();
-        updateTotal();
-        updateBalance();
-        updateFooter();
-        updateDashboard();
-        console.log("Histórico limpo com sucesso");
+    async function clearHistory() {
+      const confirmedClear = await showConfirmDialog({
+        title: 'Limpar histórico',
+        message: 'Tem certeza que deseja limpar o histórico desta lista? Esta ação não pode ser desfeita.',
+        confirmLabel: 'Limpar histórico',
+        danger: true,
+      });
+      if (!confirmedClear) {
+        return;
       }
+      console.log("Limpando histórico da lista:", currentListName);
+      clearCurrentListItems();
+      try {
+        saveLists();
+      } catch (e) {
+        console.error("Erro ao salvar listas no localStorage:", e);
+      }
+      updateHistory();
+      updateList();
+      updateTotal();
+      updateBalance();
+      updateFooter();
+      updateDashboard();
+      console.log("Histórico limpo com sucesso");
     }
 
-    function deleteSelectedHistoryItems() {
+    async function deleteSelectedHistoryItems() {
       const checkboxes = document.querySelectorAll('input[name="historyItem"]:checked');
       if (checkboxes.length === 0) {
         alert('Selecione pelo menos um item do histórico para excluir!');
         return;
       }
-      if (confirm('Tem certeza que deseja excluir os itens selecionados do histórico? Esta ação não pode ser desfeita.')) {
-        const indices = Array.from(checkboxes).map(cb => parseInt(cb.value));
-        indices.sort((a, b) => b - a);
-        indices.forEach(index => {
-          console.log(`Excluindo item do histórico no índice: ${index}`);
-          listHistory.splice(index, 1);
-        });
-        lists[currentListName].history = listHistory;
-        try {
-          saveLists();
-        } catch (e) {
-          console.error("Erro ao salvar listas no localStorage:", e);
-        }
-        updateHistory();
-        updateMonthSelect();
-        updateDashboard();
-        console.log("Itens selecionados do histórico excluídos com sucesso");
+      const confirmedDeletion = await showConfirmDialog({
+        title: 'Excluir itens do histórico',
+        message: 'Tem certeza que deseja excluir os itens selecionados do histórico? Esta ação não pode ser desfeita.',
+        confirmLabel: 'Excluir itens',
+        danger: true,
+      });
+      if (!confirmedDeletion) {
+        return;
       }
+      const indices = Array.from(checkboxes).map(cb => parseInt(cb.value));
+      indices.sort((a, b) => b - a);
+      indices.forEach(index => {
+        console.log(`Excluindo item do histórico no índice: ${index}`);
+        listHistory.splice(index, 1);
+      });
+      lists[currentListName].history = listHistory;
+      try {
+        saveLists();
+      } catch (e) {
+        console.error("Erro ao salvar listas no localStorage:", e);
+      }
+      updateHistory();
+      updateMonthSelect();
+      updateDashboard();
+      console.log("Itens selecionados do histórico excluídos com sucesso");
     }
 
     function clearComparison() {
@@ -4176,7 +4262,7 @@
       });
     }
 
-    function loadMonthHistory() {
+    async function loadMonthHistory() {
       const monthSelect = document.getElementById('monthSelect');
       const targetListSelect = document.getElementById('targetListSelect');
       if (!monthSelect || !targetListSelect) {
@@ -4215,7 +4301,12 @@
         totalCost += item.total;
       });
       if (totalCost > lists[targetListName].balance) {
-        if (!confirm(`O valor ultrapassa o saldo da lista "${targetListName}". Confirma inclusão dos itens? (Total: R$ ${totalCost.toFixed(2).replace('.', ',')} | Saldo: R$ ${lists[targetListName].balance.toFixed(2).replace('.', ',')})`)) {
+        const confirmedOverBudget = await showConfirmDialog({
+          title: 'Saldo insuficiente',
+          message: `O valor ultrapassa o saldo da lista "${targetListName}". Confirma inclusão dos itens? (Total: R$ ${totalCost.toFixed(2).replace('.', ',')} | Saldo: R$ ${lists[targetListName].balance.toFixed(2).replace('.', ',')})`,
+          confirmLabel: 'Incluir mesmo assim',
+        });
+        if (!confirmedOverBudget) {
           return;
         }
       }
@@ -5247,7 +5338,7 @@
       console.log('Todas as listas no diálogo de exclusão foram selecionadas');
     }
 
-    function deleteSelectedLists() {
+    async function deleteSelectedLists() {
       const checkboxes = document.querySelectorAll('input[name="deleteList"]:checked');
       if (checkboxes.length === 0) {
         alert('Selecione pelo menos uma lista para excluir!');
@@ -5263,9 +5354,15 @@
       }
       const selectedListNames = Array.from(checkboxes).map((checkbox) => checkbox.value);
       const listDescription = selectedListNames.length === 1
-        ? `a lista “${selectedListNames[0]}”`
+        ? `a lista "${selectedListNames[0]}"`
         : `as ${selectedListNames.length} listas selecionadas`;
-      if (!confirm(`Deseja realmente excluir ${listDescription}? Esta ação não pode ser desfeita.`)) {
+      const confirmedListDeletion = await showConfirmDialog({
+        title: 'Excluir lista',
+        message: `Deseja realmente excluir ${listDescription}? Esta ação não pode ser desfeita.`,
+        confirmLabel: 'Excluir',
+        danger: true,
+      });
+      if (!confirmedListDeletion) {
         return;
       }
       let currentWasDeleted = false;
@@ -5454,6 +5551,10 @@
               dismissInsufficientBalanceDialog();
               return;
             }
+            if (dialog.id === 'confirmActionDialog') {
+              resolvePendingConfirmAction(false);
+              return;
+            }
             dialog.style.display = 'none';
             console.log(`Diálogo ${dialog.id} fechado por clique fora`);
           }
@@ -5548,6 +5649,8 @@
         });
       }
       const setBalanceButton = document.getElementById('setBalanceButton');
+      const confirmActionConfirmButton = document.getElementById('confirmActionConfirmButton');
+      const confirmActionCancelButton = document.getElementById('confirmActionCancelButton');
       const lowBalanceIncreaseButton = document.getElementById('lowBalanceIncreaseButton');
       const lowBalanceContinueButton = document.getElementById('lowBalanceContinueButton');
       const insufficientBalanceDefineButton = document.getElementById('insufficientBalanceDefineButton');
@@ -5622,6 +5725,12 @@
 
       if (setBalanceButton) {
         setBalanceButton.addEventListener('click', setBalance);
+      }
+      if (confirmActionConfirmButton) {
+        confirmActionConfirmButton.addEventListener('click', () => resolvePendingConfirmAction(true));
+      }
+      if (confirmActionCancelButton) {
+        confirmActionCancelButton.addEventListener('click', () => resolvePendingConfirmAction(false));
       }
       if (lowBalanceIncreaseButton) {
         lowBalanceIncreaseButton.addEventListener('click', () => {

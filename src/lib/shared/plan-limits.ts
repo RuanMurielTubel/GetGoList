@@ -65,6 +65,14 @@ export const COMPLIMENTARY_CESTAO_EMAILS = [
   "tubel.mendes@gmail.com",
   "contaparateste.getgolist@outlook.com",
   "mariocatrileo@gmail.com",
+  "tiago.murilo08@gmail.com",
+  "bdev2049@gmail.com",
+  "bl4ckklegend@gmail.com",
+  "kamcrps@gmail.com",
+  "luanajniz2@gmail.com",
+  "rafael.cezario89@gmail.com",
+  "saramendesdasilva05@gmail.com",
+  "vitormonteiro909@gmail.com",
 ];
 
 export function effectivePlan(storedPlan: string | undefined | null, email: string | undefined | null): PlanId {

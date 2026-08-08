@@ -72,7 +72,7 @@
     // Contas que sempre têm Cestão e nunca são cobradas — decisão manual,
     // não uma assinatura paga. Mesma lista em src/lib/shared/plan-limits.ts
     // (COMPLIMENTARY_CESTAO_EMAILS) e em firestore.rules.
-    const COMPLIMENTARY_CESTAO_EMAILS = ['gabrielamoraesn@gmail.com', 'tubel.mendes@gmail.com', 'contaparateste.getgolist@outlook.com', 'mariocatrileo@gmail.com'];
+    const COMPLIMENTARY_CESTAO_EMAILS = ['gabrielamoraesn@gmail.com', 'tubel.mendes@gmail.com', 'contaparateste.getgolist@outlook.com', 'mariocatrileo@gmail.com', 'tiago.murilo08@gmail.com', 'bdev2049@gmail.com', 'bl4ckklegend@gmail.com', 'kamcrps@gmail.com', 'luanajniz2@gmail.com', 'rafael.cezario89@gmail.com', 'saramendesdasilva05@gmail.com', 'vitormonteiro909@gmail.com'];
     function isComplimentaryCestaoAccount() {
       const email = currentFirebaseUser && currentFirebaseUser.email
         ? currentFirebaseUser.email.trim().toLowerCase()

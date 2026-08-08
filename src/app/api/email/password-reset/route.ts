@@ -20,9 +20,18 @@ export async function POST(request: Request) {
 
     const auth = adminAuth();
     const user = await auth.getUserByEmail(email);
-    const resetLink = await auth.generatePasswordResetLink(email, {
-      url: `${process.env.APP_URL || "https://www.getgolist.com"}/login`,
+    const appUrl = process.env.APP_URL || "https://www.getgolist.com";
+    const rawResetLink = await auth.generatePasswordResetLink(email, {
+      url: `${appUrl}/login`,
     });
+    // Troca o link padrão do Firebase (hospedado em *.firebaseapp.com, com
+    // UI genérica) por um link para a própria tela de "Nova senha" do app,
+    // reaproveitando o mesmo oobCode — o Firebase valida o código
+    // independente da URL que o carrega.
+    const oobCode = new URL(rawResetLink).searchParams.get("oobCode");
+    const resetLink = oobCode
+      ? `${appUrl}/login?mode=resetPassword&oobCode=${encodeURIComponent(oobCode)}`
+      : rawResetLink;
     const name = user.displayName || "Olá";
 
     await sendGetGoListEmail({

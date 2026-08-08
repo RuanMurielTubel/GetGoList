@@ -1,12 +1,14 @@
 "use client";
 
 import {
+  confirmPasswordReset,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
   signOut,
   signInWithEmailAndPassword,
   updateProfile,
+  verifyPasswordResetCode,
   GoogleAuthProvider,
   signInWithCredential,
   signInWithPopup,
@@ -21,7 +23,7 @@ import { getAppCheckToken } from "@/lib/app-check";
 import PlanCards from "@/components/PlanCards";
 import type { PlanId } from "@/lib/shared/plan-limits";
 
-type Mode = "login" | "register" | "verify" | "plan";
+type Mode = "login" | "register" | "verify" | "plan" | "forgot" | "reset";
 
 function strongPasswordMessage(password: string) {
   if (password.length < 8) return "A senha precisa ter pelo menos 8 caracteres.";
@@ -147,7 +149,14 @@ export default function LoginPage() {
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
   const [isNativeApp, setIsNativeApp] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [resetOobCode, setResetOobCode] = useState<string | null>(null);
+  const [resetEmail, setResetEmail] = useState<string | null>(null);
+  const [resetChecking, setResetChecking] = useState(false);
+  const [resetCodeError, setResetCodeError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
   const skipAutoRedirectRef = useRef(false);
+  const resetFlowRef = useRef(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -159,9 +168,43 @@ export default function LoginPage() {
       if (searchParams.get("deleted") === "1") {
         setFeedback("Sua conta foi excluída com sucesso.");
       }
+      const oobCode = searchParams.get("oobCode");
+      if (searchParams.get("mode") === "resetPassword" && oobCode) {
+        resetFlowRef.current = true;
+        setMode("reset");
+        setResetOobCode(oobCode);
+      }
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!resetOobCode) return;
+    setResetChecking(true);
+    setResetCodeError("");
+    verifyPasswordResetCode(firebaseAuth, resetOobCode)
+      .then((verifiedEmail) => {
+        setResetEmail(verifiedEmail);
+      })
+      .catch((error) => {
+        const code =
+          typeof error === "object" && error && "code" in error
+            ? String(error.code)
+            : undefined;
+        const messages: Record<string, string> = {
+          "auth/expired-action-code": "Esse link expirou. Solicite um novo.",
+          "auth/invalid-action-code":
+            "Esse link já foi usado ou não é mais válido. Solicite um novo.",
+          "auth/user-disabled": "Esta conta foi desativada.",
+          "auth/user-not-found": "Não encontramos uma conta para esse link.",
+        };
+        setResetCodeError(
+          messages[code ?? ""] ||
+            "Não foi possível validar o link de redefinição. Solicite um novo.",
+        );
+      })
+      .finally(() => setResetChecking(false));
+  }, [resetOobCode]);
 
   useEffect(() => {
     if (!redirectTo) {
@@ -169,6 +212,7 @@ export default function LoginPage() {
     }
     return onAuthStateChanged(firebaseAuth, (user) => {
       if (user) {
+        if (resetFlowRef.current) return;
         if (!user.emailVerified) {
           setEmail(user.email || "");
           setMode("verify");
@@ -240,6 +284,7 @@ export default function LoginPage() {
     setShowPassword(false);
     setShowConfirmPassword(false);
     setAgreedToTerms(false);
+    setForgotSent(false);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -471,11 +516,13 @@ export default function LoginPage() {
     setFeedback("");
   }
 
-  async function handlePasswordReset() {
+  async function handlePasswordReset(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setFeedback("");
 
-    if (!email.trim()) {
-      setFeedback("Digite seu e-mail para receber a recuperação de senha.");
+    const trimmedEmail = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setFeedback("Digite um e-mail válido.");
       return;
     }
 
@@ -488,22 +535,59 @@ export default function LoginPage() {
           "Content-Type": "application/json",
           "X-Firebase-AppCheck": appCheckToken,
         },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: trimmedEmail }),
       });
       if (response.status === 503) {
-        await sendPasswordResetEmail(firebaseAuth, email.trim());
+        await sendPasswordResetEmail(firebaseAuth, trimmedEmail);
       } else if (!response.ok) {
         throw new Error("PASSWORD_RESET_EMAIL_FAILED");
       }
-      setFeedback(
-        "Se houver uma conta com esse e-mail, enviaremos as instruções de recuperação.",
-      );
+      setForgotSent(true);
     } catch (error) {
       const code =
         typeof error === "object" && error && "code" in error
           ? String(error.code)
           : undefined;
       setFeedback(messageForError(code, error instanceof Error ? error.message : undefined));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFeedback("");
+
+    const passwordProblem = strongPasswordMessage(password);
+    if (passwordProblem) {
+      setFeedback(passwordProblem);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setFeedback("As senhas não coincidem.");
+      return;
+    }
+    if (!resetOobCode) return;
+
+    setLoading(true);
+    try {
+      await confirmPasswordReset(firebaseAuth, resetOobCode, password);
+      setResetSuccess(true);
+    } catch (error) {
+      const code =
+        typeof error === "object" && error && "code" in error
+          ? String(error.code)
+          : undefined;
+      const messages: Record<string, string> = {
+        "auth/expired-action-code": "Esse link expirou. Volte e solicite um novo.",
+        "auth/invalid-action-code":
+          "Esse link já foi usado ou não é mais válido. Volte e solicite um novo.",
+        "auth/weak-password": "Escolha uma senha mais forte.",
+      };
+      setFeedback(
+        messages[code ?? ""] ||
+          messageForError(code, error instanceof Error ? error.message : undefined),
+      );
     } finally {
       setLoading(false);
     }
@@ -591,6 +675,159 @@ export default function LoginPage() {
                 Voltar para o login
               </button>
             </div>
+          </div>
+        ) : mode === "forgot" ? (
+          <div className="account-verification">
+            <div className="account-card-heading">
+              <p className="eyebrow">Passo 1 de 2</p>
+              <h2 id="account-title">Recuperar senha</h2>
+              <p>
+                {forgotSent
+                  ? `Se existir uma conta para ${email.trim() || "esse e-mail"}, enviamos um link de redefinição. Confira sua caixa de entrada e o spam — o link expira em algumas horas.`
+                  : "Digite o e-mail da sua conta e enviaremos um link para você criar uma nova senha."}
+              </p>
+            </div>
+
+            {forgotSent ? (
+              <button
+                className="button button-primary"
+                onClick={() => changeMode("login")}
+                type="button"
+              >
+                Voltar para o login
+              </button>
+            ) : (
+              <form className="account-form" onSubmit={handlePasswordReset}>
+                <label>
+                  E-mail
+                  <input
+                    autoComplete="email"
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="voce@email.com"
+                    required
+                    type="email"
+                    value={email}
+                  />
+                </label>
+                {feedback && (
+                  <p className="account-feedback" role="status">{feedback}</p>
+                )}
+                <button className="button button-primary" disabled={loading}>
+                  {loading ? "Enviando..." : "Enviar link"}
+                </button>
+              </form>
+            )}
+
+            {!forgotSent && (
+              <div className="account-verification-actions">
+                <button
+                  className="password-reset"
+                  disabled={loading}
+                  onClick={() => changeMode("login")}
+                  type="button"
+                >
+                  Voltar para o login
+                </button>
+              </div>
+            )}
+          </div>
+        ) : mode === "reset" ? (
+          <div className="account-verification">
+            <div className="account-card-heading">
+              <p className="eyebrow">Passo 2 de 2</p>
+              <h2 id="account-title">Criar nova senha</h2>
+              {resetEmail && !resetSuccess && (
+                <p>
+                  Defina uma nova senha para <strong>{resetEmail}</strong>.
+                </p>
+              )}
+            </div>
+
+            {resetChecking ? (
+              <p className="account-feedback" role="status">Verificando o link...</p>
+            ) : resetCodeError ? (
+              <>
+                <p className="account-feedback" role="status">{resetCodeError}</p>
+                <button
+                  className="button button-primary"
+                  onClick={() => changeMode("forgot")}
+                  type="button"
+                >
+                  Solicitar novo link
+                </button>
+              </>
+            ) : resetSuccess ? (
+              <>
+                <p className="account-feedback" role="status">Senha alterada com sucesso!</p>
+                <button
+                  className="button button-primary"
+                  onClick={() => changeMode("login")}
+                  type="button"
+                >
+                  Ir para o login
+                </button>
+              </>
+            ) : (
+              <form className="account-form" onSubmit={handleResetPassword}>
+                <label>
+                  Nova senha
+                  <div className="password-field">
+                    <input
+                      autoComplete="new-password"
+                      minLength={8}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Crie uma senha forte"
+                      required
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                    />
+                    <button
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                      aria-pressed={showPassword}
+                      className="password-toggle"
+                      onClick={() => setShowPassword((value) => !value)}
+                      type="button"
+                    >
+                      <EyeIcon crossed={showPassword} />
+                    </button>
+                  </div>
+                </label>
+
+                <PasswordChecklist password={password} />
+
+                <label>
+                  Confirme a nova senha
+                  <div className="password-field">
+                    <input
+                      autoComplete="new-password"
+                      minLength={8}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      placeholder="Digite a senha novamente"
+                      required
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                    />
+                    <button
+                      aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
+                      aria-pressed={showConfirmPassword}
+                      className="password-toggle"
+                      onClick={() => setShowConfirmPassword((value) => !value)}
+                      type="button"
+                    >
+                      <EyeIcon crossed={showConfirmPassword} />
+                    </button>
+                  </div>
+                </label>
+
+                {feedback && (
+                  <p className="account-feedback" role="status">{feedback}</p>
+                )}
+
+                <button className="button button-primary" disabled={loading}>
+                  {loading ? "Salvando..." : "Salvar nova senha"}
+                </button>
+              </form>
+            )}
           </div>
         ) : mode === "plan" ? (
           <div className="account-plan-picker">
@@ -774,7 +1011,7 @@ export default function LoginPage() {
           <button
             className="password-reset"
             disabled={loading}
-            onClick={handlePasswordReset}
+            onClick={() => changeMode("forgot")}
             type="button"
           >
             Esqueci minha senha

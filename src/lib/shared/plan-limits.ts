@@ -76,9 +76,23 @@ export const COMPLIMENTARY_CESTAO_EMAILS = [
   "vitormonteiro909@gmail.com",
 ];
 
-export function effectivePlan(storedPlan: string | undefined | null, email: string | undefined | null): PlanId {
+// accessType/accessEndsAtMs cobrem o teste de 10 dias e a compra avulsa via
+// PIX de 30 dias: os dois concedem `storedPlan` só até essa data — passada
+// ela, o plano efetivo volta a "free" mesmo que o documento ainda não
+// tenha sido regravado (a regravação é só reconciliação/auditoria, quem
+// decide o acesso de verdade é essa comparação de data, replicada também
+// em public/app.js e firestore.rules).
+export function effectivePlan(
+  storedPlan: string | undefined | null,
+  email: string | undefined | null,
+  timeLimited?: { accessType?: string | null; accessEndsAtMs?: number | null },
+): PlanId {
   if (email && COMPLIMENTARY_CESTAO_EMAILS.includes(email.trim().toLowerCase())) {
     return "cestao";
+  }
+  const isTimeLimited = timeLimited?.accessType === "trial" || timeLimited?.accessType === "pix";
+  if (isTimeLimited && timeLimited?.accessEndsAtMs != null && Date.now() >= timeLimited.accessEndsAtMs) {
+    return "free";
   }
   return storedPlan === "cesta" || storedPlan === "cestao" ? storedPlan : "free";
 }

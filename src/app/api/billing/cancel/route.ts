@@ -47,6 +47,9 @@ export async function POST(request: Request) {
       await reference.set(
         {
           plan: "free",
+          accessType: "free",
+          accessStartedAt: null,
+          accessEndsAt: null,
           status: "active",
           pendingPlan: null,
           cancelAtPeriodEnd: false,
@@ -56,6 +59,11 @@ export async function POST(request: Request) {
         },
         { merge: true },
       );
+      await reference.collection("accessEvents").add({
+        type: "downgraded_to_free",
+        occurredAt: FieldValue.serverTimestamp(),
+        details: {},
+      });
       return NextResponse.json({ ok: true, plan: "free" });
     }
 

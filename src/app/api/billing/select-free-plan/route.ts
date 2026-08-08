@@ -1,10 +1,9 @@
-import { FieldValue } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
-import { adminFirestore } from "@/lib/server/firebase-admin";
 import {
   authenticatedVerifiedUser,
   verifiedAppRequest,
 } from "@/lib/server/request-auth";
+import { ensureSubscriptionDoc } from "@/lib/server/subscription";
 
 export const runtime = "nodejs";
 
@@ -13,40 +12,11 @@ export async function POST(request: Request) {
     await verifiedAppRequest(request);
     const user = await authenticatedVerifiedUser(request);
 
-    const reference = adminFirestore()
-      .collection("users")
-      .doc(user.uid)
-      .collection("billing")
-      .doc("subscription");
+    // Cria o documento na primeira vez (já concedendo os 10 dias de teste
+    // do Cestão) — se já existir, não faz nada. Ver ensureSubscriptionDoc.
+    const subscription = await ensureSubscriptionDoc(user.uid);
 
-    const snapshot = await reference.get();
-    if (!snapshot.exists) {
-      await reference.set({
-        plan: "free",
-        status: "active",
-        startedAt: FieldValue.serverTimestamp(),
-        currentPeriodStart: null,
-        renewsAt: null,
-        cancelAtPeriodEnd: false,
-        cancelledAt: null,
-        expiredAt: null,
-        pendingPlan: null,
-        gateway: null,
-        mercadoPago: {
-          preapprovalId: null,
-          preapprovalPlanId: null,
-          payerId: null,
-          payerEmail: null,
-          lastPaymentId: null,
-          lastPaymentStatus: null,
-        },
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-        updatedBy: "signup-default",
-      });
-    }
-
-    return NextResponse.json({ ok: true, plan: "free" });
+    return NextResponse.json({ ok: true, plan: subscription.plan || "free" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "UNAUTHORIZED") {

@@ -80,10 +80,34 @@
       return COMPLIMENTARY_CESTAO_EMAILS.includes(email);
     }
 
+    // Espelha a mesma checagem de expiração de accessType "trial"/"pix"
+    // que existe em src/lib/shared/plan-limits.ts (effectivePlan) e em
+    // firestore.rules (planId) — teste de 10 dias e compra avulsa de 30
+    // dias só valem até accessEndsAt, "subscription" não usa essa data.
+    function currentAccessState() {
+      if (isComplimentaryCestaoAccount()) {
+        return { plan: 'cestao', accessType: 'complimentary' };
+      }
+      const sub = currentSubscription;
+      if (!sub) {
+        return { plan: 'free', accessType: 'free' };
+      }
+      const type = sub.accessType || 'free';
+      const endsAtMs = sub.accessEndsAt && typeof sub.accessEndsAt.toMillis === 'function'
+        ? sub.accessEndsAt.toMillis()
+        : null;
+      if ((type === 'trial' || type === 'pix') && endsAtMs && Date.now() >= endsAtMs) {
+        return { plan: 'free', accessType: 'expired', previousAccessType: type, accessEndsAtMs: endsAtMs };
+      }
+      return {
+        plan: sub.plan === 'cesta' || sub.plan === 'cestao' ? sub.plan : 'free',
+        accessType: type,
+        accessEndsAtMs: endsAtMs,
+      };
+    }
+
     function currentEffectivePlanId() {
-      if (isComplimentaryCestaoAccount()) return 'cestao';
-      const plan = currentSubscription && currentSubscription.plan;
-      return plan === 'cesta' || plan === 'cestao' ? plan : 'free';
+      return currentAccessState().plan;
     }
 
     function currentPlanLimits() {
@@ -1231,7 +1255,39 @@
         });
     }
 
+    // GET /api/billing/status cria o documento de assinatura (já com os 10
+    // dias de teste do Cestão) na primeira vez que roda pra essa conta —
+    // é o único jeito de cobrir login via Google, que ao contrário do
+    // cadastro por e-mail/senha não chama nenhuma rota de billing hoje.
+    // Fire-and-forget: o onSnapshot de subscribeToSubscriptionStatus já
+    // atualiza a UI assim que o documento aparecer, não precisa esperar
+    // essa resposta.
+    async function ensureAccessRecord() {
+      if (!currentFirebaseUser) return;
+      try {
+        const [token, appCheckToken] = await Promise.all([
+          currentFirebaseUser.getIdToken(),
+          getFirebaseAppCheckToken(),
+        ]);
+        await fetch('/api/billing/status', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'X-Firebase-AppCheck': appCheckToken,
+          },
+        });
+      } catch (error) {
+        console.error('Não foi possível confirmar o acesso da conta.', error);
+      }
+    }
+
     const PLAN_NAMES = { free: 'Free', cesta: 'Cesta', cestao: 'Cestão' };
+    const ACCESS_TYPE_LABELS = {
+      trial: 'Teste grátis',
+      pix: 'Compra avulsa (PIX)',
+      subscription: 'Assinatura mensal',
+      free: 'Gratuito',
+      complimentary: 'Cortesia',
+    };
 
     function updatePlanUi() {
       const limits = currentPlanLimits();
@@ -1285,7 +1341,8 @@
         button.setAttribute('aria-disabled', !limits.hasAI ? 'true' : 'false');
       });
 
-      const plan = currentEffectivePlanId();
+      const access = currentAccessState();
+      const plan = access.plan;
       const isComplimentary = isComplimentaryCestaoAccount();
       const badge = document.getElementById('planBadge');
       const statusText = document.getElementById('planStatusText');
@@ -1300,14 +1357,31 @@
       if (accountPlanLabel) {
         accountPlanLabel.textContent = `Plano: ${PLAN_NAMES[plan] || 'Free'}`;
       }
+      const daysRemaining = (access.accessType === 'trial' || access.accessType === 'pix' || access.accessType === 'expired') && access.accessEndsAtMs
+        ? Math.max(0, Math.ceil((access.accessEndsAtMs - Date.now()) / (24 * 60 * 60 * 1000)))
+        : null;
       if (statusText) {
         if (isComplimentary) {
           statusText.textContent = 'Cestão cortesia — acesso completo, nunca cobrado.';
+        } else if (access.accessType === 'expired') {
+          const expiredKind = access.previousAccessType === 'pix' ? 'Sua compra avulsa via PIX' : 'Seu teste grátis do Cestão';
+          statusText.textContent = `${expiredKind} terminou. Renove por mais 30 dias via PIX ou assine um plano mensal pra continuar com acesso completo.`;
         } else if (currentSubscription && currentSubscription.cancelAtPeriodEnd) {
           statusText.textContent = 'Assinatura cancelada — benefícios ativos até o fim do período já pago.';
         } else if (currentSubscription && currentSubscription.pendingPlan) {
           const pendingName = PLAN_NAMES[currentSubscription.pendingPlan] || currentSubscription.pendingPlan;
-          statusText.textContent = `Aguardando confirmação do pagamento do plano ${pendingName}.`;
+          const viaPix = currentSubscription.pix && currentSubscription.pix.status === 'pending';
+          statusText.textContent = viaPix
+            ? `Aguardando confirmação do pagamento PIX do plano ${pendingName}.`
+            : `Aguardando confirmação do pagamento do plano ${pendingName}.`;
+        } else if (access.accessType === 'trial') {
+          statusText.textContent = daysRemaining != null
+            ? `Teste grátis do Cestão — faltam ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}.`
+            : 'Teste grátis do Cestão ativo.';
+        } else if (access.accessType === 'pix') {
+          statusText.textContent = daysRemaining != null
+            ? `Acesso avulso via PIX — faltam ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}.`
+            : 'Acesso avulso via PIX ativo.';
         } else if (plan === 'free') {
           statusText.textContent = 'Plano gratuito ativo.';
         } else {
@@ -1325,9 +1399,53 @@
         upgradeButton.textContent = plan === 'free' ? 'Ver planos' : 'Trocar de plano';
       }
       if (cancelButton) {
-        const hasPaidPlan = plan !== 'free';
+        const hasPaidPlan = plan !== 'free' && access.accessType === 'subscription';
         const alreadyCancelling = Boolean(currentSubscription && currentSubscription.cancelAtPeriodEnd);
         cancelButton.style.display = !isComplimentary && hasPaidPlan && !alreadyCancelling ? '' : 'none';
+      }
+
+      const accessTypeText = document.getElementById('planAccessTypeText');
+      const periodText = document.getElementById('planPeriodText');
+      const daysRemainingText = document.getElementById('planDaysRemainingText');
+      const renewalActions = document.getElementById('planRenewalActions');
+
+      if (accessTypeText) {
+        const labelKey = isComplimentary
+          ? 'complimentary'
+          : (access.accessType === 'expired' ? (access.previousAccessType || 'free') : access.accessType);
+        accessTypeText.textContent = `Tipo de acesso: ${ACCESS_TYPE_LABELS[labelKey] || ACCESS_TYPE_LABELS.free}`;
+      }
+      if (periodText) {
+        const startedAtMs = !isComplimentary && currentSubscription && currentSubscription.accessStartedAt
+          && typeof currentSubscription.accessStartedAt.toMillis === 'function'
+          ? currentSubscription.accessStartedAt.toMillis()
+          : null;
+        if (!isComplimentary && startedAtMs && access.accessEndsAtMs) {
+          const formatDate = (ms) => new Date(ms).toLocaleDateString('pt-BR');
+          periodText.textContent = `Início: ${formatDate(startedAtMs)} · Término: ${formatDate(access.accessEndsAtMs)}`;
+          periodText.hidden = false;
+        } else {
+          periodText.hidden = true;
+        }
+      }
+      if (daysRemainingText) {
+        if (!isComplimentary && access.accessType === 'expired') {
+          daysRemainingText.textContent = 'Período de acesso encerrado.';
+          daysRemainingText.classList.add('is-urgent');
+          daysRemainingText.hidden = false;
+        } else if (!isComplimentary && daysRemaining != null) {
+          daysRemainingText.textContent = daysRemaining <= 0
+            ? 'Vence hoje.'
+            : `Faltam ${daysRemaining} ${daysRemaining === 1 ? 'dia' : 'dias'}.`;
+          daysRemainingText.classList.toggle('is-urgent', daysRemaining <= 3);
+          daysRemainingText.hidden = false;
+        } else {
+          daysRemainingText.hidden = true;
+          daysRemainingText.classList.remove('is-urgent');
+        }
+      }
+      if (renewalActions) {
+        renewalActions.hidden = isComplimentary || access.accessType !== 'expired';
       }
     }
 
@@ -1358,7 +1476,8 @@
         payments.forEach((payment) => {
           const item = document.createElement('li');
           const amount = document.createElement('span');
-          amount.textContent = `R$ ${(payment.amountCents / 100).toFixed(2).replace('.', ',')}`;
+          const kind = payment.purchaseType === 'pix' ? 'PIX' : 'Assinatura';
+          amount.textContent = `R$ ${(payment.amountCents / 100).toFixed(2).replace('.', ',')} — ${kind}`;
           const status = document.createElement('span');
           status.textContent = payment.status || '';
           item.append(amount, status);
@@ -1545,6 +1664,7 @@
           updateSharedModeUi();
           subscribeToRemoteLists();
           subscribeToSubscriptionStatus();
+          ensureAccessRecord();
           syncSharedListsForAccount();
         });
       } catch (error) {
@@ -6169,6 +6289,14 @@
       }
       if (planCancelButton) {
         planCancelButton.addEventListener('click', handleCancelSubscription);
+      }
+      const planRenewPixButton = document.getElementById('planRenewPixButton');
+      const planSubscribeButton = document.getElementById('planSubscribeButton');
+      if (planRenewPixButton) {
+        planRenewPixButton.addEventListener('click', () => { window.location.href = '/planos'; });
+      }
+      if (planSubscribeButton) {
+        planSubscribeButton.addEventListener('click', () => { window.location.href = '/planos'; });
       }
       if (deleteAccountButton) {
         deleteAccountButton.addEventListener('click', handleDeleteAccount);

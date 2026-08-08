@@ -17,13 +17,31 @@ service cloud.firestore {
     // Usuário sem documento de assinatura ainda (conta antiga, ou o
     // POST /api/billing/select-free-plan do cadastro ainda não rodou)
     // é tratado como "free" por padrão.
+    //
+    // accessType "trial"/"pix" (teste de 10 dias do Cestão e compra avulsa
+    // de 30 dias) só valem enquanto accessEndsAt não passou — comparado
+    // direto contra request.time, então o limite do plano cai pra Free no
+    // exato instante em que expira, mesmo que nenhuma rotina de servidor
+    // tenha rodado ainda pra regravar o documento (essa regravação existe
+    // só pra manter o campo `plan` bruto consistente/auditável, não é o
+    // que garante a segurança aqui). accessType "subscription" não usa
+    // accessEndsAt — quem controla a validade dela é o campo `plan`
+    // gravado pelo webhook a cada mudança de status da assinatura.
     function planId(userId) {
+      let subscriptionPath = /databases/$(database)/documents/users/$(userId)/billing/subscription;
+      let sub = exists(subscriptionPath) ? get(subscriptionPath).data : null;
+      let accessType = sub == null ? 'free' : sub.get('accessType', 'free');
+      let accessEndsAt = sub == null ? null : sub.get('accessEndsAt', null);
+      let isTimeLimitedAccessExpired = accessType in ['trial', 'pix']
+        && accessEndsAt != null
+        && request.time > accessEndsAt;
+
       return isComplimentaryCestao(request.auth.token.email)
         ? 'cestao'
         : (
-          exists(/databases/$(database)/documents/users/$(userId)/billing/subscription)
-            ? get(/databases/$(database)/documents/users/$(userId)/billing/subscription).data.get('plan', 'free')
-            : 'free'
+          sub == null
+            ? 'free'
+            : (isTimeLimitedAccessExpired ? 'free' : sub.get('plan', 'free'))
         );
     }
 
@@ -64,6 +82,11 @@ service cloud.firestore {
     }
 
     match /users/{userId}/billing/subscription/payments/{paymentId} {
+      allow read: if hasVerifiedEmail() && request.auth.uid == userId;
+      allow write: if false;
+    }
+
+    match /users/{userId}/billing/subscription/accessEvents/{eventId} {
       allow read: if hasVerifiedEmail() && request.auth.uid == userId;
       allow write: if false;
     }

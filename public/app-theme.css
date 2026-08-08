@@ -2921,6 +2921,37 @@ button.profile-avatar:hover {
   font-size: 13px;
 }
 
+.plan-access-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.plan-access-details span {
+  color: var(--gg-muted);
+  font-size: 12.5px;
+}
+
+.plan-days-remaining {
+  background: var(--gg-primary-pale);
+  border-radius: 999px;
+  color: var(--gg-primary-dark) !important;
+  display: inline-block;
+  font-weight: 700;
+  padding: 4px 10px;
+  width: fit-content;
+}
+
+.plan-days-remaining.is-urgent {
+  background: #fffaf0;
+  color: #a15c00 !important;
+}
+
+#planRenewalActions {
+  margin-top: 12px;
+}
+
 .plan-payment-history {
   border-top: 1px solid var(--gg-line);
   margin-top: 18px;

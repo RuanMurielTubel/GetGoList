@@ -48,6 +48,16 @@ export type MercadoPagoPayment = {
   transaction_amount?: number;
   currency_id?: string;
   date_approved?: string | null;
+  external_reference?: string;
+  metadata?: { purchase_type?: string; uid?: string; plan?: string };
+  point_of_interaction?: {
+    transaction_data?: {
+      qr_code?: string;
+      qr_code_base64?: string;
+      ticket_url?: string;
+    };
+  };
+  date_of_expiration?: string | null;
 };
 
 /**
@@ -97,6 +107,61 @@ export async function createSubscriptionCheckout(args: {
   }
 
   return { checkoutUrl: preapproval.init_point, preapprovalId: preapproval.id };
+}
+
+/**
+ * Cria um pagamento avulso via PIX (API de pagamento único do Mercado
+ * Pago, /v1/payments — diferente de /preapproval, que é só pra assinatura
+ * recorrente). O acesso de 30 dias só é concedido quando o webhook
+ * confirmar o pagamento como aprovado (upsertFromPayment); esta função só
+ * inicia a cobrança e devolve os dados pro cliente renderizar o QR code.
+ */
+export async function createPixPayment(args: {
+  uid: string;
+  email: string;
+  plan: "cesta" | "cestao";
+}): Promise<{
+  paymentId: string;
+  qrCode: string;
+  qrCodeBase64: string;
+  ticketUrl: string;
+  expiresAt: string | null;
+}> {
+  const priceCents = PLAN_LIMITS[args.plan].priceCents;
+  if (!priceCents) {
+    throw new Error("MERCADOPAGO_NOT_CONFIGURED");
+  }
+
+  const payment = await mercadoPagoRequest<MercadoPagoPayment>("/v1/payments", {
+    method: "POST",
+    headers: {
+      // Evita cobrança duplicada em caso de retry de rede do próprio fetch.
+      "X-Idempotency-Key": `${args.uid}-pix-${Date.now()}`,
+    },
+    body: JSON.stringify({
+      transaction_amount: priceCents / 100,
+      description: `${PLAN_NAMES[args.plan]} — acesso avulso de 30 dias`,
+      payment_method_id: "pix",
+      payer: { email: args.email },
+      // uid:plano:pix — o sufixo "pix" diferencia de um pagamento de
+      // assinatura no webhook (que usa "uid:plano", sem sufixo).
+      external_reference: `${args.uid}:${args.plan}:pix`,
+      metadata: { uid: args.uid, plan: args.plan, purchase_type: "pix_one_off" },
+    }),
+  });
+
+  const transactionData = payment.point_of_interaction?.transaction_data;
+  if (!transactionData?.qr_code) {
+    throw new Error("MERCADOPAGO_MISSING_PIX_DATA");
+  }
+
+  return {
+    paymentId: String(payment.id),
+    qrCode: transactionData.qr_code,
+    qrCodeBase64: transactionData.qr_code_base64 || "",
+    ticketUrl: transactionData.ticket_url || "",
+    expiresAt: payment.date_of_expiration || null,
+  };
 }
 
 export async function fetchPreapproval(preapprovalId: string): Promise<MercadoPagoPreapproval> {
@@ -155,13 +220,17 @@ export function verifyWebhookSignature(params: {
 }
 
 /**
- * O uid do usuário e o plano assinado vêm juntos em external_reference
- * (formato "uid:plano"), já que a assinatura não está vinculada a um
- * preapproval_plan_id — ver comentário em createSubscriptionCheckout.
+ * O uid do usuário e o plano assinado vêm juntos em external_reference.
+ * Assinatura (preapproval): "uid:plano" (não está vinculada a um
+ * preapproval_plan_id — ver comentário em createSubscriptionCheckout).
+ * Compra avulsa PIX: "uid:plano:pix" — o sufixo é o que webhook usa pra
+ * não tratar um pagamento avulso como parcela de assinatura.
  */
-export function parseExternalReference(externalReference: string | undefined): { uid: string; plan: PlanId } | null {
+export function parseExternalReference(
+  externalReference: string | undefined,
+): { uid: string; plan: PlanId; purchaseType: "subscription" | "pix" } | null {
   if (!externalReference) return null;
-  const [uid, plan] = externalReference.split(":");
+  const [uid, plan, suffix] = externalReference.split(":");
   if (!uid || (plan !== "cesta" && plan !== "cestao")) return null;
-  return { uid, plan };
+  return { uid, plan, purchaseType: suffix === "pix" ? "pix" : "subscription" };
 }

@@ -61,16 +61,21 @@ export default function PlanCards({
   currentPlan,
   pendingPlan,
   onSelect,
+  onPixPurchase,
+  pixBusyPlan,
 }: {
   currentPlan?: PlanId | null;
   pendingPlan?: PlanId | null;
   onSelect: (plan: PlanId) => void;
+  onPixPurchase?: (plan: PlanId) => void;
+  pixBusyPlan?: PlanId | null;
 }) {
   return (
     <div className="plan-grid">
       {PLAN_COPY.map((plan) => {
         const isCurrent = currentPlan === plan.id;
         const isPending = pendingPlan === plan.id;
+        const isPaidPlan = plan.id === "cesta" || plan.id === "cestao";
         return (
           <div
             key={plan.id}
@@ -96,6 +101,18 @@ export default function PlanCards({
             >
               {isCurrent ? "Plano atual" : isPending ? "Aguardando pagamento…" : `Assinar ${plan.name}`}
             </button>
+            {isPaidPlan && onPixPurchase ? (
+              <button
+                type="button"
+                className="button button-secondary plan-pix-button"
+                disabled={pixBusyPlan === plan.id}
+                onClick={() => onPixPurchase(plan.id)}
+              >
+                {pixBusyPlan === plan.id
+                  ? "Gerando código PIX…"
+                  : `Pagar com PIX (${formatPrice(PLAN_LIMITS[plan.id].priceCents)} — 30 dias)`}
+              </button>
+            ) : null}
           </div>
         );
       })}

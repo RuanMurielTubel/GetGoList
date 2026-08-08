@@ -1318,6 +1318,38 @@ footer a {
   width: 100%;
 }
 
+.plan-pix-button {
+  font-size: 0.82rem;
+}
+
+.plan-pix-checkout {
+  background: var(--surface-soft);
+  border: 1px solid #e3edf3;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 24px auto 0;
+  max-width: 420px;
+  padding: 24px;
+  text-align: center;
+}
+
+.plan-pix-checkout img {
+  align-self: center;
+  border-radius: 12px;
+}
+
+.plan-pix-checkout textarea {
+  border: 1px solid #e3edf3;
+  border-radius: 10px;
+  font-family: monospace;
+  font-size: 0.78rem;
+  padding: 10px;
+  resize: none;
+  width: 100%;
+}
+
 .account-plan-picker .plan-grid {
   grid-template-columns: 1fr;
 }

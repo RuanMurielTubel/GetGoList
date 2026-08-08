@@ -6,7 +6,7 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import { Timestamp, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 const projectId = "demo-getgolist-security";
 const listId = "A1b2C3d4E5f6G7h8I9j0";
@@ -49,6 +49,22 @@ async function seedSubscription(uid, plan) {
       .firestore()
       .doc(`users/${uid}/billing/subscription`)
       .set({ plan, status: "active" });
+  });
+}
+
+// accessEndsInMs negativo simula um teste/PIX já expirado (data no
+// passado); positivo simula um teste/PIX ainda dentro do prazo.
+async function seedTimeLimitedSubscription(uid, plan, accessType, accessEndsInMs) {
+  await environment.withSecurityRulesDisabled(async (context) => {
+    await context
+      .firestore()
+      .doc(`users/${uid}/billing/subscription`)
+      .set({
+        plan,
+        status: "active",
+        accessType,
+        accessEndsAt: Timestamp.fromMillis(Date.now() + accessEndsInMs),
+      });
   });
 }
 
@@ -402,5 +418,69 @@ test("conta cortesia pode criar compartilhamento novo mesmo sem assinatura paga 
       doc(user, "sharedLists", listId),
       sharedList({ owner: uid, ownerEmail: "gabrielamoraesn@gmail.com" }),
     ),
+  );
+});
+
+test("teste de 10 dias do Cestão (accessType trial) aplica os limites do Cestão enquanto não expira", async () => {
+  const uid = "trial-user";
+  await seedTimeLimitedSubscription(uid, "cestao", "trial", 10 * 24 * 60 * 60 * 1000);
+  const user = account(uid, "trial@getgolist.com");
+  const reference = doc(user, `users/${uid}/appData/lists`);
+
+  await assertSucceeds(
+    setDoc(reference, { lists: listsOfSize(25), currentListName: "Lista 0" }),
+  );
+});
+
+test("teste do Cestão expirado (accessEndsAt no passado) cai pras regras do Free", async () => {
+  const uid = "expired-trial-user";
+  await seedTimeLimitedSubscription(uid, "cestao", "trial", -1000);
+  const user = account(uid, "expired-trial@getgolist.com");
+  const reference = doc(user, `users/${uid}/appData/lists`);
+
+  await assertSucceeds(
+    setDoc(reference, { lists: listsOfSize(1), currentListName: "Lista 0" }),
+  );
+  await assertFails(
+    setDoc(reference, { lists: listsOfSize(2), currentListName: "Lista 0" }),
+  );
+});
+
+test("compra avulsa PIX (accessType pix) aplica os limites do plano comprado enquanto não expira", async () => {
+  const uid = "pix-user";
+  await seedTimeLimitedSubscription(uid, "cesta", "pix", 30 * 24 * 60 * 60 * 1000);
+  const user = account(uid, "pix@getgolist.com");
+  const reference = doc(user, `users/${uid}/appData/lists`);
+
+  await assertSucceeds(
+    setDoc(reference, { lists: listsOfSize(10), currentListName: "Lista 0" }),
+  );
+  await assertFails(
+    setDoc(reference, { lists: listsOfSize(11), currentListName: "Lista 0" }),
+  );
+});
+
+test("compra avulsa PIX expirada cai pras regras do Free", async () => {
+  const uid = "expired-pix-user";
+  await seedTimeLimitedSubscription(uid, "cestao", "pix", -1000);
+  const user = account(uid, "expired-pix@getgolist.com");
+  const reference = doc(user, `users/${uid}/appData/lists`);
+
+  await assertFails(
+    setDoc(reference, { lists: listsOfSize(2), currentListName: "Lista 0" }),
+  );
+});
+
+test("assinatura (accessType subscription) não é afetada por accessEndsAt", async () => {
+  const uid = "subscription-user";
+  // Assinatura não usa accessEndsAt (fica null), mas mesmo que algum dado
+  // antigo tivesse uma data no passado, accessType "subscription" não
+  // entra na checagem de expiração — só quem controla é o campo `plan`.
+  await seedTimeLimitedSubscription(uid, "cestao", "subscription", -1000);
+  const user = account(uid, "subscription@getgolist.com");
+  const reference = doc(user, `users/${uid}/appData/lists`);
+
+  await assertSucceeds(
+    setDoc(reference, { lists: listsOfSize(25), currentListName: "Lista 0" }),
   );
 });

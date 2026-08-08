@@ -60,9 +60,13 @@ async function handlePaymentEvent(event: string, payment: AsaasPayment) {
   const existingPayment = await paymentReference.get();
   const alreadyGranted = existingPayment.exists && existingPayment.data()?.accessGranted === true;
 
-  const subscriptionSnapshot = await reference.get();
-  const subscriptionData = subscriptionSnapshot.data();
-  const plan = (subscriptionData?.pendingPlan || subscriptionData?.plan || owner.plan) as "cesta" | "cestao";
+  // owner.plan vem direto do que foi cobrado (externalReference do
+  // pagamento, ou da tabela de lookup gravada na criação da assinatura) —
+  // é sempre a fonte correta de "o que essa cobrança específica paga",
+  // diferente do que está salvo no documento agora (que pode estar
+  // desatualizado, inclusive "free", se outro webhook mexeu nele entre a
+  // criação da cobrança e a confirmação do pagamento).
+  const plan = owner.plan;
   const isPaid = PAID_PAYMENT_EVENTS.has(event);
   const willGrantNow = isPaid && !alreadyGranted;
 
@@ -172,6 +176,14 @@ async function handleSubscriptionEvent(event: string, subscriptionEvent: { id: s
   // Idempotência: se já está free, não regrava nem duplica o evento de
   // auditoria pra um reenvio do mesmo webhook.
   if (data?.accessType === "free") {
+    return;
+  }
+  // Só derruba o acesso se a assinatura cancelada/inativada for a que
+  // está REALMENTE em uso agora. Cancelar uma assinatura antiga e órfã
+  // (ex.: ao trocar de plano, checkout/route.ts cancela a anterior antes
+  // de criar a nova) não pode rebaixar quem já está numa assinatura nova
+  // e ativa — mesmo que o webhook da antiga chegue depois, fora de ordem.
+  if (data?.asaas?.subscriptionId && data.asaas.subscriptionId !== subscriptionEvent.id) {
     return;
   }
 

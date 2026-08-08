@@ -1264,6 +1264,14 @@
         generateAiListButton.disabled = !limits.hasAI;
       }
 
+      const atListLimit = Object.keys(lists).length >= limits.maxLists;
+      ['homeQuickNewList', 'openCreateListDialogButton'].forEach((id) => {
+        const button = document.getElementById(id);
+        if (!button) return;
+        button.classList.toggle('plan-locked-button', atListLimit);
+        button.setAttribute('aria-disabled', atListLimit ? 'true' : 'false');
+      });
+
       const plan = currentEffectivePlanId();
       const isComplimentary = isComplimentaryCestaoAccount();
       const badge = document.getElementById('planBadge');
@@ -1603,6 +1611,7 @@
       updateStats();
       updateCharts();
       renderHomeLists();
+      updatePlanUi();
     }
 
     function setAiListStatus(message = '', isError = false) {
@@ -5027,11 +5036,19 @@
       newListCard.type = 'button';
       newListCard.className = 'home-list-card new-list';
       newListCard.textContent = '+ Nova lista';
+      if (Object.keys(lists).length >= currentPlanLimits().maxLists) {
+        newListCard.classList.add('plan-locked-button');
+        newListCard.setAttribute('aria-disabled', 'true');
+      }
       newListCard.addEventListener('click', createNewListDialog);
       grid.appendChild(newListCard);
     }
 
     function createNewListDialog() {
+      if (Object.keys(lists).length >= currentPlanLimits().maxLists) {
+        alert('Mais listas disponíveis apenas em planos pagos. Assine um plano para criar novas listas.');
+        return;
+      }
       console.log("Tentando abrir diálogo de criação de lista");
       const dialog = document.getElementById('createListDialog');
       if (!dialog) {

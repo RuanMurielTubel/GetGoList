@@ -3528,6 +3528,40 @@ body.nav-collapsed .footer {
   padding: 8px 16px 8px 10px;
 }
 
+.home-quick-pill:hover {
+  background: var(--gg-primary-pale);
+  border-color: var(--gg-primary);
+}
+
+.home-quick-pill.ai:hover {
+  background: #fff6e0;
+  border-color: #ffe2a1;
+}
+
+.plan-locked-button {
+  cursor: not-allowed;
+  filter: grayscale(.4);
+  opacity: .6;
+  position: relative;
+}
+
+.plan-locked-button::after {
+  align-items: center;
+  background: var(--gg-ink);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(16, 35, 63, .3);
+  color: #fff;
+  content: "🔒";
+  display: flex;
+  font-size: 10px;
+  height: 19px;
+  justify-content: center;
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  width: 19px;
+}
+
 .home-quick-pill .ic {
   align-items: center;
   background: var(--gg-primary-pale);
@@ -3639,6 +3673,11 @@ body.nav-collapsed .footer {
   text-transform: uppercase;
 }
 
+.home-list-card:hover {
+  background: var(--gg-primary-pale);
+  border-color: var(--gg-primary);
+}
+
 .home-list-card.new-list {
   align-items: center;
   border-style: dashed;
@@ -3648,6 +3687,16 @@ body.nav-collapsed .footer {
   font-weight: 700;
   gap: 8px;
   justify-content: center;
+}
+
+.home-list-card.new-list:hover {
+  background: var(--gg-primary-pale);
+  border-color: var(--gg-primary);
+}
+
+.home-list-card.plan-locked-button:hover {
+  background: #fff;
+  border-color: var(--gg-line);
 }
 
 .home-lists-empty {

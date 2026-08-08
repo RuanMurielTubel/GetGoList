@@ -4345,7 +4345,25 @@ body.nav-collapsed .footer {
 }
 
 .ai-chat-compose .ai-locked-banner {
+  flex-direction: column;
   margin: 0 0 10px;
+  text-align: center;
+}
+
+.ai-chat-compose .ai-locked-banner > span {
+  align-items: center;
+  background: #fff6e0;
+  border-radius: 50%;
+  display: flex;
+  font-size: 18px;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.ai-chat-compose .ai-locked-banner a {
+  margin: 2px 0 0;
+  width: auto;
 }
 
 .ai-chat-compose.ai-locked .ai-chat-compose-row {

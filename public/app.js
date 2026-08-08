@@ -1191,8 +1191,6 @@
           saveLists();
         }
 
-        const lastEditorName = remoteData && (remoteData.lastEditedBy || remoteData.lastEditedByEmail);
-        updateLastEditedInfo(lastEditorName);
         if (remoteSyncReady) {
           updateAccountPanel(sharedListId
             ? (sharedListEnded ? 'Conta conectada • compartilhamento encerrado' : 'Conta conectada • colaboração em tempo real')
@@ -1272,6 +1270,21 @@
         button.setAttribute('aria-disabled', atListLimit ? 'true' : 'false');
       });
 
+      const shareLocked = !sharedListId && !limits.canShare;
+      ['homeQuickShare', 'homeFeatureShare'].forEach((id) => {
+        const button = document.getElementById(id);
+        if (!button) return;
+        button.classList.toggle('plan-locked-button', shareLocked);
+        button.setAttribute('aria-disabled', shareLocked ? 'true' : 'false');
+      });
+
+      ['homeQuickAskAi', 'homeFeatureAi'].forEach((id) => {
+        const button = document.getElementById(id);
+        if (!button) return;
+        button.classList.toggle('plan-locked-button', !limits.hasAI);
+        button.setAttribute('aria-disabled', !limits.hasAI ? 'true' : 'false');
+      });
+
       const plan = currentEffectivePlanId();
       const isComplimentary = isComplimentaryCestaoAccount();
       const badge = document.getElementById('planBadge');
@@ -1282,6 +1295,10 @@
 
       if (badge) {
         badge.textContent = PLAN_NAMES[plan] || 'Free';
+      }
+      const accountPlanLabel = document.getElementById('accountPlanLabel');
+      if (accountPlanLabel) {
+        accountPlanLabel.textContent = `Plano: ${PLAN_NAMES[plan] || 'Free'}`;
       }
       if (statusText) {
         if (isComplimentary) {
@@ -1521,18 +1538,6 @@
       } catch (error) {
         console.error("Não foi possível iniciar a sincronização.", error);
         updateAccountPanel("Sincronização indisponível");
-      }
-    }
-
-    function updateLastEditedInfo(lastEditorName) {
-      const lastEditedElement = document.getElementById('lastEditedBy');
-      if (!lastEditedElement) {
-        return;
-      }
-      if (lastEditorName) {
-        lastEditedElement.textContent = `Última alteração: ${lastEditorName}`;
-      } else {
-        lastEditedElement.textContent = 'Última alteração: não registrada';
       }
     }
 

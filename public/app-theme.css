@@ -3746,9 +3746,24 @@ body.nav-collapsed .footer {
   width: 17px;
 }
 
+.home-feature-card:hover {
+  background: var(--gg-primary-pale);
+  border-color: var(--gg-primary);
+}
+
 .home-feature-card.highlight {
   background: linear-gradient(160deg, #eafbfa, #fff 65%);
   border-color: #cdeceb;
+}
+
+.home-feature-card.highlight:hover {
+  background: linear-gradient(160deg, #d9f5f3, #fff 65%);
+  border-color: var(--gg-primary);
+}
+
+.home-feature-card.plan-locked-button:hover {
+  background: #fff;
+  border-color: var(--gg-line);
 }
 
 .home-feature-card.highlight .ic {

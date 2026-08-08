@@ -20,10 +20,8 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { firebaseAuth } from "@/lib/firebase";
 import { getAppCheckToken } from "@/lib/app-check";
-import PlanCards from "@/components/PlanCards";
-import type { PlanId } from "@/lib/shared/plan-limits";
 
-type Mode = "login" | "register" | "verify" | "plan" | "forgot" | "reset";
+type Mode = "login" | "register" | "verify" | "welcome" | "forgot" | "reset";
 
 function strongPasswordMessage(password: string) {
   if (password.length < 8) return "A senha precisa ter pelo menos 8 caracteres.";
@@ -454,7 +452,7 @@ export default function LoginPage() {
       await user.reload();
       await user.getIdToken(true);
       if (skipAutoRedirectRef.current) {
-        setMode("plan");
+        setMode("welcome");
         setLoading(false);
         return;
       }
@@ -468,45 +466,6 @@ export default function LoginPage() {
   function finishOnboarding() {
     skipAutoRedirectRef.current = false;
     router.replace(redirectTo || "/index.html");
-  }
-
-  async function handlePlanSelection(plan: PlanId) {
-    if (plan === "free") {
-      finishOnboarding();
-      return;
-    }
-    setFeedback("");
-    setLoading(true);
-    try {
-      const user = firebaseAuth.currentUser;
-      if (!user) throw new Error("Sua sessão expirou. Entre novamente.");
-      const [token, appCheckToken] = await Promise.all([
-        user.getIdToken(),
-        getAppCheckToken(),
-      ]);
-      const response = await fetch("/api/billing/checkout", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "X-Firebase-AppCheck": appCheckToken,
-        },
-        body: JSON.stringify({ plan }),
-      });
-      if (response.status === 503) {
-        setFeedback("Os pagamentos ainda estão sendo configurados. Você pode assinar depois em Minha Conta.");
-        setLoading(false);
-        return;
-      }
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.checkoutUrl) {
-        throw new Error("Não foi possível iniciar o pagamento agora.");
-      }
-      window.location.href = result.checkoutUrl;
-    } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "Não foi possível iniciar o pagamento agora.");
-      setLoading(false);
-    }
   }
 
   async function handleLeaveVerification() {
@@ -829,27 +788,52 @@ export default function LoginPage() {
               </form>
             )}
           </div>
-        ) : mode === "plan" ? (
-          <div className="account-plan-picker">
+        ) : mode === "welcome" ? (
+          <div className="account-verification account-welcome">
             <div className="account-card-heading">
-              <p className="eyebrow">Quase lá</p>
-              <h2 id="account-title">Escolha seu plano</h2>
+              <p className="eyebrow">Conta confirmada</p>
+              <h2 id="account-title">Bem-vindo(a) ao GetGoList!</h2>
               <p>
-                Comece no Free ou já assine um plano pago — dá para trocar
-                quando quiser em Minha Conta.
+                Você ganhou <strong>10 dias grátis do plano Cestão</strong> —
+                listas ilimitadas, compartilhamento, criação de listas com IA
+                e o módulo de Gestão liberados, sem anúncios.
               </p>
             </div>
-            <PlanCards currentPlan="free" onSelect={handlePlanSelection} />
+
+            <div className="account-welcome-details">
+              <p>
+                Isso é um <strong>período de experiência de 10 dias</strong>,
+                não uma assinatura. Ao final dele, você escolhe o que faz:
+              </p>
+              <ul>
+                <li>contratar um plano pago (mensal);</li>
+                <li>fazer uma compra avulsa de 30 dias via PIX; ou</li>
+                <li>não fazer nada — sua conta continua funcionando normalmente no plano Free.</li>
+              </ul>
+              <p>
+                <strong>Não é obrigatório contratar nada.</strong> Se você não
+                escolher um plano ou compra avulsa até o fim dos 10 dias, a
+                conta muda automaticamente para o Free — sem nenhuma cobrança.
+              </p>
+              <p>
+                No plano Free, listas além da primeira, compartilhamentos
+                novos, criação com IA e o módulo de Gestão deixam de estar
+                disponíveis (seus dados não são apagados, mas alguns recursos
+                ficam bloqueados até você voltar a um plano pago ou avulso).
+              </p>
+            </div>
+
             {feedback && (
               <p className="account-feedback" role="status">{feedback}</p>
             )}
+
             <button
-              className="password-reset"
+              className="button button-primary"
               disabled={loading}
               onClick={finishOnboarding}
               type="button"
             >
-              Decidir depois
+              Estou ciente e quero continuar
             </button>
           </div>
         ) : (

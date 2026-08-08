@@ -3113,6 +3113,42 @@
       return boundedNumber(parseFloat(String(value).replace(',', '.')), 0, 100000000, 0);
     }
 
+    let pendingInsufficientBalanceContinue = null;
+    let pendingInsufficientBalanceDismiss = null;
+
+    // onDismiss cobre qualquer saída que NÃO seja "Continuar sem saldo"
+    // (Cancelar, clique fora ou "Definir saldo da lista") — usado pra
+    // desfazer ajustes especulativos de saldo (ex.: edição de item).
+    function showInsufficientBalanceDialog({ itemTotal, currentBalance, listName, onContinue, onDismiss }) {
+      const dialog = document.getElementById('insufficientBalanceDialog');
+      const listNameEl = document.getElementById('insufficientBalanceListName');
+      const totalEl = document.getElementById('insufficientBalanceTotal');
+      const availableEl = document.getElementById('insufficientBalanceAvailable');
+      if (!dialog || !listNameEl || !totalEl || !availableEl) {
+        // Rede de segurança caso o HTML do diálogo não tenha carregado.
+        if (confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${currentBalance.toFixed(2).replace('.', ',')})`)) {
+          onContinue();
+        } else if (typeof onDismiss === 'function') {
+          onDismiss();
+        }
+        return;
+      }
+      listNameEl.textContent = listName;
+      totalEl.textContent = `R$ ${itemTotal.toFixed(2).replace('.', ',')}`;
+      availableEl.textContent = `R$ ${currentBalance.toFixed(2).replace('.', ',')}`;
+      pendingInsufficientBalanceContinue = onContinue;
+      pendingInsufficientBalanceDismiss = onDismiss || null;
+      dialog.style.display = 'flex';
+    }
+
+    function dismissInsufficientBalanceDialog() {
+      const dismiss = pendingInsufficientBalanceDismiss;
+      pendingInsufficientBalanceContinue = null;
+      pendingInsufficientBalanceDismiss = null;
+      closeDialog('insufficientBalanceDialog');
+      if (typeof dismiss === 'function') dismiss();
+    }
+
     function openBudgetDialog() {
       if (isSharedGuest()) {
         return;
@@ -3165,7 +3201,7 @@
       }
     }
 
-    function addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector, itemUnit) {
+    function addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector, itemUnit, onSuccess) {
       itemName = cleanText(itemName, 120);
       itemPrice = boundedNumber(itemPrice, 0, 100000000, 0);
       itemUnit = normalizeItemUnit(itemUnit);
@@ -3177,13 +3213,12 @@
       }
       const itemTotal = itemPrice * itemQuantity;
 
-      if (itemName && itemPrice > 0 && itemQuantity > 0) {
-        const currentBalance = lists[currentListName].balance;
-        if (currentBalance >= 0 && itemTotal > currentBalance) {
-          if (!confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${currentBalance.toFixed(2).replace('.', ',')})`)) {
-            return false;
-          }
-        }
+      if (!(itemName && itemPrice > 0 && itemQuantity > 0)) {
+        alert('Por favor, insira um nome, preço e quantidade válidos.');
+        return false;
+      }
+
+      const insertItem = () => {
         const item = {
           id: createEntityId('item'),
           name: itemName,
@@ -3209,11 +3244,22 @@
         updateMonthSelect();
         updateFooter();
         updateDashboard();
-        return true;
+        if (typeof onSuccess === 'function') onSuccess();
+      };
+
+      const currentBalance = lists[currentListName].balance;
+      if (currentBalance >= 0 && itemTotal > currentBalance) {
+        showInsufficientBalanceDialog({
+          itemTotal,
+          currentBalance,
+          listName: currentListName,
+          onContinue: insertItem,
+        });
+        return;
       }
 
-      alert('Por favor, insira um nome, preço e quantidade válidos.');
-      return false;
+      insertItem();
+      return true;
     }
 
     function addItem() {
@@ -3223,14 +3269,14 @@
       const itemQuantity = parseFloat(document.getElementById('itemQuantity').value) || 1;
       const itemSector = document.getElementById('itemSector').value.trim() || 'Geral';
 
-      if (addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector, itemUnit)) {
+      addItemToCurrentList(itemName, itemPrice, itemQuantity, itemSector, itemUnit, () => {
         document.getElementById('itemName').value = '';
         document.getElementById('itemPrice').value = '';
         document.getElementById('itemQuantity').value = '1';
         document.getElementById('itemUnit').value = 'un';
         updateItemUnitStep(document.getElementById('itemQuantity'), 'un');
         populateSectorSelect('Geral');
-      }
+      });
     }
 
     function editItem(index) {
@@ -3257,16 +3303,16 @@
       const itemSector = normalizeSectorName(sectorEl ? (sectorEl.value || 'Geral') : 'Geral', 'Geral');
       const itemTotal = itemPrice * itemQuantity;
 
-      if (itemName && itemPrice > 0 && itemQuantity > 0) {
-        const oldItem = shoppingList[index];
-        lists[currentListName].balance += oldItem.total;
-        const currentBalance = lists[currentListName].balance;
-        if (currentBalance >= 0 && itemTotal > currentBalance) {
-          if (!confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${currentBalance.toFixed(2).replace('.', ',')})`)) {
-            lists[currentListName].balance -= oldItem.total;
-            return;
-          }
-        }
+      if (!(itemName && itemPrice > 0 && itemQuantity > 0)) {
+        alert('Por favor, insira um nome, preço e quantidade válidos.');
+        return;
+      }
+
+      const oldItem = shoppingList[index];
+      lists[currentListName].balance += oldItem.total;
+      const currentBalance = lists[currentListName].balance;
+
+      const applyEdit = () => {
         const newItem = {
           id: oldItem.id || createEntityId('item'),
           name: itemName,
@@ -3293,9 +3339,24 @@
         updateMonthSelect();
         updateFooter();
         updateDashboard();
-      } else {
-        alert('Por favor, insira um nome, preço e quantidade válidos.');
+      };
+
+      if (currentBalance >= 0 && itemTotal > currentBalance) {
+        showInsufficientBalanceDialog({
+          itemTotal,
+          currentBalance,
+          listName: currentListName,
+          onContinue: applyEdit,
+          // Desfaz o reembolso temporário do item antigo se o usuário não
+          // confirmar a edição (cancelar, clicar fora ou ir definir saldo).
+          onDismiss: () => {
+            lists[currentListName].balance -= oldItem.total;
+          },
+        });
+        return;
       }
+
+      applyEdit();
     }
 
     function cancelEdit() {
@@ -3876,12 +3937,9 @@
             const priceValue = parsePrice(quickPrice.value);
             const unitValue = normalizeItemUnit(quickUnit.value);
             const quantityValue = parseFloat(quickQuantity.value) || 1;
-            if (nameValue && priceValue > 0 && quantityValue > 0) {
+            addItemToCurrentList(nameValue, priceValue, quantityValue, sectorName, unitValue, () => {
               quickAddSector = null;
-            }
-            if (!addItemToCurrentList(nameValue, priceValue, quantityValue, sectorName, unitValue)) {
-              quickAddSector = sectorName;
-            }
+            });
           });
 
           body.appendChild(quickForm);
@@ -5370,6 +5428,10 @@
       document.querySelectorAll('.dialog').forEach(dialog => {
         dialog.addEventListener('click', (e) => {
           if (e.target === dialog) {
+            if (dialog.id === 'insufficientBalanceDialog') {
+              dismissInsufficientBalanceDialog();
+              return;
+            }
             dialog.style.display = 'none';
             console.log(`Diálogo ${dialog.id} fechado por clique fora`);
           }
@@ -5464,6 +5526,9 @@
         });
       }
       const setBalanceButton = document.getElementById('setBalanceButton');
+      const insufficientBalanceDefineButton = document.getElementById('insufficientBalanceDefineButton');
+      const insufficientBalanceContinueButton = document.getElementById('insufficientBalanceContinueButton');
+      const insufficientBalanceCancelButton = document.getElementById('insufficientBalanceCancelButton');
       const addItemButton = document.getElementById('addItemButton');
       const itemSectorSelect = document.getElementById('itemSector');
       const createSectorButton = document.getElementById('createSectorButton');
@@ -5533,6 +5598,24 @@
 
       if (setBalanceButton) {
         setBalanceButton.addEventListener('click', setBalance);
+      }
+      if (insufficientBalanceDefineButton) {
+        insufficientBalanceDefineButton.addEventListener('click', () => {
+          dismissInsufficientBalanceDialog();
+          openBudgetDialog();
+        });
+      }
+      if (insufficientBalanceContinueButton) {
+        insufficientBalanceContinueButton.addEventListener('click', () => {
+          const continueAction = pendingInsufficientBalanceContinue;
+          pendingInsufficientBalanceContinue = null;
+          pendingInsufficientBalanceDismiss = null;
+          closeDialog('insufficientBalanceDialog');
+          if (typeof continueAction === 'function') continueAction();
+        });
+      }
+      if (insufficientBalanceCancelButton) {
+        insufficientBalanceCancelButton.addEventListener('click', dismissInsufficientBalanceDialog);
       }
       if (addItemButton) {
         addItemButton.addEventListener('click', addItem);

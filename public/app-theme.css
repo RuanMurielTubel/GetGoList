@@ -2465,6 +2465,107 @@ li .item-controls .action-buttons button:last-child {
   color: var(--gg-ink);
 }
 
+.dialog-secondary-button {
+  background: #eef3f6;
+  border: 1px solid var(--gg-line);
+  box-shadow: none;
+  color: var(--gg-ink);
+}
+
+.dialog-secondary-button:hover {
+  background: #e2ebf0;
+}
+
+.dialog-tertiary-button {
+  background: transparent;
+  box-shadow: none;
+  color: var(--gg-muted);
+  font-weight: 700;
+}
+
+.dialog-tertiary-button:hover {
+  background: var(--gg-soft);
+  box-shadow: none;
+  transform: none;
+}
+
+.insufficient-balance-dialog-content {
+  text-align: center;
+}
+
+.insufficient-balance-dialog-content button {
+  display: block;
+  width: 100%;
+}
+
+.insufficient-balance-dialog-content button + button {
+  margin-top: 9px;
+}
+
+.insufficient-balance-icon {
+  align-items: center;
+  background: #fff6e0;
+  border-radius: 50%;
+  color: #a15c00;
+  display: flex;
+  height: 46px;
+  justify-content: center;
+  margin: 0 auto 14px;
+  width: 46px;
+}
+
+.insufficient-balance-icon svg {
+  height: 24px;
+  width: 24px;
+}
+
+.insufficient-balance-dialog-content p {
+  color: var(--gg-muted);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.insufficient-balance-dialog-content p strong {
+  color: var(--gg-ink);
+}
+
+.insufficient-balance-figures {
+  background: var(--gg-soft);
+  border-radius: 14px;
+  display: flex;
+  margin-bottom: 16px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.insufficient-balance-figures > div {
+  flex: 1;
+  padding: 12px 16px;
+}
+
+.insufficient-balance-figures > div + div {
+  border-left: 1px solid var(--gg-line);
+}
+
+.insufficient-balance-figures span {
+  color: var(--gg-muted);
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.insufficient-balance-figures strong {
+  color: var(--gg-ink);
+  font-size: 16px;
+}
+
+.insufficient-balance-hint {
+  font-size: 13px;
+}
+
 /* Perfil alinhado ao restante do produto */
 .profile-workspace {
   display: grid;

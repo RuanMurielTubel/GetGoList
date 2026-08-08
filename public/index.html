@@ -1070,7 +1070,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="/app-theme.css?v=20260807-ai-assistant-v17">
+  <link rel="stylesheet" href="/app-theme.css?v=20260807-ai-assistant-v18">
 </head>
 <body>
   <!-- Botão de menu flutuante -->
@@ -1558,6 +1558,29 @@
       <button id="closeBudgetDialogButton">Cancelar</button>
     </div>
   </div>
+  <div id="insufficientBalanceDialog" class="dialog">
+    <div class="dialog-content insufficient-balance-dialog-content">
+      <span class="insufficient-balance-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      </span>
+      <h3>Saldo insuficiente</h3>
+      <p>O valor deste produto ultrapassa o saldo disponível para a lista "<strong id="insufficientBalanceListName"></strong>".</p>
+      <div class="insufficient-balance-figures">
+        <div>
+          <span>Produto</span>
+          <strong id="insufficientBalanceTotal">R$ 0,00</strong>
+        </div>
+        <div>
+          <span>Saldo disponível</span>
+          <strong id="insufficientBalanceAvailable">R$ 0,00</strong>
+        </div>
+      </div>
+      <p class="insufficient-balance-hint">Você pode definir um saldo para a lista ou continuar mesmo assim.</p>
+      <button type="button" id="insufficientBalanceDefineButton">Definir saldo da lista</button>
+      <button type="button" class="dialog-secondary-button" id="insufficientBalanceContinueButton">Continuar sem saldo</button>
+      <button type="button" class="dialog-tertiary-button" id="insufficientBalanceCancelButton">Cancelar</button>
+    </div>
+  </div>
   <div id="deleteListDialog" class="dialog">
     <div class="dialog-content">
       <h3>Excluir Lista</h3>
@@ -1741,8 +1764,8 @@
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.17.0/firebase-app-check-compat.js"></script>
-  <script src="/app.js?v=20260807-ai-assistant-v17"></script>
-  <script type="module" src="/ai-list.js?v=20260807-ai-assistant-v17"></script>
+  <script src="/app.js?v=20260807-ai-assistant-v18"></script>
+  <script type="module" src="/ai-list.js?v=20260807-ai-assistant-v18"></script>
 
 </body>
 </html>

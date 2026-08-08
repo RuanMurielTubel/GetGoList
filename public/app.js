@@ -1278,7 +1278,7 @@
         button.setAttribute('aria-disabled', shareLocked ? 'true' : 'false');
       });
 
-      ['homeQuickAskAi', 'homeFeatureAi'].forEach((id) => {
+      ['homeQuickAskAi', 'homeFeatureAi', 'homeFeatureVoice'].forEach((id) => {
         const button = document.getElementById(id);
         if (!button) return;
         button.classList.toggle('plan-locked-button', !limits.hasAI);

@@ -484,7 +484,7 @@
       const bio = cleanText(profileBioInput.value, 300);
 
       if (!displayName && !bio) {
-        alert('Informe um nome ou uma bio para atualizar.');
+        showToast('Informe um nome ou uma bio para atualizar.', { type: 'warning' });
         return;
       }
 
@@ -498,7 +498,7 @@
 
       if (!currentFirebaseUser || !firebaseAuth) {
         updateProfileSection();
-        alert('Perfil atualizado localmente. Faça login para sincronizar com o perfil remoto.');
+        showToast('Perfil atualizado localmente. Faça login para sincronizar com o perfil remoto.', { type: 'warning' });
         return;
       }
 
@@ -510,7 +510,7 @@
       const finish = () => {
         updateProfileSection();
         updateAccountPanel('Conta conectada • perfil atualizado');
-        alert('Perfil atualizado com sucesso!');
+        showToast('Perfil atualizado com sucesso!', { type: 'success' });
       };
 
       if (Object.keys(updates).length === 0) {
@@ -525,7 +525,7 @@
         .catch((error) => {
           console.error('Erro ao atualizar perfil:', error);
           finish();
-          alert('Perfil atualizado localmente, mas não foi possível atualizar o perfil remoto.');
+          showToast('Perfil atualizado localmente, mas não foi possível atualizar o perfil remoto.', { type: 'warning' });
         });
     }
 
@@ -547,7 +547,7 @@
         (error) => {
           console.error('Erro ao enviar foto de perfil:', error);
           updateAccountPanel('Erro ao enviar foto. Tente novamente.');
-          alert('Não foi possível enviar a foto de perfil.');
+          showToast('Não foi possível enviar a foto de perfil.', { type: 'error' });
         },
         () => {
           uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
@@ -560,7 +560,7 @@
               .then(() => {
                 updateProfileSection();
                 updateAccountPanel('Conta conectada • perfil atualizado');
-                alert('Foto de perfil salva e persistida com sucesso.');
+                showToast('Foto de perfil salva e persistida com sucesso.', { type: 'success' });
               })
               .catch((error) => {
                 console.error('Erro ao atualizar foto no perfil Firebase:', error);
@@ -580,7 +580,7 @@
       // Foto de perfil personalizada depende do Firebase Storage, que
       // ainda não foi ativado (exige o plano Blaze). Enquanto isso, o
       // avatar mostra as iniciais ou a foto do Google, quando houver.
-      alert('O envio de foto de perfil personalizada está temporariamente indisponível. Em breve!');
+      showToast('O envio de foto de perfil personalizada está temporariamente indisponível. Em breve!', { type: 'info' });
     }
 
     function handlePhotoFileSelect(event) {
@@ -588,11 +588,11 @@
       if (!file) return;
 
       if (!file.type.match('image/(jpeg|png)')) {
-        alert('Por favor selecione um arquivo PNG ou JPEG.');
+        showToast('Por favor selecione um arquivo PNG ou JPEG.', { type: 'warning' });
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert('A foto deve ter no máximo 5 MB.');
+        showToast('A foto deve ter no máximo 5 MB.', { type: 'warning' });
         event.target.value = '';
         return;
       }
@@ -1202,7 +1202,7 @@
         remoteSyncReady = false;
         if (sharedListId && error && error.code === 'permission-denied') {
           clearRememberedSharedList(sharedListId);
-          alert('O compartilhamento desta lista foi finalizado pelo proprietário.');
+          showToast('O compartilhamento desta lista foi finalizado pelo proprietário.', { type: 'info' });
           window.location.replace('/index.html');
           return;
         }
@@ -1397,10 +1397,10 @@
           body: JSON.stringify({}),
         });
         if (!response.ok) throw new Error('CANCEL_FAILED');
-        alert('Assinatura cancelada. Os benefícios ficam ativos até o fim do período já pago.');
+        showToast('Assinatura cancelada. Os benefícios ficam ativos até o fim do período já pago.', { type: 'success' });
       } catch (error) {
         console.error('Não foi possível cancelar a assinatura.', error);
-        alert('Não foi possível cancelar agora. Tente novamente.');
+        showToast('Não foi possível cancelar agora. Tente novamente.', { type: 'error' });
       } finally {
         if (cancelButton) cancelButton.disabled = false;
       }
@@ -1439,7 +1439,7 @@
         window.location.href = '/login?deleted=1';
       } catch (error) {
         console.error('Não foi possível excluir a conta.', error);
-        alert('Não foi possível excluir sua conta agora. Tente novamente em instantes.');
+        showToast('Não foi possível excluir sua conta agora. Tente novamente em instantes.', { type: 'error' });
         if (deleteButton) {
           deleteButton.disabled = false;
           deleteButton.textContent = 'Excluir conta';
@@ -2059,6 +2059,163 @@
       if (voiceButton && !voiceButton.disabled) voiceButton.click();
     }
 
+    const AI_FAB_POSITION_KEY = 'gg_ai_fab_position';
+    const AI_FAB_DRAG_THRESHOLD = 8;
+    const AI_FAB_EDGE_MARGIN = 10;
+    const aiFabDragState = { suppressClick: false };
+
+    function clampAiFabPosition(left, top, el) {
+      const rect = el.getBoundingClientRect();
+      const width = rect.width || el.offsetWidth || 58;
+      const height = rect.height || el.offsetHeight || 58;
+      const maxLeft = Math.max(window.innerWidth - width - AI_FAB_EDGE_MARGIN, AI_FAB_EDGE_MARGIN);
+      const maxTop = Math.max(window.innerHeight - height - AI_FAB_EDGE_MARGIN, AI_FAB_EDGE_MARGIN);
+      return {
+        left: Math.min(Math.max(left, AI_FAB_EDGE_MARGIN), maxLeft),
+        top: Math.min(Math.max(top, AI_FAB_EDGE_MARGIN), maxTop),
+      };
+    }
+
+    function applyAiFabPosition(left, top) {
+      [aiChatEl('aiFabButton'), aiChatEl('aiChatPill')].forEach((el) => {
+        if (!el) return;
+        // O seletor genérico `button` (index.html) aplica margin: 8px, que
+        // desloca a caixa visível em relação ao left/top — compensa aqui
+        // pra `left`/`top` sempre representarem a posição visível real
+        // (a mesma que getBoundingClientRect devolve).
+        const cs = getComputedStyle(el);
+        const marginLeft = parseFloat(cs.marginLeft) || 0;
+        const marginTop = parseFloat(cs.marginTop) || 0;
+        el.style.left = `${left - marginLeft}px`;
+        el.style.top = `${top - marginTop}px`;
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
+      });
+    }
+
+    function saveAiFabPosition(left, top) {
+      try {
+        localStorage.setItem(AI_FAB_POSITION_KEY, JSON.stringify({ left, top }));
+      } catch {
+        // localStorage indisponível (ex.: modo privado) — posição vale só pra sessão atual.
+      }
+    }
+
+    function loadAiFabPosition() {
+      try {
+        const raw = localStorage.getItem(AI_FAB_POSITION_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.left === 'number' && typeof parsed.top === 'number') return parsed;
+      } catch {
+        // ignore
+      }
+      return null;
+    }
+
+    function getVisibleAiFabEl() {
+      const fab = aiChatEl('aiFabButton');
+      const pill = aiChatEl('aiChatPill');
+      if (fab && !fab.hidden) return fab;
+      if (pill && !pill.hidden) return pill;
+      return fab || pill;
+    }
+
+    // Torna o FAB de IA (e a pill "continuar conversa", que ocupa o mesmo
+    // lugar) arrastável com mouse e touch, mantendo o clique normal pra
+    // abrir o painel quando não houve arraste de verdade.
+    function initAiFabDrag() {
+      const fab = aiChatEl('aiFabButton');
+      const pill = aiChatEl('aiChatPill');
+      const draggableEls = [fab, pill].filter(Boolean);
+      if (!draggableEls.length) return;
+
+      const initialAnchor = fab || pill;
+      const saved = loadAiFabPosition();
+      if (saved) {
+        const clamped = clampAiFabPosition(saved.left, saved.top, initialAnchor);
+        applyAiFabPosition(clamped.left, clamped.top);
+      } else {
+        const rect = initialAnchor.getBoundingClientRect();
+        applyAiFabPosition(rect.left, rect.top);
+      }
+
+      window.addEventListener('resize', () => {
+        const el = getVisibleAiFabEl();
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const clamped = clampAiFabPosition(rect.left, rect.top, el);
+        applyAiFabPosition(clamped.left, clamped.top);
+      });
+
+      // Captura o clique antes que ele chegue no listener que abre o painel
+      // (registrado no próprio botão), pra não abrir a IA logo depois de soltar
+      // um arraste real.
+      document.addEventListener('click', (event) => {
+        if (!aiFabDragState.suppressClick) return;
+        const target = event.target.closest && event.target.closest('.ai-fab, .ai-chat-pill');
+        if (target) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+
+      draggableEls.forEach((el) => {
+        let dragging = false;
+        let startX = 0;
+        let startY = 0;
+        let originLeft = 0;
+        let originTop = 0;
+        let lastLeft = 0;
+        let lastTop = 0;
+
+        el.addEventListener('pointerdown', (event) => {
+          if (event.button !== undefined && event.button !== 0) return;
+          const rect = el.getBoundingClientRect();
+          startX = event.clientX;
+          startY = event.clientY;
+          originLeft = rect.left;
+          originTop = rect.top;
+          dragging = false;
+          el.setPointerCapture(event.pointerId);
+        });
+
+        el.addEventListener('pointermove', (event) => {
+          if (!el.hasPointerCapture(event.pointerId)) return;
+          const dx = event.clientX - startX;
+          const dy = event.clientY - startY;
+          if (!dragging && Math.hypot(dx, dy) < AI_FAB_DRAG_THRESHOLD) return;
+          if (!dragging) {
+            dragging = true;
+            draggableEls.forEach((node) => node.classList.add('is-dragging'));
+          }
+          event.preventDefault();
+          const clamped = clampAiFabPosition(originLeft + dx, originTop + dy, el);
+          lastLeft = clamped.left;
+          lastTop = clamped.top;
+          applyAiFabPosition(clamped.left, clamped.top);
+        });
+
+        function endDrag(event) {
+          if (!el.hasPointerCapture(event.pointerId)) return;
+          el.releasePointerCapture(event.pointerId);
+          if (dragging) {
+            draggableEls.forEach((node) => node.classList.remove('is-dragging'));
+            // Usa a última posição já calculada (em vez de reler o
+            // getBoundingClientRect agora) pra não capturar o retângulo
+            // no meio da transição de escala do estado ".is-dragging".
+            saveAiFabPosition(lastLeft, lastTop);
+            aiFabDragState.suppressClick = true;
+            setTimeout(() => { aiFabDragState.suppressClick = false; }, 0);
+          }
+          dragging = false;
+        }
+
+        el.addEventListener('pointerup', endDrag);
+        el.addEventListener('pointercancel', endDrag);
+      });
+    }
+
     function initHomeQuickActions() {
       const bindings = [
         ['homeQuickAskAi', openAiChatPanel],
@@ -2500,7 +2657,7 @@
           error.textContent = message;
           error.style.display = 'block';
         } else {
-          alert(message);
+          showToast(message, { type: 'error' });
         }
       };
 
@@ -2534,7 +2691,7 @@
       const normalizedSector = normalizeSectorName(sectorName);
       const currentList = lists[currentListName];
       if (!normalizedSector || !currentList || isPredefinedSectorName(normalizedSector)) {
-        alert('Os setores padrão do GetGoList não podem ser excluídos.');
+        showToast('Os setores padrão do GetGoList não podem ser excluídos.', { type: 'warning' });
         return;
       }
 
@@ -3073,12 +3230,12 @@
       closeMenu();
       
       if (!currentFirebaseUser && sectionId !== 'homeSection') {
-        alert('Faça login para acessar esta área.');
+        showToast('Faça login para acessar esta área.', { type: 'warning' });
         showSection('homeSection');
         return;
       }
       if (currentFirebaseUser && sectionId === 'managementSection' && !currentPlanLimits().hasGestao) {
-        alert('Assine o plano Cestão para acessar a Gestão.');
+        showToast('Assine o plano Cestão para acessar a Gestão.', { type: 'warning' });
         showSection('homeSection');
         return;
       }
@@ -3144,11 +3301,8 @@
       const availableEl = document.getElementById('insufficientBalanceAvailable');
       if (!dialog || !listNameEl || !totalEl || !availableEl) {
         // Rede de segurança caso o HTML do diálogo não tenha carregado.
-        if (confirm(`O valor ultrapassa o saldo. Confirma inclusão do produto? (Total: R$ ${itemTotal.toFixed(2).replace('.', ',')} | Saldo: R$ ${currentBalance.toFixed(2).replace('.', ',')})`)) {
-          onContinue();
-        } else if (typeof onDismiss === 'function') {
-          onDismiss();
-        }
+        console.error('[showInsufficientBalanceDialog] diálogo indisponível no DOM');
+        if (typeof onDismiss === 'function') onDismiss();
         return;
       }
       listNameEl.textContent = listName;
@@ -3167,6 +3321,51 @@
       if (typeof dismiss === 'function') dismiss();
     }
 
+    const TOAST_ICONS = {
+      success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+      error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>',
+      warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+      info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+    };
+
+    // Substitui o alert() nativo por uma notificação no padrão visual do
+    // app (toast). type: 'success' | 'error' | 'warning' | 'info'.
+    function showToast(message, { type = 'info', duration = 4500 } = {}) {
+      const container = document.getElementById('toastContainer');
+      if (!container) {
+        console.error('[toast]', message);
+        return null;
+      }
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.setAttribute('role', type === 'error' || type === 'warning' ? 'alert' : 'status');
+      toast.innerHTML = `
+        <span class="toast-icon" aria-hidden="true">${TOAST_ICONS[type] || TOAST_ICONS.info}</span>
+        <span class="toast-message"></span>
+        <button type="button" class="toast-close" aria-label="Fechar notificação">&times;</button>
+      `;
+      toast.querySelector('.toast-message').textContent = message;
+
+      let dismissTimer = null;
+      let dismissed = false;
+      function dismiss() {
+        if (dismissed) return;
+        dismissed = true;
+        if (dismissTimer) clearTimeout(dismissTimer);
+        toast.classList.remove('is-open');
+        toast.classList.add('is-closing');
+        setTimeout(() => toast.remove(), 220);
+      }
+
+      toast.querySelector('.toast-close').addEventListener('click', dismiss);
+      container.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.add('is-open'));
+      if (duration > 0) {
+        dismissTimer = setTimeout(dismiss, duration);
+      }
+      return dismiss;
+    }
+
     let pendingConfirmActionResolve = null;
 
     // Substitui o confirm() nativo do navegador por um diálogo no padrão
@@ -3182,7 +3381,8 @@
         const iconEl = dialog ? dialog.querySelector('.confirm-action-icon') : null;
         if (!dialog || !titleEl || !messageEl || !confirmButton || !cancelButton) {
           // Rede de segurança caso o HTML do diálogo não tenha carregado.
-          resolve(confirm(message));
+          console.error('[showConfirmDialog] diálogo indisponível no DOM', message);
+          resolve(false);
           return;
         }
         titleEl.textContent = title;
@@ -3247,7 +3447,7 @@
         return;
       }
       if (!lists[currentListName]) {
-        alert('A lista atual não está disponível.');
+        showToast('A lista atual não está disponível.', { type: 'error' });
         return;
       }
       const balanceValue = parsePrice(balanceInput.value);
@@ -3267,7 +3467,7 @@
         updateFooter();
         closeDialog('budgetDialog');
       } else {
-        alert('Por favor, insira um orçamento válido.');
+        showToast('Por favor, insira um orçamento válido.', { type: 'warning' });
       }
     }
 
@@ -3278,13 +3478,13 @@
       itemQuantity = boundedQuantity(itemQuantity, itemUnit);
       itemSector = normalizeSectorName(itemSector, 'Geral');
       if (shoppingList.length >= MAX_ITEMS_PER_LIST) {
-        alert(`Esta lista atingiu o limite de ${MAX_ITEMS_PER_LIST} itens.`);
+        showToast(`Esta lista atingiu o limite de ${MAX_ITEMS_PER_LIST} itens.`, { type: 'warning' });
         return false;
       }
       const itemTotal = itemPrice * itemQuantity;
 
       if (!(itemName && itemPrice > 0 && itemQuantity > 0)) {
-        alert('Por favor, insira um nome, preço e quantidade válidos.');
+        showToast('Por favor, insira um nome, preço e quantidade válidos.', { type: 'warning' });
         return false;
       }
 
@@ -3351,7 +3551,7 @@
 
     function editItem(index) {
       if (editingIndex !== null) {
-        alert('Por favor, conclua ou cancele a edição atual antes de editar outro item.');
+        showToast('Por favor, conclua ou cancele a edição atual antes de editar outro item.', { type: 'warning' });
         return;
       }
       editingIndex = index;
@@ -3374,7 +3574,7 @@
       const itemTotal = itemPrice * itemQuantity;
 
       if (!(itemName && itemPrice > 0 && itemQuantity > 0)) {
-        alert('Por favor, insira um nome, preço e quantidade válidos.');
+        showToast('Por favor, insira um nome, preço e quantidade válidos.', { type: 'warning' });
         return;
       }
 
@@ -3480,7 +3680,7 @@
     async function deleteSelectedListItems() {
       const checkboxes = document.querySelectorAll('input[name="listItem"]:checked');
       if (checkboxes.length === 0) {
-        alert('Selecione pelo menos um item para excluir!');
+        showToast('Selecione pelo menos um item para excluir!', { type: 'warning' });
         return;
       }
       const confirmedDeletion = await showConfirmDialog({
@@ -3530,17 +3730,17 @@
     function openMoveSelectedItemsDialog() {
       const selectedIndices = getSelectedListItemIndices();
       if (!selectedIndices.length) {
-        alert('Selecione pelo menos um item para mover.');
+        showToast('Selecione pelo menos um item para mover.', { type: 'warning' });
         return;
       }
       if (sharedListId) {
-        alert('Itens de uma lista compartilhada não podem ser movidos para suas listas privadas.');
+        showToast('Itens de uma lista compartilhada não podem ser movidos para suas listas privadas.', { type: 'warning' });
         return;
       }
 
       const targetListNames = Object.keys(lists).filter((listName) => listName !== currentListName);
       if (!targetListNames.length) {
-        alert('Crie outra lista antes de mover os itens.');
+        showToast('Crie outra lista antes de mover os itens.', { type: 'warning' });
         return;
       }
 
@@ -3617,7 +3817,7 @@
       updateBalance();
       updateFooter();
       updateDashboard();
-      alert(`${selectedItems.length} ${selectedItems.length === 1 ? 'item movido' : 'itens movidos'} para “${targetListName}”.`);
+      showToast(`${selectedItems.length} ${selectedItems.length === 1 ? 'item movido' : 'itens movidos'} para “${targetListName}”.`, { type: 'success' });
     }
 
     // Compartilhada entre o botão "Limpar histórico" (com confirmação) e
@@ -3659,7 +3859,7 @@
     async function deleteSelectedHistoryItems() {
       const checkboxes = document.querySelectorAll('input[name="historyItem"]:checked');
       if (checkboxes.length === 0) {
-        alert('Selecione pelo menos um item do histórico para excluir!');
+        showToast('Selecione pelo menos um item do histórico para excluir!', { type: 'warning' });
         return;
       }
       const confirmedDeletion = await showConfirmDialog({
@@ -4272,16 +4472,16 @@
       const selectedMonth = monthSelect.value;
       const targetListName = targetListSelect.value;
       if (!selectedMonth) {
-        alert('Por favor, selecione um mês.');
+        showToast('Por favor, selecione um mês.', { type: 'warning' });
         return;
       }
       if (!targetListName) {
-        alert('Por favor, selecione uma lista de destino.');
+        showToast('Por favor, selecione uma lista de destino.', { type: 'warning' });
         return;
       }
       if (!lists[targetListName]) {
         console.error(`Lista de destino ${targetListName} não existe`);
-        alert('Erro: A lista de destino não existe.');
+        showToast('Erro: A lista de destino não existe.', { type: 'error' });
         return;
       }
       const [monthName, year] = selectedMonth.split(' de ');
@@ -4289,7 +4489,7 @@
       const monthIndex = monthNames.indexOf(monthName.toLowerCase());
       if (monthIndex === -1) {
         console.error(`Mês inválido: ${monthName}`);
-        alert('Mês inválido selecionado.');
+        showToast('Mês inválido selecionado.', { type: 'warning' });
         return;
       }
       const filteredHistory = listHistory.filter(item => {
@@ -4332,7 +4532,7 @@
       updateDashboard();
       monthSelect.value = '';
       targetListSelect.value = '';
-      alert(`Itens do mês ${selectedMonth} carregados na lista "${targetListName}" com sucesso!`);
+      showToast(`Itens do mês ${selectedMonth} carregados na lista "${targetListName}" com sucesso!`, { type: 'success' });
       console.log(`Histórico carregado na lista ${targetListName}`);
     }
 
@@ -4524,17 +4724,17 @@
     function selectDivideList() {
       const checkboxes = document.querySelectorAll('input[name="divideList"]:checked');
       if (checkboxes.length === 0) {
-        alert('Selecione pelo menos uma lista para divisão!');
+        showToast('Selecione pelo menos uma lista para divisão!', { type: 'warning' });
         return;
       }
       if (checkboxes.length > 1) {
-        alert('Selecione apenas uma lista por vez!');
+        showToast('Selecione apenas uma lista por vez!', { type: 'warning' });
         return;
       }
       const selectedListName = checkboxes[0].value;
       if (!lists[selectedListName]) {
         console.error(`Lista selecionada ${selectedListName} não existe`);
-        alert('Erro: A lista selecionada não existe.');
+        showToast('Erro: A lista selecionada não existe.', { type: 'error' });
         return;
       }
       selectedDivideListName = selectedListName;
@@ -4631,7 +4831,7 @@
         copyTextToClipboard(baseMessage).then(() => {
           copyButton.textContent = 'Mensagem copiada!';
         }).catch(() => {
-          alert('Não foi possível copiar automaticamente. Tente novamente.');
+          showToast('Não foi possível copiar automaticamente. Tente novamente.', { type: 'error' });
         });
       });
 
@@ -4642,7 +4842,7 @@
       emailButton.addEventListener('click', () => {
         const emails = parseSharedEmails(divisionEmails.value);
         if (!emails.length) {
-          alert('Informe pelo menos um e-mail válido dos participantes.');
+          showToast('Informe pelo menos um e-mail válido dos participantes.', { type: 'warning' });
           return;
         }
         sendDivisionEmails({
@@ -4800,7 +5000,7 @@
         button.textContent = `${result.sent || payload.emails.length} cobrança(s) enviada(s)!`;
       } catch (error) {
         button.textContent = error.configurationPending ? 'E-mail aguardando configuração' : originalText;
-        alert(error.message || 'Não foi possível enviar as cobranças por e-mail.');
+        showToast(error.message || 'Não foi possível enviar as cobranças por e-mail.', { type: 'error' });
       } finally {
         button.disabled = false;
       }
@@ -4847,7 +5047,7 @@
         return;
       }
       if (!sharedListId && !currentPlanLimits().canShare) {
-        alert('Assine o plano Cesta ou Cestão para compartilhar listas.');
+        showToast('Assine o plano Cesta ou Cestão para compartilhar listas.', { type: 'warning' });
         return;
       }
       if (!firestoreDb) {
@@ -5045,13 +5245,13 @@
     function navigateToSelectedList() {
       const radio = document.querySelector('input[name="navigationList"]:checked');
       if (!radio) {
-        alert('Selecione uma lista para navegar!');
+        showToast('Selecione uma lista para navegar!', { type: 'warning' });
         return;
       }
       const selectedListName = radio.value;
       if (!lists[selectedListName]) {
         console.error(`Lista selecionada ${selectedListName} não existe`);
-        alert('Erro: A lista selecionada não existe.');
+        showToast('Erro: A lista selecionada não existe.', { type: 'error' });
         return;
       }
       currentListName = selectedListName;
@@ -5097,11 +5297,11 @@
       shareLink.select();
       try {
         document.execCommand('copy');
-        alert('Link copiado para a área de transferência!');
+        showToast('Link copiado para a área de transferência!', { type: 'success' });
         console.log("Link de compartilhamento copiado com sucesso");
       } catch (e) {
         console.error("Erro ao copiar link:", e);
-        alert('Erro ao copiar o link. Por favor, copie manualmente.');
+        showToast('Erro ao copiar o link. Por favor, copie manualmente.', { type: 'error' });
       }
     }
 
@@ -5222,7 +5422,7 @@
 
     function createNewListDialog() {
       if (Object.keys(lists).length >= currentPlanLimits().maxLists) {
-        alert('Mais listas disponíveis apenas em planos pagos. Assine um plano para criar novas listas.');
+        showToast('Mais listas disponíveis apenas em planos pagos. Assine um plano para criar novas listas.', { type: 'warning' });
         return;
       }
       console.log("Tentando abrir diálogo de criação de lista");
@@ -5251,7 +5451,7 @@
         return;
       }
       if (Object.keys(lists).length >= currentPlanLimits().maxLists) {
-        alert('Seu plano atual atingiu o limite de listas. Assine um plano com mais listas para continuar.');
+        showToast('Seu plano atual atingiu o limite de listas. Assine um plano com mais listas para continuar.', { type: 'warning' });
         return;
       }
       const newName = safeListName(input.value, '');
@@ -5282,9 +5482,9 @@
         showSection('productsSection');
         console.log("Nova lista criada:", newName);
       } else if (newName) {
-        alert('Nome já existe ou é inválido!');
+        showToast('Nome já existe ou é inválido!', { type: 'warning' });
       } else {
-        alert('Por favor, insira um nome válido para a lista.');
+        showToast('Por favor, insira um nome válido para a lista.', { type: 'warning' });
       }
     }
 
@@ -5341,7 +5541,7 @@
     async function deleteSelectedLists() {
       const checkboxes = document.querySelectorAll('input[name="deleteList"]:checked');
       if (checkboxes.length === 0) {
-        alert('Selecione pelo menos uma lista para excluir!');
+        showToast('Selecione pelo menos uma lista para excluir!', { type: 'warning' });
         return;
       }
       if (checkboxes.length === Object.keys(lists).length) {
@@ -5502,7 +5702,7 @@
         }
       });
       if (hasConflict) {
-        alert('Nomes duplicados ou inválidos detectados! Certifique-se de que todos os nomes sejam únicos.');
+        showToast('Nomes duplicados ou inválidos detectados! Certifique-se de que todos os nomes sejam únicos.', { type: 'warning' });
       } else {
         lists = newNames;
         if (!lists[currentListName]) {
@@ -5992,6 +6192,7 @@
     setupEventHandlers();
     initVoiceCommand();
     initAiChatPanel();
+    initAiFabDrag();
     initHomeQuickActions();
     setupListButtons();
     updateSharedModeUi();
